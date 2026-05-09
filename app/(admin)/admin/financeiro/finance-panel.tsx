@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowLeft, ArrowLeftRight, ArrowRight, ArrowUp, ArrowUpDown, BarChart3, Building2, CalendarDays, Funnel, Home, Landmark, LoaderCircle, Paintbrush, Pencil, Plus, RotateCcw, Search, Settings, Trash2, WalletCards, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowLeftRight, ArrowRight, ArrowUp, ArrowUpDown, BarChart3, Building2, CalendarDays, ChevronRight, CreditCard, FileText, Funnel, Home, Landmark, LoaderCircle, Paintbrush, Pencil, Plus, Receipt, RotateCcw, Search, Settings, Tag, Trash2, WalletCards, X } from "lucide-react";
 import {
   addAccount,
   addCategory,
@@ -27,6 +27,7 @@ export type FinanceAccount = {
   name: string;
   kind: string;
   currency: string;
+  credit_limit: number | null;
 };
 
 export type FinanceTransaction = {
@@ -50,6 +51,7 @@ export type FinanceTransaction = {
 type Props = {
   categories: FinanceCategory[];
   accounts: FinanceAccount[];
+  accountBalances: Record<string, number>;
   transactions: FinanceTransaction[];
   metrics: {
     income: number;
@@ -174,13 +176,23 @@ function Modal({
   open,
   onClose,
   children,
+  variant = "card",
 }: {
   title: string;
   open: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  variant?: "card" | "sheet";
 }) {
   if (!open) return null;
+
+  if (variant === "sheet") {
+    return (
+      <div className="fixed inset-0 z-[60] overflow-y-auto bg-white">
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[60] overflow-x-hidden overflow-y-auto bg-slate-950/70 px-3 py-5 backdrop-blur sm:px-4 sm:py-6">
@@ -219,8 +231,9 @@ function TransactionForm({
   categories,
   accounts,
   transaction,
-  onEditAccounts,
+  onEditAccounts: _onEditAccounts,
   onSaved,
+  onClose,
   initialBalance,
 }: {
   categories: FinanceCategory[];
@@ -228,30 +241,52 @@ function TransactionForm({
   transaction?: FinanceTransaction;
   onEditAccounts: () => void;
   onSaved: () => void;
+  onClose: () => void;
   initialBalance?: boolean;
 }) {
   const router = useRouter();
   const [type, setType] = useState<"income" | "expense">(transaction?.type ?? (initialBalance ? "income" : "expense"));
-  const mode = transaction?.mode ?? (initialBalance ? "initial_balance" : "normal");
   const [currency, setCurrency] = useState(transaction?.currency ?? accounts[0]?.currency ?? "BRL");
   const [amount, setAmount] = useState(
     transaction?.amount ? formatAmountInput(String(Math.round(Number(transaction.amount) * 100)), transaction.currency) : "",
   );
-  const initialCategory = initialBalance
-    ? categories.find((category) => category.name === "Saldo inicial")?.id
-    : undefined;
+  const [date, setDate] = useState(transaction?.date ?? today());
+  const [dueDate, setDueDate] = useState(transaction?.due_date ?? "");
+  const initialCategory = initialBalance ? categories.find((c) => c.name === "Saldo inicial")?.id : undefined;
   const [categoryOptions, setCategoryOptions] = useState(categories);
   const [categoryId, setCategoryId] = useState(transaction?.category_id ?? initialCategory ?? "");
-  const [quickCategoryOpen, setQuickCategoryOpen] = useState(false);
-  const [quickCategoryName, setQuickCategoryName] = useState("");
-  const [detailsOpen, setDetailsOpen] = useState(Boolean(transaction?.location || transaction?.notes));
+  const [isFixed, setIsFixed] = useState(transaction?.mode === "fixed_expense");
+  const [titheEligible, setTitheEligible] = useState(transaction?.tithe_eligible ?? true);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [quickCategoryOpen, setQuickCategoryOpen] = useState(false);
+  const [quickCategoryName, setQuickCategoryName] = useState("");
   const [pendingCategory, startCategoryTransition] = useTransition();
+
+  const bankAccounts = accounts.filter((a) => a.kind !== "credit_card");
+  const cardAccounts = accounts.filter((a) => a.kind === "credit_card");
+  const [destKind, setDestKind] = useState<"bank" | "card">(() => {
+    if (transaction?.account_id) {
+      const acc = accounts.find((a) => a.id === transaction.account_id);
+      return acc?.kind === "credit_card" ? "card" : "bank";
+    }
+    return "bank";
+  });
+  const accountsForKind = destKind === "card" ? cardAccounts : bankAccounts;
+  const [selectedAccountId, setSelectedAccountId] = useState(
+    transaction?.account_id ?? accountsForKind[0]?.id ?? "",
+  );
+
+  const mode = initialBalance ? "initial_balance" : isFixed ? "fixed_expense" : "normal";
   const action = transaction ? updateTransaction.bind(null, transaction.id) : addTransaction;
+  const isIncome = type === "income";
+  const headerBg = isIncome ? "bg-emerald-500" : "bg-red-500";
+  const accentText = isIncome ? "text-emerald-600" : "text-red-500";
+  const accentBorder = isIncome ? "border-emerald-400" : "border-red-400";
+  const accentBg = isIncome ? "bg-emerald-50" : "bg-red-50";
 
   function handleAccountChange(accountId: string) {
-    const account = accounts.find((item) => item.id === accountId);
+    const account = accounts.find((a) => a.id === accountId);
     if (account?.currency) {
       setCurrency(account.currency);
       setAmount((current) => current ? formatAmountInput(current, account.currency) : "");
@@ -285,121 +320,224 @@ function TransactionForm({
   }
 
   return (
-    <form action={submitTransaction} className="grid w-full min-w-0 max-w-full gap-3 overflow-hidden md:grid-cols-2">
+    <form action={submitTransaction} className="flex min-h-screen flex-col bg-white">
       <input type="hidden" name="mode" value={mode} />
       <input type="hidden" name="currency" value={currency} />
-      <input type="hidden" name="due_date" value={transaction?.due_date ?? ""} />
-      <div className="w-full min-w-0 rounded-2xl bg-emerald-50 p-1 md:col-span-2">
-        <div className="grid grid-cols-2 gap-1">
-          <label className={`flex min-w-0 items-center justify-center gap-2 truncate rounded-xl px-2 py-3 text-sm font-bold ${type === "income" ? "bg-white text-emerald-700 shadow-sm" : "text-slate-500"}`}>
-            <input className="sr-only" type="radio" name="type" value="income" checked={type === "income"} onChange={() => setType("income")} />
-            <ArrowUp size={16} /> Entrada
+      {isIncome && titheEligible && <input type="hidden" name="tithe_eligible" value="on" />}
+
+      {/* Header colorido */}
+      <div className={`${headerBg} px-4 pb-6 pt-14`}>
+        <div className="mb-6 flex items-center">
+          <button type="button" onClick={onClose} className="mr-3 text-white/80 hover:text-white">
+            <ArrowLeft size={22} />
+          </button>
+          <h2 className="flex-1 text-center text-base font-medium text-white">
+            {transaction ? "Editar lançamento" : "Novo lançamento"}
+          </h2>
+          <div className="w-8" />
+        </div>
+        <div className="mb-3 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
+            <Receipt size={20} className="text-white" />
+          </div>
+          <span className="text-sm text-white/80">{isIncome ? "Receita" : "Despesa"}</span>
+        </div>
+        <div className="mb-1 flex items-end gap-1.5">
+          <span className="pb-1 text-xl font-bold text-white/70">{currencySymbol(currency)}</span>
+          <input
+            name="amount"
+            type="text"
+            inputMode="numeric"
+            value={amount}
+            onChange={(e) => setAmount(formatAmountInput(e.target.value, currency))}
+            required
+            placeholder={`0${decimalSeparator(currency)}00`}
+            className="min-w-0 flex-1 bg-transparent text-4xl font-bold text-white outline-none placeholder:text-white/50"
+          />
+        </div>
+        <p className="mb-5 text-sm text-white/60">Toque para informar o valor</p>
+        <div className="flex rounded-full bg-white/20 p-1">
+          <label className={`flex-1 cursor-pointer rounded-full py-2.5 text-center text-sm font-semibold transition ${!isIncome ? "bg-white text-red-500 shadow" : "text-white"}`}>
+            <input className="sr-only" type="radio" name="type" value="expense" checked={!isIncome} onChange={() => setType("expense")} />
+            Despesa
           </label>
-          <label className={`flex min-w-0 items-center justify-center gap-2 truncate rounded-xl px-2 py-3 text-sm font-bold ${type === "expense" ? "bg-white text-red-700 shadow-sm" : "text-slate-500"}`}>
-            <input className="sr-only" type="radio" name="type" value="expense" checked={type === "expense"} onChange={() => setType("expense")} />
-            <ArrowDown size={16} /> Saída
+          <label className={`flex-1 cursor-pointer rounded-full py-2.5 text-center text-sm font-semibold transition ${isIncome ? "bg-white text-emerald-500 shadow" : "text-white"}`}>
+            <input className="sr-only" type="radio" name="type" value="income" checked={isIncome} onChange={() => setType("income")} />
+            Receita
           </label>
         </div>
       </div>
-      <div className="w-full min-w-0 rounded-3xl border border-emerald-200 bg-slate-50 p-4 shadow-sm md:col-span-2">
-        <label className="mb-3 block text-xs font-bold uppercase tracking-widest text-emerald-700">Valor</label>
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-500 text-lg font-bold text-white">
-            {currencySymbol(currency)}
-          </span>
-          <input name="amount" type="text" inputMode="numeric" value={amount} onChange={(event) => setAmount(formatAmountInput(event.target.value, currency))} required placeholder={`0${decimalSeparator(currency)}00`} className="w-full min-w-0 flex-1 rounded-2xl border border-transparent bg-white px-4 py-3 text-3xl font-black text-slate-950 outline-none placeholder:text-slate-400 focus:border-emerald-400 sm:text-4xl" />
+
+      {/* Corpo */}
+      <div className="flex-1 pb-32">
+        {/* Descrição */}
+        <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+            <FileText size={16} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-slate-400">Descrição <span className="text-red-400">*</span></p>
+            <input
+              name="description"
+              defaultValue={transaction?.description ?? ""}
+              required
+              placeholder="Sem descrição"
+              className="w-full bg-transparent text-sm font-medium text-slate-950 outline-none placeholder:text-slate-400"
+            />
+          </div>
+          <ChevronRight size={16} className="shrink-0 text-slate-300" />
         </div>
-      </div>
-      <div className="min-w-0">
-        <label className="mb-2 block text-sm font-medium text-slate-300">Data</label>
-        <input name="date" type="date" defaultValue={transaction?.date ?? today()} required className="block w-full min-w-0 max-w-full appearance-none rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white outline-none focus:border-slate-500" />
-      </div>
-      <div className="min-w-0">
-        <label className="mb-2 block text-sm font-medium text-slate-300">Descrição</label>
-        <input name="description" defaultValue={transaction?.description ?? ""} required placeholder={type === "income" ? "Apoiador, igreja ou descrição..." : "Ex: mercado, oferta, gasolina"} className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-slate-500" />
-      </div>
-      <div className="min-w-0">
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <label className="block text-sm font-medium text-slate-300">Categoria</label>
-          <button type="button" onClick={() => setQuickCategoryOpen(true)} className="inline-flex items-center gap-1 rounded-xl bg-orange-500/10 px-3 py-1.5 text-xs font-bold text-orange-300 hover:bg-orange-500/20">
+
+        {/* Categoria */}
+        <div className="relative flex items-center gap-3 border-b border-slate-100 px-4 py-3.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+            <Tag size={16} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-slate-400">Categoria <span className="text-red-400">*</span></p>
+            <p className="text-sm font-medium text-slate-950">
+              {categoryId ? (categoryOptions.find((c) => c.id === categoryId)?.name) : <span className="text-slate-400">Obrigatório</span>}
+            </p>
+          </div>
+          <button type="button" onClick={() => setQuickCategoryOpen(true)} className="relative z-10 shrink-0 rounded-full bg-orange-100 px-2.5 py-1 text-[10px] font-bold text-orange-500">
             + Nova
           </button>
-        </div>
-        <div className="flex min-w-0 gap-2">
-          <select name="category_id" value={categoryId} onChange={(event) => setCategoryId(event.target.value)} required className="w-full min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white outline-none focus:border-slate-500">
+          <ChevronRight size={16} className="shrink-0 text-slate-300" />
+          <select name="category_id" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required className="absolute inset-0 z-[5] cursor-pointer opacity-0">
             <option value="">Selecione</option>
-            {categoryOptions.map((category) => (
-              <option key={category.id} value={category.id}>{category.name}</option>
-            ))}
+            {categoryOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
-      </div>
-      <div className="min-w-0">
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <label className="block text-sm font-medium text-slate-300">Conta / banco / cartão</label>
-          <button type="button" onClick={onEditAccounts} className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-white">
-            <Building2 size={13} />Editar
+
+        {/* ONDE LANÇAR */}
+        <p className="px-4 pb-3 pt-5 text-[11px] font-semibold uppercase tracking-widest text-slate-400">Onde Lançar</p>
+        <div className="grid grid-cols-2 gap-3 px-4">
+          <button type="button"
+            onClick={() => { setDestKind("bank"); const id = bankAccounts[0]?.id ?? ""; setSelectedAccountId(id); handleAccountChange(id); }}
+            className={`rounded-2xl border-2 p-4 text-left transition ${destKind === "bank" ? `${accentBorder} ${accentBg}` : "border-slate-200 bg-white"}`}>
+            <Building2 size={20} className={destKind === "bank" ? accentText : "text-slate-400"} />
+            <p className={`mt-1 text-sm font-semibold ${destKind === "bank" ? accentText : "text-slate-950"}`}>Conta</p>
+            <p className="text-xs text-slate-400">Movimenta saldo</p>
+          </button>
+          <button type="button"
+            onClick={() => { setDestKind("card"); const id = cardAccounts[0]?.id ?? ""; setSelectedAccountId(id); handleAccountChange(id); }}
+            className={`rounded-2xl border-2 p-4 text-left transition ${destKind === "card" ? `${accentBorder} ${accentBg}` : "border-slate-200 bg-white"}`}>
+            <CreditCard size={20} className={destKind === "card" ? accentText : "text-slate-400"} />
+            <p className={`mt-1 text-sm font-semibold ${destKind === "card" ? accentText : "text-slate-950"}`}>Cartão</p>
+            <p className="text-xs text-slate-400">Entra na fatura</p>
           </button>
         </div>
-        <select name="account_id" defaultValue={transaction?.account_id ?? accounts[0]?.id ?? ""} onChange={(event) => handleAccountChange(event.target.value)} required className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white outline-none focus:border-slate-500">
-          <option value="">Selecione</option>
-          {accounts.map((account) => <option key={account.id} value={account.id}>{account.name} ({account.currency})</option>)}
-        </select>
+
+        {/* Conta selecionada */}
+        <div className="relative mt-2 flex items-center gap-3 border-b border-t border-slate-100 px-4 py-3.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+            {destKind === "card" ? <CreditCard size={16} /> : <Building2 size={16} />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-slate-400">{destKind === "card" ? "Cartão de Crédito" : "Conta"} <span className="text-red-400">*</span></p>
+            <p className="text-sm font-medium text-slate-950">
+              {accountsForKind.find((a) => a.id === selectedAccountId)?.name ?? <span className="text-slate-400">Obrigatório</span>}
+            </p>
+          </div>
+          <ChevronRight size={16} className="shrink-0 text-slate-300" />
+          <select name="account_id" value={selectedAccountId} onChange={(e) => { setSelectedAccountId(e.target.value); handleAccountChange(e.target.value); }} required className="absolute inset-0 cursor-pointer opacity-0">
+            <option value="">Selecione</option>
+            {accountsForKind.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        </div>
+
+        {/* Vencimento */}
+        <div className="relative flex items-center gap-3 border-b border-slate-100 px-4 py-3.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+            <CalendarDays size={16} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-slate-400">Vencimento</p>
+            <p className="text-sm font-medium text-slate-950">{dueDate ? dateBR(dueDate) : "Sem vencimento"}</p>
+          </div>
+          <ChevronRight size={16} className="shrink-0 text-slate-300" />
+          <input type="date" name="due_date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" />
+        </div>
+
+        {/* Competência */}
+        <div className="relative flex items-center gap-3 border-b border-slate-100 px-4 py-3.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+            <CalendarDays size={16} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-slate-400">Competência <span className="text-red-400">*</span></p>
+            <p className="text-sm font-medium text-slate-950">{dateBR(date)}</p>
+          </div>
+          <ChevronRight size={16} className="shrink-0 text-slate-300" />
+          <input type="date" name="date" value={date} onChange={(e) => setDate(e.target.value)} required className="absolute inset-0 cursor-pointer opacity-0" />
+        </div>
+
+        {/* OPÇÕES AVANÇADAS */}
+        <p className="px-4 pb-3 pt-5 text-[11px] font-semibold uppercase tracking-widest text-slate-400">Opções Avançadas</p>
+
+        <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+            <RotateCcw size={16} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-slate-950">{isIncome ? "Receita Fixa" : "Despesa Fixa"}</p>
+            <p className="text-xs text-slate-400">Classifica como uma {isIncome ? "receita" : "despesa"} fixa</p>
+          </div>
+          <button type="button" onClick={() => setIsFixed((v) => !v)} className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${isFixed ? "bg-blue-500" : "bg-slate-200"}`}>
+            <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-sm transition-transform ${isFixed ? "translate-x-5" : "translate-x-0.5"}`} />
+          </button>
+        </div>
+
+        {isIncome && (
+          <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+              <Landmark size={16} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-slate-950">Calcular Dízimo</p>
+              <p className="text-xs text-slate-400">Inclui no cálculo do dízimo (10%)</p>
+            </div>
+            <button type="button" onClick={() => setTitheEligible((v) => !v)} className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${titheEligible ? "bg-blue-500" : "bg-slate-200"}`}>
+              <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-sm transition-transform ${titheEligible ? "translate-x-5" : "translate-x-0.5"}`} />
+            </button>
+          </div>
+        )}
+
+        {formError && (
+          <p className="mx-4 mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{formError}</p>
+        )}
       </div>
-      {type === "income" ? (
-        <label className="flex items-center gap-3 rounded-2xl border border-orange-500/30 bg-orange-500/10 px-4 py-3 text-sm text-slate-200 md:col-span-2">
-          <input name="tithe_eligible" type="checkbox" defaultChecked={transaction?.tithe_eligible ?? true} />
-          Considerar esta entrada no cálculo do dízimo
-        </label>
-      ) : null}
-      <div className="border-t border-slate-700 pt-4 md:col-span-2">
-        <button type="button" onClick={() => setDetailsOpen((value) => !value)} className="text-sm font-semibold text-slate-400 hover:text-white">
-          {detailsOpen ? "▾ Ocultar detalhes" : "▸ Adicionar observações"}
+
+      {/* Botão salvar fixo */}
+      <div className="fixed bottom-0 left-0 right-0 z-[65] border-t border-slate-100 bg-white p-4">
+        <button type="submit" disabled={saving} className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-semibold text-white transition ${headerBg} disabled:opacity-70`}>
+          {saving ? <LoaderCircle size={18} className="animate-spin" /> : <Receipt size={18} />}
+          {saving ? "Salvando..." : `Salvar ${isIncome ? "Receita" : "Despesa"}`}
         </button>
       </div>
-      {detailsOpen ? (
-        <>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-300">Local / origem</label>
-            <input name="location" defaultValue={transaction?.location ?? ""} placeholder={type === "income" ? "Ex: transferência, depósito..." : "Ex: mercado, farmácia..."} className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-slate-500" />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-300">Observações</label>
-            <textarea name="notes" defaultValue={transaction?.notes ?? ""} rows={3} placeholder="Detalhes adicionais..." className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-slate-500" />
-          </div>
-        </>
-      ) : null}
-      {formError ? (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 md:col-span-2">{formError}</p>
-      ) : null}
-      <button type="submit" disabled={saving} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3.5 text-base font-bold text-white shadow-lg shadow-orange-950/30 hover:bg-orange-600 disabled:cursor-wait disabled:opacity-75 md:col-span-2">
-        {saving ? <LoaderCircle size={18} className="animate-spin" /> : null}
-        {saving ? "Salvando..." : "Salvar"}
-      </button>
-      {quickCategoryOpen ? (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center overflow-x-hidden bg-slate-950/80 px-3 backdrop-blur">
-          <div className="w-full max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-2xl sm:max-w-sm sm:p-5">
+
+      {quickCategoryOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/80 px-3 backdrop-blur">
+          <div className="w-full max-w-sm overflow-hidden rounded-2xl bg-white p-5 shadow-2xl">
             <div className="mb-5 flex items-center justify-between gap-3">
-              <h3 className="text-lg font-semibold text-white">Nova categoria</h3>
-              <button type="button" onClick={() => setQuickCategoryOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="Fechar">
+              <h3 className="text-lg font-semibold text-slate-950">Nova categoria</h3>
+              <button type="button" onClick={() => setQuickCategoryOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100" aria-label="Fechar">
                 <X size={17} />
               </button>
             </div>
-            <div className="space-y-4">
-              <input autoFocus value={quickCategoryName} onChange={(event) => setQuickCategoryName(event.target.value)} placeholder="Nome da categoria" className="w-full rounded-xl border border-slate-700 bg-white px-3 py-3 text-sm text-slate-950 placeholder:text-slate-400 outline-none focus:border-orange-400" />
-              <div className="grid grid-cols-2 gap-3">
-                <button type="button" onClick={() => setQuickCategoryOpen(false)} className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold text-white">Cancelar</button>
-                <button type="button" onClick={createCategoryFromModal} disabled={pendingCategory} className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">Salvar</button>
-              </div>
+            <input autoFocus value={quickCategoryName} onChange={(e) => setQuickCategoryName(e.target.value)} placeholder="Nome da categoria" className="w-full rounded-xl border border-slate-200 px-3 py-3 text-sm text-slate-950 outline-none placeholder:text-slate-400 focus:border-orange-400" />
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => setQuickCategoryOpen(false)} className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700">Cancelar</button>
+              <button type="button" onClick={createCategoryFromModal} disabled={pendingCategory} className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">Salvar</button>
             </div>
           </div>
         </div>
-      ) : null}
+      )}
     </form>
   );
 }
 
-export default function FinancePanel({ categories, accounts, transactions, filters }: Props) {
+export default function FinancePanel({ categories, accounts, accountBalances, transactions, filters }: Props) {
   const router = useRouter();
   const busyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const endDateRef = useRef<HTMLInputElement | null>(null);
@@ -407,7 +545,7 @@ export default function FinancePanel({ categories, accounts, transactions, filte
   const [selectedMonth, setSelectedMonth] = useState(filters.month);
   const [rangeFilter, setRangeFilter] = useState({ from: filters.from, to: filters.to });
   const [currencyFilter, setCurrencyFilter] = useState(filters.currency);
-  const [detailFilters, setDetailFilters] = useState({ category: filters.category, type: filters.type });
+  const [detailFilters, setDetailFilters] = useState({ category: filters.category, type: filters.type, account: "" });
   const [entryFilter, setEntryFilter] = useState<"all" | "income" | "expense" | "card">("all");
   const [entrySearchOpen, setEntrySearchOpen] = useState(false);
   const [entrySearch, setEntrySearch] = useState("");
@@ -415,6 +553,7 @@ export default function FinancePanel({ categories, accounts, transactions, filte
   const [categoryModal, setCategoryModal] = useState(false);
   const [accountModal, setAccountModal] = useState(false);
   const [accountCreateModal, setAccountCreateModal] = useState(false);
+  const [createKind, setCreateKind] = useState("bank");
   const [editingAccount, setEditingAccount] = useState<FinanceAccount | null>(null);
   const [accountRequiredModal, setAccountRequiredModal] = useState(false);
   const [detailModal, setDetailModal] = useState(false);
@@ -436,7 +575,7 @@ export default function FinancePanel({ categories, accounts, transactions, filte
   const selectedRangeStart = rangeFilter.from || monthStart;
   const selectedRangeEnd = rangeFilter.to || monthEnd;
   const selectedRangeLabel = `${dateBR(selectedRangeStart)} - ${dateBR(selectedRangeEnd)}`;
-  const hasAdvancedFilters = Boolean(detailFilters.category || detailFilters.type);
+  const hasAdvancedFilters = Boolean(detailFilters.category || detailFilters.type || detailFilters.account);
   const activePeriod =
     rangeFilter.from === currentDay && rangeFilter.to === currentDay
       ? "today"
@@ -451,7 +590,8 @@ export default function FinancePanel({ categories, accounts, transactions, filte
     const isInRange = transaction.date >= selectedRangeStart && transaction.date <= selectedRangeEnd;
     const matchesCategory = !detailFilters.category || transaction.category_id === detailFilters.category;
     const matchesType = !detailFilters.type || transaction.type === detailFilters.type;
-    return isInRange && matchesCategory && matchesType && transaction.currency === currencyFilter;
+    const matchesAccount = !detailFilters.account || transaction.account_id === detailFilters.account;
+    return isInRange && matchesCategory && matchesType && matchesAccount && transaction.currency === currencyFilter;
   });
   const computedMetrics = useMemo(() => {
     const income = filteredTransactions
@@ -556,7 +696,7 @@ export default function FinancePanel({ categories, accounts, transactions, filte
   const periodTabs = [
     { key: "today", label: "Hoje", from: currentDay, to: currentDay, month: currentDay.slice(0, 7) },
     { key: "week", label: "7 dias atrás", from: sevenDaysAgo, to: currentDay, month: currentDay.slice(0, 7) },
-    { key: "month", label: "Esse mês", from: "", to: "", month: selectedMonth },
+    { key: "month", label: "Este mês", from: "", to: "", month: selectedMonth },
     { key: "year", label: "Esse ano", from: yearStart, to: yearEnd, month: selectedMonth },
   ];
 
@@ -570,8 +710,7 @@ export default function FinancePanel({ categories, accounts, transactions, filte
       }}
     >
       <BusyIndicator show={actionBusy} />
-      {activeView !== "entries" ? (
-        <div className="px-2 pt-2 text-slate-950 sm:px-3">
+      <div className="px-2 pt-2 text-slate-950 sm:px-3">
           <div className="mx-auto max-w-6xl rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm shadow-slate-200/80 sm:p-3">
             <div className="grid grid-cols-[38px_1fr_38px] items-center gap-2 sm:grid-cols-[42px_1fr_42px]">
               <button type="button" onClick={() => { setSelectedMonth(prevMonth); setRangeFilter({ from: "", to: "" }); }} className="flex h-[38px] w-[38px] max-w-full items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-950 shadow-sm shadow-slate-200 sm:h-[42px] sm:w-[42px]" aria-label="Mês anterior">
@@ -616,7 +755,7 @@ export default function FinancePanel({ categories, accounts, transactions, filte
                 <button type="button" onClick={() => router.refresh()} className="flex w-10 items-center justify-center border-r border-slate-200 text-slate-950 sm:w-11" aria-label="Atualizar dados">
                   <RotateCcw size={17} strokeWidth={2} />
                 </button>
-                <button type="button" onClick={() => setDetailFilters({ category: "", type: "" })} className="flex w-10 items-center justify-center border-r border-slate-200 text-slate-950 sm:w-11" aria-label="Limpar filtros avançados">
+                <button type="button" onClick={() => setDetailFilters({ category: "", type: "", account: "" })} className="flex w-10 items-center justify-center border-r border-slate-200 text-slate-950 sm:w-11" aria-label="Limpar filtros avançados">
                   <Paintbrush size={17} strokeWidth={2} />
                 </button>
                 <button type="button" onClick={() => setDetailModal(true)} className={`flex w-10 items-center justify-center text-slate-950 sm:w-11 ${hasAdvancedFilters ? "bg-emerald-50" : "bg-white"}`} aria-label="Abrir filtros">
@@ -625,8 +764,7 @@ export default function FinancePanel({ categories, accounts, transactions, filte
               </div>
             </div>
           </div>
-        </div>
-      ) : null}
+      </div>
 
       <div className="mx-auto max-w-6xl px-3 py-3 sm:px-4">
         {activeView === "home" ? (
@@ -676,7 +814,36 @@ export default function FinancePanel({ categories, accounts, transactions, filte
         </div>
         {accounts.length ? (
           <div className="mt-5 space-y-3">
-            {accounts.map((account) => <div key={account.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs"><span className="font-medium">{account.name}</span><span className="rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-700">{account.kind === "credit_card" ? "Cartão" : "Conta"}</span></div>)}
+            {accounts.map((account) => {
+              const bal = accountBalances[account.id] ?? 0;
+              const isCard = account.kind === "credit_card";
+              const bill = isCard ? Math.max(0, -bal) : 0;
+              const available = isCard && account.credit_limit != null ? account.credit_limit - bill : null;
+              return (
+                <div key={account.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-medium">{account.name}</span>
+                      <span className="ml-2 text-slate-400">{accountKindLabel(account.kind)}</span>
+                    </div>
+                    {isCard
+                      ? <span className={`font-semibold ${bill > 0 ? "text-red-500" : "text-slate-400"}`}>Fatura: {money(bill, account.currency)}</span>
+                      : <span className={`font-semibold ${bal >= 0 ? "text-emerald-600" : "text-red-500"}`}>{money(bal, account.currency)}</span>
+                    }
+                  </div>
+                  {isCard && account.credit_limit != null && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200">
+                        <div className="h-full rounded-full bg-orange-400" style={{ width: `${Math.min((bill / account.credit_limit) * 100, 100)}%` }} />
+                      </div>
+                      <span className={`font-medium ${available! >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                        {money(available!, account.currency)} disponível de {money(account.credit_limit, account.currency)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
@@ -847,11 +1014,12 @@ export default function FinancePanel({ categories, accounts, transactions, filte
         </div>
       </nav>
 
-      <Modal title="Novo lançamento" open={transactionModal} onClose={() => setTransactionModal(false)}>
+      <Modal title="Novo lançamento" open={transactionModal} onClose={() => setTransactionModal(false)} variant="sheet">
         <TransactionForm
           categories={categories}
           accounts={accounts}
           onEditAccounts={() => setAccountModal(true)}
+          onClose={() => setTransactionModal(false)}
           onSaved={() => setTransactionModal(false)}
         />
       </Modal>
@@ -937,6 +1105,14 @@ export default function FinancePanel({ categories, accounts, transactions, filte
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-white">{account.name}</p>
                     <p className="mt-0.5 truncate text-xs text-slate-500">{account.currency} · {accountKindLabel(account.kind)}</p>
+                    {(() => {
+                      const bal = accountBalances[account.id] ?? 0;
+                      if (account.kind === "credit_card") {
+                        const bill = Math.max(0, -bal);
+                        return <p className={`mt-0.5 text-xs font-semibold ${bill > 0 ? "text-red-400" : "text-slate-400"}`}>Fatura: {money(bill, account.currency)}{account.credit_limit != null ? ` · Limite: ${money(account.credit_limit, account.currency)}` : ""}</p>;
+                      }
+                      return <p className={`mt-0.5 text-xs font-semibold ${bal >= 0 ? "text-emerald-400" : "text-red-400"}`}>{money(bal, account.currency)}</p>;
+                    })()}
                   </div>
                   <div className="flex gap-1">
                     <button type="button" onClick={() => setEditingAccount(account)} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-orange-500/10 hover:text-orange-300" aria-label="Editar conta">
@@ -969,7 +1145,7 @@ export default function FinancePanel({ categories, accounts, transactions, filte
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-300">Tipo</label>
-              <select name="kind" className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white">
+              <select name="kind" value={createKind} onChange={(e) => setCreateKind(e.target.value)} className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white">
                 <option value="bank">Conta</option>
                 <option value="cash">Dinheiro</option>
                 <option value="credit_card">Cartão</option>
@@ -982,6 +1158,12 @@ export default function FinancePanel({ categories, accounts, transactions, filte
               </select>
             </div>
           </div>
+          {createKind === "credit_card" && (
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-300">Limite do cartão</label>
+              <input name="credit_limit" type="number" step="0.01" placeholder="Ex: 5000,00" className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-slate-500" />
+            </div>
+          )}
           <button type="submit" className="mt-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white hover:bg-orange-600">
             Salvar
           </button>
@@ -995,6 +1177,25 @@ export default function FinancePanel({ categories, accounts, transactions, filte
               <label className="mb-2 block text-sm font-medium text-slate-300">Nome</label>
               <input name="name" defaultValue={editingAccount.name} required className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white outline-none focus:border-slate-500" />
             </div>
+            {editingAccount.kind === "credit_card" ? (
+              <>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-300">Fatura atual (o que você deve)</label>
+                  <input name="target_balance" type="number" step="0.01" defaultValue={Math.max(0, -(accountBalances[editingAccount.id] ?? 0))} className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white outline-none focus:border-slate-500" />
+                  <p className="mt-1 text-xs text-slate-500">Ajustar este valor cria um lançamento de correção automático.</p>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-300">Limite do cartão</label>
+                  <input name="credit_limit" type="number" step="0.01" defaultValue={editingAccount.credit_limit ?? ""} placeholder="Ex: 5000,00" className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-slate-500" />
+                </div>
+              </>
+            ) : (
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-300">Saldo atual</label>
+                <input name="target_balance" type="number" step="0.01" defaultValue={accountBalances[editingAccount.id] ?? 0} className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white outline-none focus:border-slate-500" />
+                <p className="mt-1 text-xs text-slate-500">Alterar este valor cria um lançamento de ajuste automático.</p>
+              </div>
+            )}
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-300">Tipo</label>
@@ -1096,7 +1297,7 @@ export default function FinancePanel({ categories, accounts, transactions, filte
             const formData = new FormData(event.currentTarget);
             setRangeFilter({ from: String(formData.get("from") || ""), to: String(formData.get("to") || "") });
             setCurrencyFilter(String(formData.get("currency") || "BRL"));
-            setDetailFilters({ category: String(formData.get("category") || ""), type: String(formData.get("type") || "") });
+            setDetailFilters({ category: String(formData.get("category") || ""), type: String(formData.get("type") || ""), account: String(formData.get("account") || "") });
             setDetailModal(false);
           }}
         >
@@ -1114,13 +1315,17 @@ export default function FinancePanel({ categories, accounts, transactions, filte
             <option value="income">Entradas</option>
             <option value="expense">Saídas</option>
           </select>
+          <select name="account" defaultValue={detailFilters.account} className="rounded-2xl border border-slate-700 bg-slate-800 px-3 py-2 text-white">
+            <option value="">Todas as contas</option>
+            {accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
+          </select>
           <button className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-900 md:w-fit">Filtrar</button>
         </form>
         <div className="divide-y divide-slate-800">
           {filteredTransactions.map((transaction) => (
             <div key={transaction.id} className="grid gap-3 py-4 md:grid-cols-[90px_1fr_auto_auto] md:items-center">
               <p className="text-sm text-slate-400">{dateBR(transaction.date)}</p>
-              <div><p className="font-medium text-white">{transaction.description}</p><p className="text-xs text-slate-500">{categoryName(transaction)} · {transaction.type === "income" ? "Entrada" : "Saída"} · {transaction.currency}</p></div>
+              <div><p className="font-medium text-white">{transaction.description}</p><p className="text-xs text-slate-500">{categoryName(transaction)} · {accountName(transaction)} · {transaction.type === "income" ? "Entrada" : "Saída"} · {transaction.currency}</p></div>
               <p className={transaction.type === "income" ? "font-semibold text-orange-300" : "font-semibold text-red-300"}>{money(transaction.amount, transaction.currency)}</p>
               <div className="flex gap-1">
                 <button onClick={() => setEditing(transaction)} className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="Editar"><Pencil size={15} /></button>
@@ -1131,13 +1336,14 @@ export default function FinancePanel({ categories, accounts, transactions, filte
         </div>
       </Modal>
 
-      <Modal title="Editar lançamento" open={Boolean(editing)} onClose={() => setEditing(null)}>
+      <Modal title="Editar lançamento" open={Boolean(editing)} onClose={() => setEditing(null)} variant="sheet">
         {editing ? (
           <TransactionForm
             categories={categories}
             accounts={accounts}
             transaction={editing}
             onEditAccounts={() => setAccountModal(true)}
+            onClose={() => setEditing(null)}
             onSaved={() => setEditing(null)}
           />
         ) : null}

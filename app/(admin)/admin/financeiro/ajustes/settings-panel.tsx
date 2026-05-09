@@ -23,6 +23,7 @@ export type FinanceSettingsAccount = {
   name: string;
   kind: string;
   currency: string;
+  credit_limit: number | null;
 };
 
 type Props = {
@@ -151,6 +152,19 @@ function AccountForm({
           />
         </label>
       ) : null}
+
+      {kind === "credit_card" && (
+        <label className="grid gap-2">
+          <span className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-700">Limite do cartão</span>
+          <input
+            name="credit_limit"
+            inputMode="decimal"
+            placeholder="Ex: 5000,00"
+            defaultValue={account?.credit_limit ?? ""}
+            className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-950 outline-none placeholder:text-slate-500 focus:border-slate-700"
+          />
+        </label>
+      )}
 
       <div className="grid gap-2">
         <span className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-700">Tipo de conta</span>

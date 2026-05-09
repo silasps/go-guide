@@ -191,6 +191,8 @@ export async function addAccount(fd: FormData) {
 
   if (!name) throw new Error("Informe o nome da conta.");
 
+  const creditLimit = kind === "credit_card" ? (parseAmount(fd.get("credit_limit")) ?? null) : null;
+
   const { data: account, error } = await supabase
     .from("finance_accounts")
     .insert({
@@ -198,6 +200,7 @@ export async function addAccount(fd: FormData) {
       name,
       kind,
       currency,
+      credit_limit: creditLimit,
     })
     .select("id")
     .single();
@@ -229,16 +232,52 @@ export async function updateAccount(id: string, fd: FormData) {
   const name = cleanString(fd.get("name"));
   const kind = cleanString(fd.get("kind")) || "bank";
   const currency = cleanCurrency(fd.get("currency"));
+  const targetBalanceRaw = cleanString(fd.get("target_balance"));
 
   if (!name) throw new Error("Informe o nome da conta.");
 
+  const creditLimit = kind === "credit_card" ? (parseAmount(fd.get("credit_limit")) ?? null) : null;
+
   const { error } = await supabase
     .from("finance_accounts")
-    .update({ name, kind, currency })
+    .update({ name, kind, currency, credit_limit: creditLimit })
     .eq("id", id)
     .eq("profile_id", profile.id);
 
   if (error) throw new Error(error.message);
+
+  if (targetBalanceRaw !== "") {
+    const rawParsed = parseFloat(targetBalanceRaw.replace(",", "."));
+    // Para cartão de crédito o usuário digita a fatura (positivo = o que deve),
+    // mas o saldo interno é negativo (expense > income). Invertemos para o cartão.
+    const targetBalance = kind === "credit_card" ? -Math.abs(rawParsed) : rawParsed;
+    if (Number.isFinite(targetBalance)) {
+      const { data: rows } = await supabase
+        .from("finance_transactions")
+        .select("amount, type")
+        .eq("profile_id", profile.id)
+        .eq("account_id", id);
+
+      const currentBalance = (rows ?? []).reduce((sum: number, row: { amount: unknown; type: string }) =>
+        sum + (row.type === "income" ? Number(row.amount) : -Number(row.amount)), 0);
+
+      const delta = targetBalance - currentBalance;
+      if (Math.abs(delta) >= 0.01) {
+        await supabase.from("finance_transactions").insert({
+          profile_id: profile.id,
+          account_id: id,
+          category_id: null,
+          date: new Date().toISOString().slice(0, 10),
+          description: "Ajuste de saldo",
+          amount: Math.abs(delta),
+          currency,
+          type: delta > 0 ? "income" : "expense",
+          mode: "initial_balance",
+          tithe_eligible: false,
+        });
+      }
+    }
+  }
 
   revalidateFinance();
 }

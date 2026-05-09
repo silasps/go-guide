@@ -74,6 +74,9 @@ alter table public.finance_transactions
 alter table public.finance_transactions
   add column if not exists tithe_eligible boolean not null default false;
 
+alter table public.finance_accounts
+  add column if not exists credit_limit numeric(12, 2);
+
 do $$
 begin
   if not exists (

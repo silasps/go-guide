@@ -14,7 +14,7 @@ export default async function FinanceiroAjustesPage() {
 
   const { data: accounts, error: accountsError } = await supabase
     .from("finance_accounts")
-    .select("id, name, kind, currency")
+    .select("id, name, kind, currency, credit_limit")
     .eq("profile_id", profile.id)
     .order("name", { ascending: true });
 

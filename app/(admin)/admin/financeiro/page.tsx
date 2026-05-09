@@ -101,7 +101,7 @@ export default async function FinanceiroPage({ searchParams }: Props) {
 
   const accountsQuery = supabase
     .from("finance_accounts")
-    .select("id, name, kind, currency")
+    .select("id, name, kind, currency, credit_limit")
     .eq("profile_id", profile.id)
     .order("name", { ascending: true });
 
@@ -120,6 +120,18 @@ export default async function FinanceiroPage({ searchParams }: Props) {
 
   const { data: accounts, error: finalAccountsError } = await accountsQuery;
   if (finalAccountsError) throw new Error(finalAccountsError.message);
+
+  const { data: balanceRows } = await supabase
+    .from("finance_transactions")
+    .select("account_id, amount, type")
+    .eq("profile_id", profile.id);
+
+  const accountBalances: Record<string, number> = {};
+  for (const row of balanceRows ?? []) {
+    if (!row.account_id) continue;
+    const delta = row.type === "income" ? Number(row.amount ?? 0) : -Number(row.amount ?? 0);
+    accountBalances[row.account_id] = (accountBalances[row.account_id] ?? 0) + delta;
+  }
 
   let transactionsQuery = supabase
     .from("finance_transactions")
@@ -183,6 +195,7 @@ export default async function FinanceiroPage({ searchParams }: Props) {
     <FinancePanel
       categories={typedCategories}
       accounts={typedAccounts}
+      accountBalances={accountBalances}
       transactions={typedTransactions}
       metrics={{
         income,
