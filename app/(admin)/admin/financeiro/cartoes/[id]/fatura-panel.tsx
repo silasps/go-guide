@@ -49,7 +49,8 @@ function defaultFaturaDate(purchaseDate: string, closingDay: number | null) {
   const d = new Date(`${purchaseDate}T00:00:00`);
   const closing = closingDay ?? 1;
   const offset = d.getDate() >= closing ? 1 : 0;
-  return new Date(d.getFullYear(), d.getMonth() + offset, 1).toISOString().slice(0, 10);
+  const fd = new Date(d.getFullYear(), d.getMonth() + offset, 1);
+  return `${fd.getFullYear()}-${String(fd.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
 function currentFaturaDate(closingDay: number | null) {
@@ -158,7 +159,8 @@ function CardTransactionForm({
 
   const faturaOptions = Array.from({ length: 12 }, (_, i) => {
     const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + i - 1);
-    return { value: d.toISOString().slice(0, 10), label: d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }) };
+    const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+    return { value: val, label: d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }) };
   });
 
   return (

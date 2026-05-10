@@ -221,17 +221,27 @@ export async function addAccount(fd: FormData) {
   if (error) throw new Error(error.message);
 
   if (account && initialBalance !== 0) {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    let faturaDateForInitial: string | null = null;
+    if (kind === "credit_card") {
+      const d = new Date(`${todayStr}T00:00:00`);
+      const closing = closingDay ?? 1;
+      const offset = d.getDate() >= closing ? 1 : 0;
+      const fd = new Date(d.getFullYear(), d.getMonth() + offset, 1);
+      faturaDateForInitial = `${fd.getFullYear()}-${String(fd.getMonth() + 1).padStart(2, "0")}-01`;
+    }
     const { error: balanceError } = await supabase.from("finance_transactions").insert({
       profile_id: profile.id,
       account_id: account.id,
       category_id: null,
-      date: new Date().toISOString().slice(0, 10),
+      date: todayStr,
       description: `Saldo inicial - ${name}`,
       amount: Math.abs(initialBalance),
       currency,
       type: initialBalance >= 0 ? "income" : "expense",
-      mode: "initial_balance",
+      mode: kind === "credit_card" ? "credit_purchase" : "initial_balance",
       tithe_eligible: false,
+      fatura_date: faturaDateForInitial,
     });
 
     if (balanceError) throw new Error(balanceError.message);
@@ -376,15 +386,18 @@ export async function archiveAccount(id: string, archived: boolean) {
 export async function payFatura(cardId: string, faturaDate: string) {
   const { supabase, profile } = await getCurrentProfile();
 
-  const { error } = await supabase
-    .from("finance_transactions")
-    .update({ fatura_paid: true })
-    .eq("profile_id", profile.id)
-    .eq("account_id", cardId)
-    .eq("fatura_date", faturaDate)
-    .eq("mode", "credit_purchase");
+  const faturaMonthEnd = new Date(new Date(`${faturaDate}T00:00:00`).getFullYear(), new Date(`${faturaDate}T00:00:00`).getMonth() + 1, 0).toISOString().slice(0, 10);
 
-  if (error) throw new Error(error.message);
+  const [r1, r2] = await Promise.all([
+    supabase.from("finance_transactions").update({ fatura_paid: true })
+      .eq("profile_id", profile.id).eq("account_id", cardId).eq("fatura_date", faturaDate).eq("mode", "credit_purchase"),
+    supabase.from("finance_transactions").update({ fatura_paid: true })
+      .eq("profile_id", profile.id).eq("account_id", cardId).is("fatura_date", null)
+      .gte("date", faturaDate).lte("date", faturaMonthEnd).eq("mode", "credit_purchase"),
+  ]);
+
+  if (r1.error) throw new Error(r1.error.message);
+  if (r2.error) throw new Error(r2.error.message);
 
   revalidateFinance();
 }

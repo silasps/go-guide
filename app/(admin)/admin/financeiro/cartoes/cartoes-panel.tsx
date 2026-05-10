@@ -109,7 +109,8 @@ function formatAmountInput(value: string, currency = "BRL") {
 function defaultFaturaDate(purchaseDate: string, closingDay: number | null) {
   const d = new Date(`${purchaseDate}T00:00:00`);
   const offset = d.getDate() >= (closingDay ?? 1) ? 1 : 0;
-  return new Date(d.getFullYear(), d.getMonth() + offset, 1).toISOString().slice(0, 10);
+  const fd = new Date(d.getFullYear(), d.getMonth() + offset, 1);
+  return `${fd.getFullYear()}-${String(fd.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
 function QuickCardForm({ cards, categories, initialType, onClose }: { cards: FinanceAccount[]; categories: FinanceCategory[]; initialType: "income" | "expense"; onClose: () => void }) {
@@ -157,7 +158,8 @@ function QuickCardForm({ cards, categories, initialType, onClose }: { cards: Fin
 
   const faturaOptions = Array.from({ length: 12 }, (_, i) => {
     const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + i - 1);
-    return { value: d.toISOString().slice(0, 10), label: d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }) };
+    const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+    return { value: val, label: d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }) };
   });
 
   return (

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowLeft, ArrowLeftRight, ArrowRight, ArrowUp, ArrowUpDown, BarChart3, Building2, CalendarDays, ChevronRight, CreditCard, FileText, Funnel, Home, Landmark, LoaderCircle, Paintbrush, Pencil, Plus, Receipt, RotateCcw, Search, Settings, Tag, Trash2, WalletCards, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowLeftRight, ArrowRight, ArrowUp, ArrowUpDown, Building2, CalendarDays, ChevronRight, CreditCard, FileText, Funnel, Home, Landmark, LoaderCircle, Paintbrush, Pencil, Plus, Receipt, RotateCcw, Search, Settings, Tag, Trash2, WalletCards, X } from "lucide-react";
 import {
   addAccount,
   addCategory,
@@ -288,7 +288,8 @@ function TransactionForm({
     const day = d.getDate();
     const closing = closingDay ?? 1;
     const offset = day >= closing ? 1 : 0;
-    return new Date(d.getFullYear(), d.getMonth() + offset, 1).toISOString().slice(0, 10);
+    const fd = new Date(d.getFullYear(), d.getMonth() + offset, 1);
+  return `${fd.getFullYear()}-${String(fd.getMonth() + 1).padStart(2, "0")}-01`;
   }
 
   const selectedCard = accounts.find((a) => a.id === selectedAccountId && a.kind === "credit_card");
@@ -512,7 +513,7 @@ function TransactionForm({
               <option value="">Selecione a fatura</option>
               {Array.from({ length: 12 }, (_, i) => {
                 const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + i - 1);
-                const val = d.toISOString().slice(0, 10);
+                const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
                 const label = d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
                 return <option key={val} value={val}>{label.charAt(0).toUpperCase() + label.slice(1)}</option>;
               })}
@@ -585,6 +586,58 @@ function TransactionForm({
   );
 }
 
+const CHART_COLORS = ["#8B5CF6", "#F97316", "#EF4444", "#10B981", "#3B82F6", "#F59E0B", "#EC4899", "#6366F1"];
+
+function DonutChart({ data, currencyFilter, hovered, onHover }: {
+  data: { name: string; amount: number }[];
+  currencyFilter: string;
+  hovered: number | null;
+  onHover: (i: number | null) => void;
+}) {
+  const r = 70, sw = 28, cx = 90;
+  const circumference = 2 * Math.PI * r;
+  const total = data.reduce((s, x) => s + x.amount, 0);
+  let acc = 0;
+  const segments = data.map((item, i) => {
+    const arc = total > 0 ? (item.amount / total) * circumference : 0;
+    const dashOffset = circumference / 4 - acc;
+    acc += arc;
+    return { ...item, arc, dashOffset, color: CHART_COLORS[i % CHART_COLORS.length] };
+  });
+  const hoveredSeg = hovered !== null ? segments[hovered] : null;
+  return (
+    <div className="relative inline-block">
+      <svg viewBox="0 0 180 180" className="h-44 w-44">
+        <circle cx={cx} cy={cx} r={r} fill="none" stroke="#f1f5f9" strokeWidth={sw} />
+        {segments.map((seg, i) => (
+          <circle
+            key={seg.name}
+            cx={cx} cy={cx} r={r}
+            fill="none"
+            stroke={seg.color}
+            strokeWidth={hovered === i ? sw + 5 : sw}
+            strokeDasharray={`${seg.arc} ${circumference - seg.arc}`}
+            strokeDashoffset={seg.dashOffset}
+            style={{ cursor: "pointer", transition: "stroke-width 0.15s" }}
+            onMouseEnter={() => onHover(i)}
+            onMouseLeave={() => onHover(null)}
+          />
+        ))}
+        <text x={cx} y={cx - 4} textAnchor="middle" fontSize="11" fontWeight="600" fill="#0f172a">
+          {money(total, currencyFilter)}
+        </text>
+        <text x={cx} y={cx + 13} textAnchor="middle" fontSize="9" fill="#94a3b8">Total</text>
+      </svg>
+      {hoveredSeg && (
+        <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 -translate-x-1/2 whitespace-nowrap rounded-xl border border-slate-100 bg-white px-3 py-2 text-xs shadow-lg">
+          <span className="font-medium text-slate-700">{hoveredSeg.name}</span>
+          <span className="ml-2 font-semibold">{money(hoveredSeg.amount, currencyFilter)}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function FinancePanel({ categories, accounts, accountBalances, transactions, filters }: Props) {
   const router = useRouter();
   const busyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -610,6 +663,8 @@ export default function FinancePanel({ categories, accounts, accountBalances, tr
   const [draftRange, setDraftRange] = useState({ from: rangeFilter.from || "", to: rangeFilter.to || "" });
   const [actionBusy, setActionBusy] = useState(false);
   const [editing, setEditing] = useState<FinanceTransaction | null>(null);
+  const [chartTab, setChartTab] = useState<"all" | "income" | "expense">("expense");
+  const [chartHover, setChartHover] = useState<number | null>(null);
   const monthDate = new Date(`${selectedMonth}-02T00:00:00`);
   const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1).toISOString().slice(0, 10);
   const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).toISOString().slice(0, 10);
@@ -642,37 +697,33 @@ export default function FinancePanel({ categories, accounts, accountBalances, tr
     return isInRange && matchesCategory && matchesType && matchesAccount && transaction.currency === currencyFilter && transaction.mode !== "credit_purchase";
   });
   const computedMetrics = useMemo(() => {
-    const balanceTx = filteredTransactions.filter((item) => item.mode !== "credit_purchase" || item.fatura_paid === true);
-    const income = balanceTx
+    const income = filteredTransactions
       .filter((item) => item.type === "income")
       .reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
-    const expenses = balanceTx
+    const expenses = filteredTransactions
       .filter((item) => item.type === "expense")
       .reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
-    const titheBase = balanceTx
+    const titheBase = filteredTransactions
       .filter((item) => item.type === "income" && item.tithe_eligible)
       .reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
-    const scheduledExpenses = balanceTx
-      .filter((item) => item.type === "expense" && item.due_date && item.due_date >= selectedRangeStart && item.due_date <= selectedRangeEnd)
+    const creditDue = transactions
+      .filter((item) => item.mode === "credit_purchase" && item.currency === currencyFilter && item.due_date && item.due_date >= selectedRangeStart && item.due_date <= selectedRangeEnd)
       .reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
-    const expenseByCategory = balanceTx
-      .filter((item) => item.type === "expense")
-      .reduce<Record<string, number>>((acc, item) => {
-        const name = categoryName(item);
-        acc[name] = (acc[name] ?? 0) + Number(item.amount ?? 0);
-        return acc;
-      }, {});
-    const topExpenses = Object.entries(expenseByCategory)
+    return { income, expenses, balance: income - expenses, projectedBalance: income - expenses - creditDue, tithe: titheBase * 0.1 };
+  }, [filteredTransactions, transactions, currencyFilter, selectedRangeStart, selectedRangeEnd]);
+  const chartData = useMemo(() => {
+    const source = filteredTransactions.filter((tx) =>
+      chartTab === "income" ? tx.type === "income" : chartTab === "expense" ? tx.type === "expense" : true,
+    );
+    const byCat = source.reduce<Record<string, number>>((acc, item) => {
+      const name = categoryName(item);
+      acc[name] = (acc[name] ?? 0) + Number(item.amount ?? 0);
+      return acc;
+    }, {});
+    return Object.entries(byCat)
       .map(([name, amount]) => ({ name, amount }))
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, 5);
-
-    return { income, expenses, balance: income - expenses, projectedBalance: income - expenses - scheduledExpenses, tithe: titheBase * 0.1, topExpenses };
-  }, [filteredTransactions, selectedRangeEnd, selectedRangeStart]);
-  const maxExpense = useMemo(
-    () => Math.max(...computedMetrics.topExpenses.map((item) => item.amount), 1),
-    [computedMetrics.topExpenses],
-  );
+      .sort((a, b) => b.amount - a.amount);
+  }, [filteredTransactions, chartTab]);
   const visibleTransactions = filteredTransactions.filter((transaction) => {
     const isCard = transaction.mode === "credit_purchase" || (Array.isArray(transaction.finance_accounts)
       ? transaction.finance_accounts[0]?.kind === "credit_card"
@@ -839,21 +890,51 @@ export default function FinancePanel({ categories, accounts, accountBalances, tr
       </div>
 
       <section className="app-card mt-5 p-4 sm:p-5">
-        <div className="mb-5 flex items-center gap-2">
-          <BarChart3 size={20} className="text-slate-600" />
-          <h2 className="text-base font-semibold text-slate-950">Gastos por categoria</h2>
+        <h2 className="text-base font-semibold text-slate-950">Gráfico por categoria</h2>
+        <p className="mt-0.5 text-xs text-slate-400">{selectedRangeLabel}</p>
+        <div className="mt-4 flex gap-1 rounded-full bg-slate-100 p-1 text-xs font-medium">
+          {(["all", "income", "expense"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setChartTab(tab)}
+              className={`flex-1 rounded-full py-1.5 transition-colors ${chartTab === tab ? "bg-slate-950 text-white" : "text-slate-500 hover:text-slate-700"}`}
+            >
+              {tab === "all" ? "Todas" : tab === "income" ? "Receitas" : "Despesas"}
+            </button>
+          ))}
         </div>
-        {computedMetrics.topExpenses.length ? (
-          <div className="space-y-4">
-            {computedMetrics.topExpenses.map((item) => (
-              <div key={item.name}>
-                <div className="mb-2 flex justify-between gap-3 text-xs"><span>{item.name}</span><span className="font-medium">{money(item.amount, currencyFilter)}</span></div>
-                <div className="h-3 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.max((item.amount / maxExpense) * 100, 4)}%` }} /></div>
-              </div>
-            ))}
-          </div>
+        {chartData.length ? (
+          <>
+            <div className="mt-5 flex justify-center">
+              <DonutChart data={chartData} currencyFilter={currencyFilter} hovered={chartHover} onHover={setChartHover} />
+            </div>
+            <div className="mt-5 space-y-3">
+              {(() => {
+                const total = chartData.reduce((s, x) => s + x.amount, 0);
+                const maxAmt = chartData[0].amount;
+                return chartData.map((item, i) => {
+                  const pct = total > 0 ? (item.amount / total) * 100 : 0;
+                  const color = CHART_COLORS[i % CHART_COLORS.length];
+                  return (
+                    <div key={item.name} onMouseEnter={() => setChartHover(i)} onMouseLeave={() => setChartHover(null)}>
+                      <div className="mb-1.5 flex items-center justify-between gap-3">
+                        <span className="rounded-full px-2.5 py-1 text-[11px] font-medium text-white" style={{ backgroundColor: color }}>{item.name}</span>
+                        <div className="text-right">
+                          <span className="block text-xs font-semibold">{money(item.amount, currencyFilter)}</span>
+                          <span className="block text-[10px] text-slate-400">{pct.toFixed(2)}%</span>
+                        </div>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                        <div className="h-full rounded-full" style={{ width: `${(item.amount / maxAmt) * 100}%`, backgroundColor: color }} />
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </>
         ) : (
-          <p className="rounded-2xl border border-dashed border-slate-300 p-6 text-xs text-slate-500">Nenhuma saída lançada neste mês.</p>
+          <p className="mt-4 rounded-2xl border border-dashed border-slate-300 p-6 text-xs text-slate-500">Nenhum lançamento neste período.</p>
         )}
       </section>
       <section className="app-card mt-5 p-4 sm:p-5">

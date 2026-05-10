@@ -15,8 +15,10 @@ export default async function CartoesCreditoPage() {
   const { data: balanceRows } = cardIds.length
     ? await supabase
         .from("finance_transactions")
-        .select("account_id, amount, type, mode")
+        .select("account_id, amount, type, mode, fatura_paid")
         .eq("profile_id", profile.id)
+        .eq("mode", "credit_purchase")
+        .eq("fatura_paid", false)
         .in("account_id", cardIds)
     : { data: [] };
 
