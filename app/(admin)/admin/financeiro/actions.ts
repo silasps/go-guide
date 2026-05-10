@@ -40,6 +40,7 @@ function cleanMode(value: FormDataEntryValue | null) {
 function revalidateFinance() {
   revalidatePath("/admin/financeiro");
   revalidatePath("/admin/financeiro/ajustes");
+  revalidatePath("/admin/financeiro/cartoes", "layout");
 }
 
 export async function addTransaction(fd: FormData) {
@@ -64,6 +65,8 @@ export async function addTransaction(fd: FormData) {
   if (!accountId) throw new Error("Selecione uma conta.");
   if (amount === null) throw new Error("Informe o valor do lançamento.");
 
+  const faturaDate = cleanString(fd.get("fatura_date"));
+
   const { error } = await supabase.from("finance_transactions").insert({
     profile_id: profile.id,
     date,
@@ -78,6 +81,7 @@ export async function addTransaction(fd: FormData) {
     tithe_eligible: titheEligible,
     category_id: categoryId,
     account_id: accountId,
+    fatura_date: faturaDate || null,
   });
 
   if (error) throw new Error(error.message);
@@ -107,6 +111,8 @@ export async function updateTransaction(id: string, fd: FormData) {
   if (!accountId) throw new Error("Selecione uma conta.");
   if (amount === null) throw new Error("Informe o valor do lançamento.");
 
+  const faturaDate = cleanString(fd.get("fatura_date"));
+
   const { error } = await supabase
     .from("finance_transactions")
     .update({
@@ -122,6 +128,7 @@ export async function updateTransaction(id: string, fd: FormData) {
       tithe_eligible: titheEligible,
       category_id: categoryId,
       account_id: accountId,
+      fatura_date: faturaDate || null,
     })
     .eq("id", id)
     .eq("profile_id", profile.id);
@@ -192,6 +199,9 @@ export async function addAccount(fd: FormData) {
   if (!name) throw new Error("Informe o nome da conta.");
 
   const creditLimit = kind === "credit_card" ? (parseAmount(fd.get("credit_limit")) ?? null) : null;
+  const closingDay = kind === "credit_card" ? (parseInt(cleanString(fd.get("closing_day"))) || null) : null;
+  const dueDay = kind === "credit_card" ? (parseInt(cleanString(fd.get("due_day"))) || null) : null;
+  const cardBrand = kind === "credit_card" ? (cleanString(fd.get("card_brand")) || null) : null;
 
   const { data: account, error } = await supabase
     .from("finance_accounts")
@@ -201,6 +211,9 @@ export async function addAccount(fd: FormData) {
       kind,
       currency,
       credit_limit: creditLimit,
+      closing_day: closingDay,
+      due_day: dueDay,
+      card_brand: cardBrand,
     })
     .select("id")
     .single();
@@ -237,10 +250,13 @@ export async function updateAccount(id: string, fd: FormData) {
   if (!name) throw new Error("Informe o nome da conta.");
 
   const creditLimit = kind === "credit_card" ? (parseAmount(fd.get("credit_limit")) ?? null) : null;
+  const closingDay = kind === "credit_card" ? (parseInt(cleanString(fd.get("closing_day"))) || null) : null;
+  const dueDay = kind === "credit_card" ? (parseInt(cleanString(fd.get("due_day"))) || null) : null;
+  const cardBrand = kind === "credit_card" ? (cleanString(fd.get("card_brand")) || null) : null;
 
   const { error } = await supabase
     .from("finance_accounts")
-    .update({ name, kind, currency, credit_limit: creditLimit })
+    .update({ name, kind, currency, credit_limit: creditLimit, closing_day: closingDay, due_day: dueDay, card_brand: cardBrand })
     .eq("id", id)
     .eq("profile_id", profile.id);
 
@@ -337,6 +353,36 @@ export async function deleteAccount(id: string) {
     .delete()
     .eq("id", id)
     .eq("profile_id", profile.id);
+
+  if (error) throw new Error(error.message);
+
+  revalidateFinance();
+}
+
+export async function archiveAccount(id: string, archived: boolean) {
+  const { supabase, profile } = await getCurrentProfile();
+
+  const { error } = await supabase
+    .from("finance_accounts")
+    .update({ archived })
+    .eq("id", id)
+    .eq("profile_id", profile.id);
+
+  if (error) throw new Error(error.message);
+
+  revalidateFinance();
+}
+
+export async function payFatura(cardId: string, faturaDate: string) {
+  const { supabase, profile } = await getCurrentProfile();
+
+  const { error } = await supabase
+    .from("finance_transactions")
+    .update({ fatura_paid: true })
+    .eq("profile_id", profile.id)
+    .eq("account_id", cardId)
+    .eq("fatura_date", faturaDate)
+    .eq("mode", "credit_purchase");
 
   if (error) throw new Error(error.message);
 

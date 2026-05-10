@@ -101,7 +101,7 @@ export default async function FinanceiroPage({ searchParams }: Props) {
 
   const accountsQuery = supabase
     .from("finance_accounts")
-    .select("id, name, kind, currency, credit_limit")
+    .select("id, name, kind, currency, credit_limit, closing_day, due_day, card_brand, archived")
     .eq("profile_id", profile.id)
     .order("name", { ascending: true });
 
@@ -135,7 +135,7 @@ export default async function FinanceiroPage({ searchParams }: Props) {
 
   let transactionsQuery = supabase
     .from("finance_transactions")
-    .select("id, date, description, location, notes, amount, currency, category_id, account_id, type, mode, due_date, tithe_eligible, finance_categories(id, name), finance_accounts(id, name, kind, currency)")
+    .select("id, date, description, location, notes, amount, currency, category_id, account_id, type, mode, due_date, tithe_eligible, fatura_date, fatura_paid, finance_categories(id, name), finance_accounts(id, name, kind, currency)")
     .eq("profile_id", profile.id)
     .order("date", { ascending: false })
     .order("created_at", { ascending: false });
@@ -162,17 +162,19 @@ export default async function FinanceiroPage({ searchParams }: Props) {
   const typedAccounts = (accounts ?? []);
   const typedTransactions = (transactions ?? []) as unknown as FinanceTransaction[];
   const monthTransactions = typedTransactions.filter((item) => item.date >= monthStart && item.date <= monthEnd && item.currency === currency);
-  const income = monthTransactions
+  // Credit card purchases only count when the fatura is paid
+  const balanceTransactions = monthTransactions.filter((item) => item.mode !== "credit_purchase" || item.fatura_paid === true);
+  const income = balanceTransactions
     .filter((item) => item.type === "income")
     .reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
-  const expenses = monthTransactions
+  const expenses = balanceTransactions
     .filter((item) => item.type === "expense")
     .reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
-  const titheBase = monthTransactions
+  const titheBase = balanceTransactions
     .filter((item) => item.type === "income" && item.tithe_eligible)
     .reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
   const scheduledExpenses = typedTransactions
-    .filter((item) => item.currency === currency && item.type === "expense" && item.due_date && item.due_date >= monthStart && item.due_date <= monthEnd)
+    .filter((item) => item.currency === currency && item.type === "expense" && item.mode !== "credit_purchase" && item.due_date && item.due_date >= monthStart && item.due_date <= monthEnd)
     .reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
 
   const expenseByCategory = monthTransactions

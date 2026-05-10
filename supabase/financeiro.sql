@@ -131,6 +131,25 @@ create index if not exists finance_transactions_category_id_idx
 create index if not exists finance_transactions_account_id_idx
   on public.finance_transactions(account_id);
 
+-- Credit card management
+alter table public.finance_accounts
+  add column if not exists closing_day int;
+
+alter table public.finance_accounts
+  add column if not exists due_day int;
+
+alter table public.finance_accounts
+  add column if not exists archived boolean not null default false;
+
+alter table public.finance_accounts
+  add column if not exists card_brand text;
+
+alter table public.finance_transactions
+  add column if not exists fatura_date date;
+
+alter table public.finance_transactions
+  add column if not exists fatura_paid boolean not null default false;
+
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql

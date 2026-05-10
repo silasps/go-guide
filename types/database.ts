@@ -63,6 +63,11 @@ export type FinanceAccount = {
   name: string;
   kind: "bank" | "cash" | "credit_card";
   currency: "BRL" | "USD" | "EUR";
+  credit_limit: number | null;
+  closing_day: number | null;
+  due_day: number | null;
+  archived: boolean;
+  card_brand: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -82,6 +87,8 @@ export type FinanceTransaction = {
   type: "income" | "expense";
   mode: "normal" | "initial_balance" | "credit_purchase" | "fixed_expense";
   tithe_eligible: boolean;
+  fatura_date: string | null;
+  fatura_paid: boolean;
   created_at: string;
   updated_at: string;
 };

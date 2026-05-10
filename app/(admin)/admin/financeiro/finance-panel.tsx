@@ -28,6 +28,10 @@ export type FinanceAccount = {
   kind: string;
   currency: string;
   credit_limit: number | null;
+  closing_day: number | null;
+  due_day: number | null;
+  card_brand: string | null;
+  archived: boolean;
 };
 
 export type FinanceTransaction = {
@@ -44,6 +48,8 @@ export type FinanceTransaction = {
   mode: "normal" | "initial_balance" | "credit_purchase" | "fixed_expense";
   due_date: string | null;
   tithe_eligible: boolean | null;
+  fatura_date: string | null;
+  fatura_paid: boolean;
   finance_categories?: FinanceCategory | FinanceCategory[] | null;
   finance_accounts?: FinanceAccount | FinanceAccount[] | null;
 };
@@ -277,7 +283,20 @@ function TransactionForm({
     transaction?.account_id ?? accountsForKind[0]?.id ?? "",
   );
 
-  const mode = initialBalance ? "initial_balance" : isFixed ? "fixed_expense" : "normal";
+  function defaultFaturaDate(purchaseDate: string, closingDay: number | null) {
+    const d = new Date(`${purchaseDate}T00:00:00`);
+    const day = d.getDate();
+    const closing = closingDay ?? 1;
+    const offset = day >= closing ? 1 : 0;
+    return new Date(d.getFullYear(), d.getMonth() + offset, 1).toISOString().slice(0, 10);
+  }
+
+  const selectedCard = accounts.find((a) => a.id === selectedAccountId && a.kind === "credit_card");
+  const [faturaDate, setFaturaDate] = useState(
+    transaction?.fatura_date ?? (destKind === "card" && selectedCard ? defaultFaturaDate(date, selectedCard.closing_day) : "")
+  );
+
+  const mode = initialBalance ? "initial_balance" : destKind === "card" ? "credit_purchase" : isFixed ? "fixed_expense" : "normal";
   const action = transaction ? updateTransaction.bind(null, transaction.id) : addTransaction;
   const isIncome = type === "income";
   const headerBg = isIncome ? "bg-emerald-500" : "bg-red-500";
@@ -308,6 +327,10 @@ function TransactionForm({
     setFormError("");
     let saved = false;
     try {
+      if (destKind === "card") {
+        formData.set("mode", "credit_purchase");
+        if (faturaDate) formData.set("fatura_date", faturaDate);
+      }
       await action(formData);
       saved = true;
       router.refresh();
@@ -420,7 +443,7 @@ function TransactionForm({
             <p className="text-xs text-slate-400">Movimenta saldo</p>
           </button>
           <button type="button"
-            onClick={() => { setDestKind("card"); const id = cardAccounts[0]?.id ?? ""; setSelectedAccountId(id); handleAccountChange(id); }}
+            onClick={() => { setDestKind("card"); const id = cardAccounts[0]?.id ?? ""; setSelectedAccountId(id); handleAccountChange(id); const card = accounts.find((a) => a.id === id); setFaturaDate(defaultFaturaDate(date, card?.closing_day ?? null)); }}
             className={`rounded-2xl border-2 p-4 text-left transition ${destKind === "card" ? `${accentBorder} ${accentBg}` : "border-slate-200 bg-white"}`}>
             <CreditCard size={20} className={destKind === "card" ? accentText : "text-slate-400"} />
             <p className={`mt-1 text-sm font-semibold ${destKind === "card" ? accentText : "text-slate-950"}`}>Cartão</p>
@@ -469,8 +492,33 @@ function TransactionForm({
             <p className="text-sm font-medium text-slate-950">{dateBR(date)}</p>
           </div>
           <ChevronRight size={16} className="shrink-0 text-slate-300" />
-          <input type="date" name="date" value={date} onChange={(e) => setDate(e.target.value)} required className="absolute inset-0 cursor-pointer opacity-0" />
+          <input type="date" name="date" value={date} onChange={(e) => { setDate(e.target.value); if (destKind === "card") { const card = accounts.find((a) => a.id === selectedAccountId); setFaturaDate(defaultFaturaDate(e.target.value, card?.closing_day ?? null)); } }} required className="absolute inset-0 cursor-pointer opacity-0" />
         </div>
+
+        {/* Fatura (only for card) */}
+        {destKind === "card" && (
+          <div className="relative flex items-center gap-3 border-b border-slate-100 px-4 py-3.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+              <CreditCard size={16} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-slate-400">Fatura <span className="text-red-400">*</span></p>
+              <p className="text-sm font-medium text-slate-950">
+                {faturaDate ? new Date(`${faturaDate}T00:00:00`).toLocaleDateString("pt-BR", { month: "long", year: "numeric" }) : "Selecione"}
+              </p>
+            </div>
+            <ChevronRight size={16} className="shrink-0 text-slate-300" />
+            <select name="fatura_date" value={faturaDate} onChange={(e) => setFaturaDate(e.target.value)} required={destKind === "card"} className="absolute inset-0 cursor-pointer opacity-0">
+              <option value="">Selecione a fatura</option>
+              {Array.from({ length: 12 }, (_, i) => {
+                const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + i - 1);
+                const val = d.toISOString().slice(0, 10);
+                const label = d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+                return <option key={val} value={val}>{label.charAt(0).toUpperCase() + label.slice(1)}</option>;
+              })}
+            </select>
+          </div>
+        )}
 
         {/* OPÇÕES AVANÇADAS */}
         <p className="px-4 pb-3 pt-5 text-[11px] font-semibold uppercase tracking-widest text-slate-400">Opções Avançadas</p>
@@ -591,22 +639,23 @@ export default function FinancePanel({ categories, accounts, accountBalances, tr
     const matchesCategory = !detailFilters.category || transaction.category_id === detailFilters.category;
     const matchesType = !detailFilters.type || transaction.type === detailFilters.type;
     const matchesAccount = !detailFilters.account || transaction.account_id === detailFilters.account;
-    return isInRange && matchesCategory && matchesType && matchesAccount && transaction.currency === currencyFilter;
+    return isInRange && matchesCategory && matchesType && matchesAccount && transaction.currency === currencyFilter && transaction.mode !== "credit_purchase";
   });
   const computedMetrics = useMemo(() => {
-    const income = filteredTransactions
+    const balanceTx = filteredTransactions.filter((item) => item.mode !== "credit_purchase" || item.fatura_paid === true);
+    const income = balanceTx
       .filter((item) => item.type === "income")
       .reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
-    const expenses = filteredTransactions
+    const expenses = balanceTx
       .filter((item) => item.type === "expense")
       .reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
-    const titheBase = filteredTransactions
+    const titheBase = balanceTx
       .filter((item) => item.type === "income" && item.tithe_eligible)
       .reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
-    const scheduledExpenses = filteredTransactions
+    const scheduledExpenses = balanceTx
       .filter((item) => item.type === "expense" && item.due_date && item.due_date >= selectedRangeStart && item.due_date <= selectedRangeEnd)
       .reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
-    const expenseByCategory = filteredTransactions
+    const expenseByCategory = balanceTx
       .filter((item) => item.type === "expense")
       .reduce<Record<string, number>>((acc, item) => {
         const name = categoryName(item);
@@ -810,7 +859,10 @@ export default function FinancePanel({ categories, accounts, accountBalances, tr
       <section className="app-card mt-5 p-4 sm:p-5">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">Carteira</h2>
-          <button onClick={() => setAccountModal(true)} className="text-xs font-medium text-emerald-700">Gerenciar →</button>
+          <div className="flex items-center gap-3">
+            <Link href="/admin/financeiro/cartoes" className="text-xs font-medium text-blue-600">Cartões →</Link>
+            <button onClick={() => setAccountModal(true)} className="text-xs font-medium text-emerald-700">Gerenciar →</button>
+          </div>
         </div>
         {accounts.length ? (
           <div className="mt-5 space-y-3">
