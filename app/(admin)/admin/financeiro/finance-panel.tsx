@@ -706,11 +706,11 @@ export default function FinancePanel({ categories, accounts, accountBalances, tr
     const titheBase = filteredTransactions
       .filter((item) => item.type === "income" && item.tithe_eligible)
       .reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
-    const creditDue = transactions
-      .filter((item) => item.mode === "credit_purchase" && item.currency === currencyFilter && item.due_date && item.due_date >= selectedRangeStart && item.due_date <= selectedRangeEnd)
-      .reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
-    return { income, expenses, balance: income - expenses, projectedBalance: income - expenses - creditDue, tithe: titheBase * 0.1 };
-  }, [filteredTransactions, transactions, currencyFilter, selectedRangeStart, selectedRangeEnd]);
+    const projectedBalance = transactions
+      .filter((item) => item.currency === currencyFilter && item.date <= selectedRangeEnd && item.mode !== "credit_purchase")
+      .reduce((sum, item) => sum + (item.type === "income" ? 1 : -1) * Number(item.amount ?? 0), 0);
+    return { income, expenses, balance: income - expenses, projectedBalance, tithe: titheBase * 0.1 };
+  }, [filteredTransactions, transactions, currencyFilter, selectedRangeEnd]);
   const chartData = useMemo(() => {
     const source = filteredTransactions.filter((tx) =>
       chartTab === "income" ? tx.type === "income" : chartTab === "expense" ? tx.type === "expense" : true,
