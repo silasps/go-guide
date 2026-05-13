@@ -21,6 +21,30 @@ function parseAmount(value: FormDataEntryValue | null) {
   return Number.isFinite(amount) ? amount : null;
 }
 
+function ymd(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function addMonths(value: string, months: number) {
+  const source = new Date(`${value}T00:00:00`);
+  const day = source.getDate();
+  const target = new Date(source.getFullYear(), source.getMonth() + months, 1);
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  target.setDate(Math.min(day, lastDay));
+  return ymd(target);
+}
+
+function addMonthsToFatura(value: string, months: number) {
+  const source = new Date(`${value}T00:00:00`);
+  return ymd(new Date(source.getFullYear(), source.getMonth() + months, 1));
+}
+
+function cleanInstallments(value: FormDataEntryValue | null) {
+  const count = Number.parseInt(cleanString(value).replace(/\D/g, ""), 10);
+  if (!Number.isFinite(count) || count < 2) return 2;
+  return Math.min(count, 120);
+}
+
 function cleanType(value: FormDataEntryValue | null) {
   return cleanString(value) === "income" ? "income" : "expense";
 }
@@ -66,8 +90,13 @@ export async function addTransaction(fd: FormData) {
   if (amount === null) throw new Error("Informe o valor do lançamento.");
 
   const faturaDate = cleanString(fd.get("fatura_date"));
+  const installmentsEnabled = mode === "credit_purchase" && type === "expense" && cleanString(fd.get("installments_enabled")) === "on";
+  const installmentsCount = installmentsEnabled ? cleanInstallments(fd.get("installments_count")) : 1;
+  const amountCents = Math.round(amount * 100);
+  const baseInstallmentCents = Math.floor(amountCents / installmentsCount);
+  const remainderCents = amountCents % installmentsCount;
 
-  const { error } = await supabase.from("finance_transactions").insert({
+  const baseRow = {
     profile_id: profile.id,
     date,
     description,
@@ -82,7 +111,23 @@ export async function addTransaction(fd: FormData) {
     category_id: categoryId,
     account_id: accountId,
     fatura_date: faturaDate || null,
-  });
+  };
+
+  const rows = installmentsCount > 1
+    ? Array.from({ length: installmentsCount }, (_, index) => {
+      const installmentCents = baseInstallmentCents + (index < remainderCents ? 1 : 0);
+      return {
+        ...baseRow,
+        date: addMonths(date, index),
+        due_date: dueDate ? addMonths(dueDate, index) : null,
+        description: `${description} - Parcela ${index + 1} de ${installmentsCount}`,
+        amount: Number((installmentCents / 100).toFixed(2)),
+        fatura_date: faturaDate ? addMonthsToFatura(faturaDate, index) : null,
+      };
+    })
+    : [baseRow];
+
+  const { error } = await supabase.from("finance_transactions").insert(rows);
 
   if (error) throw new Error(error.message);
 
@@ -390,10 +435,10 @@ export async function payFatura(cardId: string, faturaDate: string) {
 
   const [r1, r2] = await Promise.all([
     supabase.from("finance_transactions").update({ fatura_paid: true })
-      .eq("profile_id", profile.id).eq("account_id", cardId).eq("fatura_date", faturaDate).eq("mode", "credit_purchase"),
+      .eq("profile_id", profile.id).eq("account_id", cardId).eq("fatura_date", faturaDate).in("mode", ["credit_purchase", "fixed_expense"]),
     supabase.from("finance_transactions").update({ fatura_paid: true })
       .eq("profile_id", profile.id).eq("account_id", cardId).is("fatura_date", null)
-      .gte("date", faturaDate).lte("date", faturaMonthEnd).eq("mode", "credit_purchase"),
+      .gte("date", faturaDate).lte("date", faturaMonthEnd).in("mode", ["credit_purchase", "fixed_expense"]),
   ]);
 
   if (r1.error) throw new Error(r1.error.message);

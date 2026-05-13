@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowLeft, ArrowLeftRight, ArrowRight, ArrowUp, ArrowUpDown, Building2, CalendarDays, ChevronRight, CreditCard, FileText, Funnel, Home, Landmark, LoaderCircle, Paintbrush, Pencil, Plus, Receipt, RotateCcw, Search, Settings, Tag, Trash2, WalletCards, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowLeftRight, ArrowRight, ArrowUp, ArrowUpDown, Building2, CalendarDays, CreditCard, FileText, Funnel, Home, Landmark, LoaderCircle, Paintbrush, Pencil, Plus, Receipt, RotateCcw, Search, Settings, Tag, Trash2, WalletCards, X } from "lucide-react";
 import {
   addAccount,
   addCategory,
@@ -50,6 +50,8 @@ export type FinanceTransaction = {
   tithe_eligible: boolean | null;
   fatura_date: string | null;
   fatura_paid: boolean;
+  is_recurring_occurrence?: boolean;
+  recurring_source_id?: string;
   finance_categories?: FinanceCategory | FinanceCategory[] | null;
   finance_accounts?: FinanceAccount | FinanceAccount[] | null;
 };
@@ -126,6 +128,19 @@ function addDays(value: string, days: number) {
   return date.toISOString().slice(0, 10);
 }
 
+function ymd(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function addMonths(value: string, months: number) {
+  const source = new Date(`${value}T00:00:00`);
+  const day = source.getDate();
+  const target = new Date(source.getFullYear(), source.getMonth() + months, 1);
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  target.setDate(Math.min(day, lastDay));
+  return ymd(target);
+}
+
 function categoryName(transaction: FinanceTransaction) {
   const category = transaction.finance_categories;
   if (!category) return "Sem categoria";
@@ -138,6 +153,62 @@ function accountName(transaction: FinanceTransaction) {
   if (!account) return "Sem conta";
   if (Array.isArray(account)) return account[0]?.name ?? "Sem conta";
   return account.name;
+}
+
+function expandFixedTransactions(transactions: FinanceTransaction[], throughDate: string) {
+  const expanded = [...transactions];
+
+  for (const transaction of transactions) {
+    if (transaction.mode !== "fixed_expense" || transaction.is_recurring_occurrence) continue;
+
+    for (let monthOffset = 1; monthOffset <= 120; monthOffset += 1) {
+      const occurrenceDate = addMonths(transaction.date, monthOffset);
+      if (occurrenceDate > throughDate) break;
+
+      expanded.push({
+        ...transaction,
+        id: `${transaction.id}-fixed-${occurrenceDate.slice(0, 7)}`,
+        date: occurrenceDate,
+        due_date: transaction.due_date ? addMonths(transaction.due_date, monthOffset) : transaction.due_date,
+        fatura_date: transaction.fatura_date ? addMonths(transaction.fatura_date, monthOffset) : transaction.fatura_date,
+        is_recurring_occurrence: true,
+        recurring_source_id: transaction.id,
+      });
+    }
+  }
+
+  return expanded;
+}
+
+function ToggleSwitch({
+  checked,
+  onClick,
+  label,
+  checkedClassName = "border-blue-500 bg-blue-500",
+}: {
+  checked: boolean;
+  onClick: () => void;
+  label: string;
+  checkedClassName?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={onClick}
+      className={`relative h-8 w-14 shrink-0 overflow-hidden rounded-full border p-1 shadow-inner transition-colors ${
+        checked ? checkedClassName : "border-slate-200 bg-slate-200"
+      }`}
+    >
+      <span
+        className={`block h-6 w-6 rounded-full bg-white shadow-md shadow-slate-900/20 transition-transform duration-200 ${
+          checked ? "translate-x-6" : "translate-x-0"
+        }`}
+      />
+    </button>
+  );
 }
 
 function accountKindLabel(kind: string) {
@@ -237,7 +308,6 @@ function TransactionForm({
   categories,
   accounts,
   transaction,
-  onEditAccounts: _onEditAccounts,
   onSaved,
   onClose,
   initialBalance,
@@ -262,6 +332,8 @@ function TransactionForm({
   const [categoryOptions, setCategoryOptions] = useState(categories);
   const [categoryId, setCategoryId] = useState(transaction?.category_id ?? initialCategory ?? "");
   const [isFixed, setIsFixed] = useState(transaction?.mode === "fixed_expense");
+  const [installmentsEnabled, setInstallmentsEnabled] = useState(false);
+  const [installmentsCount, setInstallmentsCount] = useState("2");
   const [titheEligible, setTitheEligible] = useState(transaction?.tithe_eligible ?? true);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
@@ -289,7 +361,7 @@ function TransactionForm({
     const closing = closingDay ?? 1;
     const offset = day >= closing ? 1 : 0;
     const fd = new Date(d.getFullYear(), d.getMonth() + offset, 1);
-  return `${fd.getFullYear()}-${String(fd.getMonth() + 1).padStart(2, "0")}-01`;
+    return `${fd.getFullYear()}-${String(fd.getMonth() + 1).padStart(2, "0")}-01`;
   }
 
   const selectedCard = accounts.find((a) => a.id === selectedAccountId && a.kind === "credit_card");
@@ -297,13 +369,14 @@ function TransactionForm({
     transaction?.fatura_date ?? (destKind === "card" && selectedCard ? defaultFaturaDate(date, selectedCard.closing_day) : "")
   );
 
-  const mode = initialBalance ? "initial_balance" : destKind === "card" ? "credit_purchase" : isFixed ? "fixed_expense" : "normal";
+  const mode = initialBalance ? "initial_balance" : isFixed ? "fixed_expense" : destKind === "card" ? "credit_purchase" : "normal";
   const action = transaction ? updateTransaction.bind(null, transaction.id) : addTransaction;
   const isIncome = type === "income";
-  const headerBg = isIncome ? "bg-emerald-500" : "bg-red-500";
+  const headerBg = isIncome ? "bg-emerald-600" : "bg-red-600";
   const accentText = isIncome ? "text-emerald-600" : "text-red-500";
   const accentBorder = isIncome ? "border-emerald-400" : "border-red-400";
   const accentBg = isIncome ? "bg-emerald-50" : "bg-red-50";
+  const toggleTone = isIncome ? "border-emerald-500 bg-emerald-500" : "border-red-500 bg-red-500";
 
   function handleAccountChange(accountId: string) {
     const account = accounts.find((a) => a.id === accountId);
@@ -329,8 +402,12 @@ function TransactionForm({
     let saved = false;
     try {
       if (destKind === "card") {
-        formData.set("mode", "credit_purchase");
+        formData.set("mode", isFixed ? "fixed_expense" : "credit_purchase");
         if (faturaDate) formData.set("fatura_date", faturaDate);
+        if (!transaction && !isIncome && installmentsEnabled) {
+          formData.set("installments_enabled", "on");
+          formData.set("installments_count", installmentsCount || "2");
+        }
       }
       await action(formData);
       saved = true;
@@ -347,10 +424,11 @@ function TransactionForm({
     <form action={submitTransaction} className="flex min-h-screen flex-col bg-white">
       <input type="hidden" name="mode" value={mode} />
       <input type="hidden" name="currency" value={currency} />
+      {isFixed && <input type="hidden" name="fixed_expense" value="on" />}
       {isIncome && titheEligible && <input type="hidden" name="tithe_eligible" value="on" />}
 
       {/* Header colorido */}
-      <div className={`${headerBg} px-4 pb-6 pt-14`}>
+      <div className={`${headerBg} px-4 pb-7 pt-14 text-white`}>
         <div className="mb-6 flex items-center">
           <button type="button" onClick={onClose} className="mr-3 text-white/80 hover:text-white">
             <ArrowLeft size={22} />
@@ -366,21 +444,28 @@ function TransactionForm({
           </div>
           <span className="text-sm text-white/80">{isIncome ? "Receita" : "Despesa"}</span>
         </div>
-        <div className="mb-1 flex items-end gap-1.5">
-          <span className="pb-1 text-xl font-bold text-white/70">{currencySymbol(currency)}</span>
-          <input
-            name="amount"
-            type="text"
-            inputMode="numeric"
-            value={amount}
-            onChange={(e) => setAmount(formatAmountInput(e.target.value, currency))}
-            required
-            placeholder={`0${decimalSeparator(currency)}00`}
-            className="min-w-0 flex-1 bg-transparent text-4xl font-bold text-white outline-none placeholder:text-white/50"
-          />
+        <div className="rounded-[1.75rem] border border-white/25 bg-white/15 p-4 shadow-[inset_0_1px_0_rgb(255_255_255/0.18),0_18px_34px_rgb(15_23_42/0.14)] backdrop-blur">
+          <label htmlFor="transaction-amount" className="text-[11px] font-semibold uppercase tracking-widest text-white/70">
+            Valor da transação
+          </label>
+          <div className="mt-2 flex items-center gap-2.5">
+            <span className="rounded-full bg-white/15 px-3 py-1 text-lg font-bold text-white shadow-sm">
+              {currencySymbol(currency)}
+            </span>
+            <input
+              id="transaction-amount"
+              name="amount"
+              type="text"
+              inputMode="numeric"
+              value={amount}
+              onChange={(e) => setAmount(formatAmountInput(e.target.value, currency))}
+              required
+              placeholder={`0${decimalSeparator(currency)}00`}
+              className="min-w-0 flex-1 bg-transparent text-4xl font-bold leading-none text-white caret-white outline-none placeholder:text-white/45 selection:bg-white/25 sm:text-5xl"
+            />
+          </div>
         </div>
-        <p className="mb-5 text-sm text-white/60">Toque para informar o valor</p>
-        <div className="flex rounded-full bg-white/20 p-1">
+        <div className="mt-5 flex rounded-full bg-white/20 p-1">
           <label className={`flex-1 cursor-pointer rounded-full py-2.5 text-center text-sm font-semibold transition ${!isIncome ? "bg-white text-red-500 shadow" : "text-white"}`}>
             <input className="sr-only" type="radio" name="type" value="expense" checked={!isIncome} onChange={() => setType("expense")} />
             Despesa
@@ -409,7 +494,6 @@ function TransactionForm({
               className="w-full bg-transparent text-sm font-medium text-slate-950 outline-none placeholder:text-slate-400"
             />
           </div>
-          <ChevronRight size={16} className="shrink-0 text-slate-300" />
         </div>
 
         {/* Categoria */}
@@ -426,7 +510,6 @@ function TransactionForm({
           <button type="button" onClick={() => setQuickCategoryOpen(true)} className="relative z-10 shrink-0 rounded-full bg-orange-100 px-2.5 py-1 text-[10px] font-bold text-orange-500">
             + Nova
           </button>
-          <ChevronRight size={16} className="shrink-0 text-slate-300" />
           <select name="category_id" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required className="absolute inset-0 z-[5] cursor-pointer opacity-0">
             <option value="">Selecione</option>
             {categoryOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -463,41 +546,13 @@ function TransactionForm({
               {accountsForKind.find((a) => a.id === selectedAccountId)?.name ?? <span className="text-slate-400">Obrigatório</span>}
             </p>
           </div>
-          <ChevronRight size={16} className="shrink-0 text-slate-300" />
           <select name="account_id" value={selectedAccountId} onChange={(e) => { setSelectedAccountId(e.target.value); handleAccountChange(e.target.value); }} required className="absolute inset-0 cursor-pointer opacity-0">
             <option value="">Selecione</option>
             {accountsForKind.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
         </div>
 
-        {/* Vencimento */}
-        <div className="relative flex items-center gap-3 border-b border-slate-100 px-4 py-3.5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
-            <CalendarDays size={16} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs text-slate-400">Vencimento</p>
-            <p className="text-sm font-medium text-slate-950">{dueDate ? dateBR(dueDate) : "Sem vencimento"}</p>
-          </div>
-          <ChevronRight size={16} className="shrink-0 text-slate-300" />
-          <input type="date" name="due_date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" />
-        </div>
-
-        {/* Competência */}
-        <div className="relative flex items-center gap-3 border-b border-slate-100 px-4 py-3.5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
-            <CalendarDays size={16} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs text-slate-400">Competência <span className="text-red-400">*</span></p>
-            <p className="text-sm font-medium text-slate-950">{dateBR(date)}</p>
-          </div>
-          <ChevronRight size={16} className="shrink-0 text-slate-300" />
-          <input type="date" name="date" value={date} onChange={(e) => { setDate(e.target.value); if (destKind === "card") { const card = accounts.find((a) => a.id === selectedAccountId); setFaturaDate(defaultFaturaDate(e.target.value, card?.closing_day ?? null)); } }} required className="absolute inset-0 cursor-pointer opacity-0" />
-        </div>
-
-        {/* Fatura (only for card) */}
-        {destKind === "card" && (
+        {destKind === "card" ? (
           <div className="relative flex items-center gap-3 border-b border-slate-100 px-4 py-3.5">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
               <CreditCard size={16} />
@@ -508,8 +563,7 @@ function TransactionForm({
                 {faturaDate ? new Date(`${faturaDate}T00:00:00`).toLocaleDateString("pt-BR", { month: "long", year: "numeric" }) : "Selecione"}
               </p>
             </div>
-            <ChevronRight size={16} className="shrink-0 text-slate-300" />
-            <select name="fatura_date" value={faturaDate} onChange={(e) => setFaturaDate(e.target.value)} required={destKind === "card"} className="absolute inset-0 cursor-pointer opacity-0">
+            <select name="fatura_date" value={faturaDate} onChange={(e) => setFaturaDate(e.target.value)} required className="absolute inset-0 cursor-pointer opacity-0">
               <option value="">Selecione a fatura</option>
               {Array.from({ length: 12 }, (_, i) => {
                 const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + i - 1);
@@ -519,10 +573,74 @@ function TransactionForm({
               })}
             </select>
           </div>
+        ) : (
+          <div className="relative flex items-center gap-3 border-b border-slate-100 px-4 py-3.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+              <CalendarDays size={16} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-slate-400">Vencimento</p>
+              <p className="text-sm font-medium text-slate-950">{dueDate ? dateBR(dueDate) : "Sem vencimento"}</p>
+            </div>
+            <input type="date" name="due_date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" />
+          </div>
         )}
+
+        {/* Data da movimentação */}
+        <div className="relative flex items-center gap-3 border-b border-slate-100 px-4 py-3.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+            <CalendarDays size={16} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-slate-400">Data da movimentação <span className="text-red-400">*</span></p>
+            <p className="text-sm font-medium text-slate-950">{dateBR(date)}</p>
+          </div>
+          <input type="date" name="date" value={date} onChange={(e) => { setDate(e.target.value); if (destKind === "card") { const card = accounts.find((a) => a.id === selectedAccountId); setFaturaDate(defaultFaturaDate(e.target.value, card?.closing_day ?? null)); } }} required className="absolute inset-0 cursor-pointer opacity-0" />
+        </div>
 
         {/* OPÇÕES AVANÇADAS */}
         <p className="px-4 pb-3 pt-5 text-[11px] font-semibold uppercase tracking-widest text-slate-400">Opções Avançadas</p>
+
+        {destKind === "card" && !isIncome && !transaction && (
+          <>
+            <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+                <CreditCard size={16} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-slate-950">Compra parcelada</p>
+                <p className="text-xs text-slate-400">Ative se a compra foi parcelada no cartão</p>
+              </div>
+              <ToggleSwitch
+                checked={installmentsEnabled}
+                checkedClassName="border-red-500 bg-red-500"
+                label="Compra parcelada"
+                onClick={() => {
+                  setInstallmentsEnabled((value) => !value);
+                  setIsFixed(false);
+                }}
+              />
+            </div>
+            {installmentsEnabled ? (
+              <label className="flex items-center gap-3 border-b border-slate-100 bg-slate-50/80 px-4 py-3.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm">
+                  <Receipt size={16} />
+                </div>
+                <span className="min-w-0 flex-1 text-sm font-medium text-slate-950">Número de parcelas</span>
+                <input
+                  name="installments_count"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={installmentsCount}
+                  onBlur={() => setInstallmentsCount((value) => String(Math.max(2, Number(value) || 2)))}
+                  onChange={(event) => setInstallmentsCount(event.target.value.replace(/\D/g, "").slice(0, 3))}
+                  className="h-11 w-20 rounded-2xl border border-red-200 bg-white px-3 text-center text-base font-semibold text-red-600 outline-none shadow-sm focus:border-red-400 focus:ring-4 focus:ring-red-100"
+                />
+              </label>
+            ) : null}
+          </>
+        )}
 
         <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3.5">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
@@ -530,11 +648,19 @@ function TransactionForm({
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-slate-950">{isIncome ? "Receita Fixa" : "Despesa Fixa"}</p>
-            <p className="text-xs text-slate-400">Classifica como uma {isIncome ? "receita" : "despesa"} fixa</p>
+            <p className="text-xs text-slate-400">
+              {isIncome ? "Repete esta receita nos próximos meses" : "Marcada como fixa, aparece em todos os meses a partir da data"}
+            </p>
           </div>
-          <button type="button" onClick={() => setIsFixed((v) => !v)} className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${isFixed ? "bg-blue-500" : "bg-slate-200"}`}>
-            <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-sm transition-transform ${isFixed ? "translate-x-5" : "translate-x-0.5"}`} />
-          </button>
+          <ToggleSwitch
+            checked={isFixed}
+            checkedClassName={toggleTone}
+            label={isIncome ? "Receita fixa" : "Despesa fixa"}
+            onClick={() => {
+              setIsFixed((value) => !value);
+              setInstallmentsEnabled(false);
+            }}
+          />
         </div>
 
         {isIncome && (
@@ -546,9 +672,11 @@ function TransactionForm({
               <p className="text-sm font-medium text-slate-950">Calcular Dízimo</p>
               <p className="text-xs text-slate-400">Inclui no cálculo do dízimo (10%)</p>
             </div>
-            <button type="button" onClick={() => setTitheEligible((v) => !v)} className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${titheEligible ? "bg-blue-500" : "bg-slate-200"}`}>
-              <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-sm transition-transform ${titheEligible ? "translate-x-5" : "translate-x-0.5"}`} />
-            </button>
+            <ToggleSwitch
+              checked={titheEligible}
+              label="Calcular dízimo"
+              onClick={() => setTitheEligible((value) => !value)}
+            />
           </div>
         )}
 
@@ -597,11 +725,12 @@ function DonutChart({ data, currencyFilter, hovered, onHover }: {
   const r = 70, sw = 28, cx = 90;
   const circumference = 2 * Math.PI * r;
   const total = data.reduce((s, x) => s + x.amount, 0);
-  let acc = 0;
   const segments = data.map((item, i) => {
     const arc = total > 0 ? (item.amount / total) * circumference : 0;
-    const dashOffset = circumference / 4 - acc;
-    acc += arc;
+    const previousArc = total > 0
+      ? data.slice(0, i).reduce((sum, previous) => sum + (previous.amount / total) * circumference, 0)
+      : 0;
+    const dashOffset = circumference / 4 - previousArc;
     return { ...item, arc, dashOffset, color: CHART_COLORS[i % CHART_COLORS.length] };
   });
   const hoveredSeg = hovered !== null ? segments[hovered] : null;
@@ -689,7 +818,11 @@ export default function FinancePanel({ categories, accounts, accountBalances, tr
           : "month";
   const viewButtonClass = "flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-1 text-[9px] font-medium";
   const entrySearchTerm = entrySearch.trim().toLowerCase();
-  const filteredTransactions = transactions.filter((transaction) => {
+  const expandedTransactions = useMemo(
+    () => expandFixedTransactions(transactions, selectedRangeEnd),
+    [transactions, selectedRangeEnd],
+  );
+  const filteredTransactions = expandedTransactions.filter((transaction) => {
     const isInRange = transaction.date >= selectedRangeStart && transaction.date <= selectedRangeEnd;
     const matchesCategory = !detailFilters.category || transaction.category_id === detailFilters.category;
     const matchesType = !detailFilters.type || transaction.type === detailFilters.type;
@@ -706,11 +839,11 @@ export default function FinancePanel({ categories, accounts, accountBalances, tr
     const titheBase = filteredTransactions
       .filter((item) => item.type === "income" && item.tithe_eligible)
       .reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
-    const projectedBalance = transactions
+    const projectedBalance = expandedTransactions
       .filter((item) => item.currency === currencyFilter && item.date <= selectedRangeEnd && item.mode !== "credit_purchase")
       .reduce((sum, item) => sum + (item.type === "income" ? 1 : -1) * Number(item.amount ?? 0), 0);
     return { income, expenses, balance: income - expenses, projectedBalance, tithe: titheBase * 0.1 };
-  }, [filteredTransactions, transactions, currencyFilter, selectedRangeEnd]);
+  }, [filteredTransactions, expandedTransactions, currencyFilter, selectedRangeEnd]);
   const chartData = useMemo(() => {
     const source = filteredTransactions.filter((tx) =>
       chartTab === "income" ? tx.type === "income" : chartTab === "expense" ? tx.type === "expense" : true,
@@ -1067,6 +1200,7 @@ export default function FinancePanel({ categories, accounts, accountBalances, tr
                   <div className="space-y-3">
                     {transactionsByDate[date].map((transaction) => {
                       const isIncome = transaction.type === "income";
+                      const isGenerated = Boolean(transaction.is_recurring_occurrence);
                       return (
                         <div
                           key={transaction.id}
@@ -1090,14 +1224,22 @@ export default function FinancePanel({ categories, accounts, accountBalances, tr
                             <p className="text-[9px] font-normal text-slate-500">{transaction.currency}</p>
                           </div>
                           <div className="flex justify-end gap-1">
-                            <button onClick={() => setEditing(transaction)} className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-950" aria-label="Editar lançamento">
-                              <Pencil size={15} />
-                            </button>
-                            <form action={deleteTransaction.bind(null, transaction.id)}>
-                              <button className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-red-50 hover:text-red-500" aria-label="Excluir lançamento">
-                                <Trash2 size={15} />
-                              </button>
-                            </form>
+                            {isGenerated ? (
+                              <span className="inline-flex h-9 items-center rounded-full bg-slate-100 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                                Fixa
+                              </span>
+                            ) : (
+                              <>
+                                <button onClick={() => setEditing(transaction)} className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-950" aria-label="Editar lançamento">
+                                  <Pencil size={15} />
+                                </button>
+                                <form action={deleteTransaction.bind(null, transaction.id)}>
+                                  <button className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-red-50 hover:text-red-500" aria-label="Excluir lançamento">
+                                    <Trash2 size={15} />
+                                  </button>
+                                </form>
+                              </>
+                            )}
                           </div>
                         </div>
                       );
@@ -1461,8 +1603,16 @@ export default function FinancePanel({ categories, accounts, accountBalances, tr
               <div><p className="font-medium text-white">{transaction.description}</p><p className="text-xs text-slate-500">{categoryName(transaction)} · {accountName(transaction)} · {transaction.type === "income" ? "Entrada" : "Saída"} · {transaction.currency}</p></div>
               <p className={transaction.type === "income" ? "font-semibold text-orange-300" : "font-semibold text-red-300"}>{money(transaction.amount, transaction.currency)}</p>
               <div className="flex gap-1">
-                <button onClick={() => setEditing(transaction)} className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="Editar"><Pencil size={15} /></button>
-                <form action={deleteTransaction.bind(null, transaction.id)}><button className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:bg-slate-800 hover:text-red-300" aria-label="Excluir"><Trash2 size={15} /></button></form>
+                {transaction.is_recurring_occurrence ? (
+                  <span className="inline-flex h-9 items-center rounded-full bg-slate-800 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                    Fixa
+                  </span>
+                ) : (
+                  <>
+                    <button onClick={() => setEditing(transaction)} className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="Editar"><Pencil size={15} /></button>
+                    <form action={deleteTransaction.bind(null, transaction.id)}><button className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:bg-slate-800 hover:text-red-300" aria-label="Excluir"><Trash2 size={15} /></button></form>
+                  </>
+                )}
               </div>
             </div>
           ))}
