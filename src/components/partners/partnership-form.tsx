@@ -10,16 +10,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Loader2, CheckCircle } from 'lucide-react'
 
-interface Props { profileId: string; missionaryName: string }
+interface Props { profileId: string; missionaryName: string; defaultType?: 'financial' | 'prayer' | 'both' | 'ambassador' }
 
-export function PartnershipForm({ profileId, missionaryName }: Props) {
+export function PartnershipForm({ profileId, missionaryName, defaultType }: Props) {
   const [done, setDone] = useState(false)
   const [saving, setSaving] = useState(false)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [notes, setNotes] = useState('')
-  const [type, setType] = useState<'financial' | 'prayer' | 'both' | 'ambassador'>('both')
+  const [type, setType] = useState<'financial' | 'prayer' | 'both' | 'ambassador'>(defaultType ?? 'both')
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -65,25 +65,27 @@ export function PartnershipForm({ profileId, missionaryName }: Props) {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">
-            {([
-              { value: 'both',       label: '💰🙏 Financeiro + Oração' },
-              { value: 'financial',  label: '💰 Apoio financeiro' },
-              { value: 'prayer',     label: '🙏 Somente oração' },
-              { value: 'ambassador', label: '📣 Embaixador' },
-            ] as const).map(({ value, label }) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setType(value)}
-                className={`py-2 px-3 rounded-lg border text-sm text-left transition-colors ${
-                  type === value ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border text-muted-foreground hover:border-foreground'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          {!defaultType && (
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { value: 'both',       label: '💰🙏 Financeiro + Oração' },
+                { value: 'financial',  label: '💰 Apoio financeiro' },
+                { value: 'prayer',     label: '🙏 Somente oração' },
+                { value: 'ambassador', label: '📣 Embaixador' },
+              ] as const).map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setType(value)}
+                  className={`py-2 px-3 rounded-lg border text-sm text-left transition-colors ${
+                    type === value ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border text-muted-foreground hover:border-foreground'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Nome completo *</Label>

@@ -43,10 +43,24 @@ export function AccountForm({ profile }: Props) {
   async function handleDeleteAccount() {
     if (deleteConfirm !== profile.username) { toast.error('Username incorreto.'); return }
     setDeleting(true)
-    // Account deletion requires a server action or edge function with service role.
-    // For now, show a placeholder message.
-    toast.error('Para excluir sua conta, entre em contato: suporte@goguide.app')
-    setDeleting(false)
+
+    const res = await fetch('/api/account/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirm: deleteConfirm }),
+    })
+
+    if (!res.ok) {
+      const data = await res.json()
+      toast.error(data.error ?? 'Erro ao excluir conta.')
+      setDeleting(false)
+      return
+    }
+
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/')
+    router.refresh()
   }
 
   return (

@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json()
   const { highlightId, profileId, title, description, goalTypes, goalAmount, currentAmount,
-    currency, coverUrl, coverPosition, scripture, letter, status, milestones } = body
+    currency, coverUrl, coverPosition, tripStartDate, fundingDeadline, scripture, letter, status, milestones, budgetCategories } = body
 
   const payload = {
     profile_id: profileId,
@@ -70,6 +70,8 @@ export async function POST(req: NextRequest) {
     currency,
     cover_url: coverUrl ?? null,
     cover_position: coverPosition,
+    trip_start_date: tripStartDate ?? null,
+    funding_deadline: fundingDeadline ?? null,
     scripture: scripture || null,
     letter: letter || null,
     status,
@@ -102,6 +104,17 @@ export async function POST(req: NextRequest) {
           title: m.title,
           is_completed: m.is_completed,
           completed_at: m.is_completed ? new Date().toISOString() : null,
+          order_index: i,
+        })))
+      }
+
+      await dbDelete(`project_budget_categories?highlight_id=eq.${hId}`)
+      if (Array.isArray(budgetCategories) && budgetCategories.length > 0) {
+        await dbPost('project_budget_categories', budgetCategories.map((b: { category_type: string; custom_label: string | null; target_amount: number }, i: number) => ({
+          highlight_id: hId,
+          category_type: b.category_type,
+          custom_label: b.custom_label,
+          target_amount: b.target_amount,
           order_index: i,
         })))
       }

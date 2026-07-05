@@ -68,11 +68,17 @@ export default async function ProfilePage({ params }: Props) {
     .eq('status', 'active')
     .order('order_index')
 
+  const { count: completedCount } = await supabase
+    .from('highlights')
+    .select('id', { count: 'exact', head: true })
+    .eq('profile_id', profile.id)
+    .eq('status', 'completed')
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-xl mx-auto px-4 py-8 space-y-8">
         <ProfileHeader profile={profile} />
-        <ProfileCTA username={profile.username} />
+        <ProfileCTA username={profile.username} hasTrajectory={(completedCount ?? 0) > 0} />
         {projects && projects.length > 0 && (
           <ProjectsSection projects={projects} username={profile.username} accentColor={profile.accent_color} />
         )}

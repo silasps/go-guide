@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Users, FileText, Heart, Sparkles, Plus, FolderOpen, ArrowRight } from 'lucide-react'
-import { ProfileSetupBanner } from '@/components/dashboard/profile-setup-banner'
+import { SetupChecklistBanner } from '@/components/dashboard/setup-checklist-banner'
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -20,10 +20,12 @@ export default async function DashboardPage() {
     { count: partnersCount },
     { count: postsCount },
     { count: prayerCount },
+    { count: highlightsCount },
   ] = await Promise.all([
     supabase.from('partners').select('*', { count: 'exact', head: true }).eq('profile_id', profile!.id),
     supabase.from('posts').select('*', { count: 'exact', head: true }).eq('profile_id', profile!.id).eq('is_draft', false),
     supabase.from('prayer_requests').select('*', { count: 'exact', head: true }).eq('profile_id', profile!.id).eq('is_answered', false),
+    supabase.from('highlights').select('*', { count: 'exact', head: true }).eq('profile_id', profile!.id),
   ])
 
   const stats = [
@@ -42,7 +44,12 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <ProfileSetupBanner avatarUrl={profile?.avatar_url ?? null} username={profile?.username ?? ''} />
+      <SetupChecklistBanner
+        avatarUrl={profile?.avatar_url ?? null}
+        username={profile?.username ?? ''}
+        hasPaymentMethod={Boolean(profile?.pix_key || profile?.paypal_url || profile?.wise_url || profile?.external_donation_url)}
+        hasProject={(highlightsCount ?? 0) > 0}
+      />
 
       {/* Greeting */}
       <div>

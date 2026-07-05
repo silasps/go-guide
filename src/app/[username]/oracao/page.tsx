@@ -10,7 +10,7 @@ export default async function OracaoPage({ params }: Props) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, display_name, privacy_mode')
+    .select('id, user_id, display_name, privacy_mode')
     .eq('username', username)
     .single()
 
@@ -23,7 +23,7 @@ export default async function OracaoPage({ params }: Props) {
           <h1 className="text-2xl font-bold">Enviar pedido de oração</h1>
           <p className="text-muted-foreground mt-2">para {profile.display_name}</p>
         </div>
-        <PrayerRequestForm profileId={profile.id} missionaryName={profile.display_name} />
+        <PrayerRequestForm profileId={profile.id} missionaryName={profile.display_name} missionaryUserId={profile.user_id} />
       </div>
     </div>
   )

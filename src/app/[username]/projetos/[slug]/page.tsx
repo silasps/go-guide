@@ -4,9 +4,12 @@ import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Progress } from '@/components/ui/progress'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { buttonVariants } from '@/components/ui/button'
-import { cn, formatCurrency } from '@/lib/utils'
-import { CheckCircle2, Circle, ArrowLeft } from 'lucide-react'
+import { cn, formatCurrency, getInitials } from '@/lib/utils'
+import { CheckCircle2, Circle, ArrowLeft, Users } from 'lucide-react'
+import { BudgetBreakdown } from '@/components/highlights/budget-breakdown'
+import { FundingProjectionCard } from '@/components/highlights/funding-projection-card'
 
 interface Props {
   params: Promise<{ username: string; slug: string }>
@@ -52,10 +55,8 @@ const SUPPORT_TYPES = [
     key: 'financial',
     icon: '💰',
     title: 'Apoio financeiro',
-    description: 'Faça uma doação pontual ou mensal',
-    cta: 'Apoiar financeiramente',
-    href: (username: string, donationLink: string | null) => donationLink,
-    external: true,
+    description: 'Faça uma oferta pontual ou seja parceiro fixo',
+    cta: 'Faça parte',
   },
   {
     key: 'prayer',
@@ -63,8 +64,6 @@ const SUPPORT_TYPES = [
     title: 'Oração',
     description: 'Comprometa-se a orar regularmente por este projeto',
     cta: 'Comprometer-me em oração',
-    href: (username: string) => `/${username}/oracao`,
-    external: false,
   },
   {
     key: 'ambassador',
@@ -72,8 +71,6 @@ const SUPPORT_TYPES = [
     title: 'Divulgue e traga apoiadores',
     description: 'Compartilhe com sua rede e ajude este projeto a crescer',
     cta: 'Quero divulgar',
-    href: (username: string) => `/${username}/parceria`,
-    external: false,
   },
   {
     key: 'volunteer',
@@ -81,8 +78,6 @@ const SUPPORT_TYPES = [
     title: 'Voluntário',
     description: 'Ofereça apoio pessoal ou com suas habilidades',
     cta: 'Oferecer minha ajuda',
-    href: (username: string) => `/${username}/parceria`,
-    external: false,
   },
   {
     key: 'ongoing',
@@ -90,8 +85,6 @@ const SUPPORT_TYPES = [
     title: 'Parceria contínua',
     description: 'Acompanhe esta missão no longo prazo',
     cta: 'Ser parceiro de longo prazo',
-    href: (username: string) => `/${username}/parceria`,
-    external: false,
   },
 ]
 
@@ -117,20 +110,18 @@ export default async function ProjetoPublicoPage({ params }: Props) {
 
   if (!project) notFound()
 
-  const { data: milestones } = await supabase
-    .from('milestones')
-    .select('*')
-    .eq('highlight_id', project.id)
-    .order('order_index')
-
-  const { data: updates } = await supabase
-    .from('posts')
-    .select('id, content, media_urls, published_at, type')
-    .eq('profile_id', profile.id)
-    .eq('project_id', project.id)
-    .eq('is_draft', false)
-    .order('published_at', { ascending: false })
-    .limit(10)
+  const [{ data: milestones }, { data: updates }, { data: budgetCategories }, { data: pastProjects }, { count: supporterCount }] = await Promise.all([
+    supabase.from('milestones').select('*').eq('highlight_id', project.id).order('order_index'),
+    supabase.from('posts').select('id, content, media_urls, published_at, type')
+      .eq('profile_id', profile.id).eq('project_id', project.id).eq('is_draft', false)
+      .order('published_at', { ascending: false }).limit(10),
+    supabase.from('project_budget_progress').select('*').eq('highlight_id', project.id).order('order_index'),
+    supabase.from('highlights').select('id, slug, title, cover_url, cover_position')
+      .eq('profile_id', profile.id).eq('status', 'completed').neq('id', project.id)
+      .order('completed_at', { ascending: false }).limit(3),
+    supabase.from('pledges').select('reporter_user_id, reporter_email', { count: 'exact', head: true })
+      .eq('highlight_id', project.id).eq('status', 'confirmed'),
+  ])
 
   const types: string[] = Array.isArray(project.goal_type) ? project.goal_type : [project.goal_type]
   const pct = project.goal_amount
@@ -158,10 +149,17 @@ export default async function ProjetoPublicoPage({ params }: Props) {
           {profile.display_name}
         </Link>
 
-        {/* Capa */}
+        {/* Hero: capa 16:9 + avatar sobreposto */}
         {project.cover_url && (
-          <div className="relative h-52 rounded-2xl overflow-hidden">
+          <div className="relative aspect-video rounded-2xl overflow-hidden">
             <Image src={project.cover_url} alt={project.title} fill className="object-cover" style={{ objectPosition: project.cover_position ?? '50% 50%' }} />
+            <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-black/40 backdrop-blur-sm rounded-full pr-3 py-1">
+              <Avatar className="h-7 w-7 border-2 border-white/80">
+                <AvatarImage src={profile.avatar_url ?? ''} alt={profile.display_name} />
+                <AvatarFallback className="text-[10px]">{getInitials(profile.display_name)}</AvatarFallback>
+              </Avatar>
+              <span className="text-white text-xs font-medium">{profile.display_name}</span>
+            </div>
           </div>
         )}
 
@@ -172,6 +170,19 @@ export default async function ProjetoPublicoPage({ params }: Props) {
             <p className="text-sm italic text-muted-foreground border-l-2 border-primary/40 pl-3">{project.scripture}</p>
           )}
           {project.description && <p className="text-muted-foreground">{project.description}</p>}
+        </div>
+
+        {/* Datas + apoiadores */}
+        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+          {project.trip_start_date && (
+            <span className="px-2.5 py-1 rounded-full border">✈️ Viagem em {new Date(project.trip_start_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+          )}
+          {project.funding_deadline && (
+            <span className="px-2.5 py-1 rounded-full border">⏳ Prazo: {new Date(project.funding_deadline).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+          )}
+          {(supporterCount ?? 0) > 0 && (
+            <span className="px-2.5 py-1 rounded-full border flex items-center gap-1"><Users className="h-3 w-3" /> {supporterCount} apoiador(es)</span>
+          )}
         </div>
 
         {/* Bloco financeiro em destaque — só aparece quando relevante */}
@@ -187,18 +198,32 @@ export default async function ProjetoPublicoPage({ params }: Props) {
                 <p className="text-xs text-muted-foreground">{pct.toFixed(0)}% da meta atingida</p>
               </div>
             )}
-            {donationLink && (
-              <a href={donationLink} target="_blank" rel="noopener noreferrer" className={cn(buttonVariants({ size: 'lg' }), 'w-full text-base')}>
-                💰 Apoiar financeiramente
-              </a>
+
+            {budgetCategories && budgetCategories.length > 0 && (
+              <BudgetBreakdown categories={budgetCategories} currency={project.currency} />
             )}
+
+            <Link href={`/${username}/parceria?highlight_id=${project.id}`} className={cn(buttonVariants({ size: 'lg' }), 'w-full text-base')}>
+              💰 Faça parte deste projeto
+            </Link>
             {profile.pix_key && (
               <div className="text-center space-y-1">
-                <p className="text-xs text-muted-foreground">Ou via PIX</p>
+                <p className="text-xs text-muted-foreground">Chave PIX para transferência direta</p>
                 <p className="font-mono text-sm font-medium select-all">{profile.pix_key}</p>
               </div>
             )}
           </div>
+        )}
+
+        {hasFinancial && project.status === 'active' && (
+          <FundingProjectionCard
+            raisedAmount={project.current_amount}
+            goalAmount={project.goal_amount}
+            currency={project.currency}
+            createdAt={project.created_at}
+            fundingDeadline={project.funding_deadline}
+            tripStartDate={project.trip_start_date}
+          />
         )}
 
         {/* Outras formas de apoio */}
@@ -206,30 +231,25 @@ export default async function ProjetoPublicoPage({ params }: Props) {
           <div className="space-y-3">
             <h2 className="font-semibold">Outras formas de apoiar</h2>
             <div className="space-y-2">
-              {activeSupportTypes.filter(t => t.key !== 'financial').map(t => {
-                const href = t.href(username, donationLink)
-                if (!href) return null
-                return (
-                  <Link
-                    key={t.key}
-                    href={href}
-                    {...(t.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                    className="flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors group"
-                  >
-                    <span className="text-2xl shrink-0">{t.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm">{t.title}</p>
-                      <p className="text-xs text-muted-foreground">{t.description}</p>
-                    </div>
-                    <span className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'shrink-0 hidden sm:flex')}>
-                      {t.cta}
-                    </span>
-                    <span className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'shrink-0 sm:hidden')}>
-                      →
-                    </span>
-                  </Link>
-                )
-              })}
+              {activeSupportTypes.filter(t => t.key !== 'financial').map(t => (
+                <Link
+                  key={t.key}
+                  href={`/${username}/parceria?highlight_id=${project.id}`}
+                  className="flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors group"
+                >
+                  <span className="text-2xl shrink-0">{t.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">{t.title}</p>
+                    <p className="text-xs text-muted-foreground">{t.description}</p>
+                  </div>
+                  <span className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'shrink-0 hidden sm:flex')}>
+                    {t.cta}
+                  </span>
+                  <span className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'shrink-0 sm:hidden')}>
+                    →
+                  </span>
+                </Link>
+              ))}
             </div>
           </div>
         )}
@@ -239,30 +259,25 @@ export default async function ProjetoPublicoPage({ params }: Props) {
           <div className="space-y-3">
             <h2 className="font-semibold">Como apoiar</h2>
             <div className="space-y-2">
-              {activeSupportTypes.map(t => {
-                const href = t.href(username, donationLink)
-                if (!href) return null
-                return (
-                  <Link
-                    key={t.key}
-                    href={href}
-                    {...(t.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                    className="flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors group"
-                  >
-                    <span className="text-2xl shrink-0">{t.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm">{t.title}</p>
-                      <p className="text-xs text-muted-foreground">{t.description}</p>
-                    </div>
-                    <span className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'shrink-0 hidden sm:flex')}>
-                      {t.cta}
-                    </span>
-                    <span className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'shrink-0 sm:hidden')}>
-                      →
-                    </span>
-                  </Link>
-                )
-              })}
+              {activeSupportTypes.map(t => (
+                <Link
+                  key={t.key}
+                  href={`/${username}/parceria?highlight_id=${project.id}`}
+                  className="flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors group"
+                >
+                  <span className="text-2xl shrink-0">{t.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">{t.title}</p>
+                    <p className="text-xs text-muted-foreground">{t.description}</p>
+                  </div>
+                  <span className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'shrink-0 hidden sm:flex')}>
+                    {t.cta}
+                  </span>
+                  <span className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'shrink-0 sm:hidden')}>
+                    →
+                  </span>
+                </Link>
+              ))}
             </div>
           </div>
         )}
@@ -319,6 +334,28 @@ export default async function ProjetoPublicoPage({ params }: Props) {
                     </p>
                   )}
                 </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Projetos anteriores do mesmo missionário */}
+        {pastProjects && pastProjects.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold">Trajetória de {profile.display_name}</h2>
+              <Link href={`/${username}/trajetoria`} className="text-xs text-primary hover:underline">Ver tudo</Link>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {pastProjects.map(p => (
+                <Link key={p.id} href={`/${username}/projetos/${p.slug ?? p.id}`} className="space-y-1.5 group">
+                  <div className="relative aspect-square rounded-xl overflow-hidden bg-muted">
+                    {p.cover_url && (
+                      <Image src={p.cover_url} alt={p.title} fill className="object-cover group-hover:scale-105 transition-transform" style={{ objectPosition: p.cover_position ?? '50% 50%' }} />
+                    )}
+                  </div>
+                  <p className="text-xs font-medium line-clamp-2">{p.title}</p>
+                </Link>
               ))}
             </div>
           </div>

@@ -40,14 +40,14 @@ export default function CadastroPage() {
     }
 
     toast.success('Conta criada! Bem-vindo ao go→guide.')
-    router.push('/dashboard')
+    router.push('/onboarding')
   }
 
   async function handleGoogle() {
     const supabase = createClient()
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?redirect=/onboarding` },
     })
   }
 

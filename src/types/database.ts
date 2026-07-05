@@ -16,6 +16,14 @@ export type NotificationType =
   | 'new_message'
   | 'prayer_answered'
   | 'highlight_update'
+  | 'new_pledge'
+  | 'pledge_confirmed'
+  | 'prayer_reply'
+
+export type BudgetCategoryType =
+  | 'airfare' | 'bus' | 'boat' | 'ferry' | 'rideshare' | 'lodging'
+  | 'food' | 'equipment' | 'visa_documentation' | 'insurance'
+  | 'training' | 'shipping' | 'other'
 
 export interface Profile {
   id: string
@@ -40,6 +48,7 @@ export interface Profile {
   wise_url: string | null
   external_donation_url: string | null
   ai_credits: number
+  mission_start_date: string | null
   created_at: string
   updated_at: string
 }
@@ -54,7 +63,7 @@ export interface Post {
   scheduled_at: string | null
   is_draft: boolean
   project_id: string | null
-  created_by_user_id: string
+  created_by_user_id: string | null
   created_at: string
   updated_at: string
 }
@@ -77,8 +86,25 @@ export interface Highlight {
   cover_position: string
   scripture: string | null
   letter: string | null
+  trip_start_date: string | null
+  funding_deadline: string | null
+  completed_at: string | null
   created_at: string
   updated_at: string
+}
+
+export interface ProjectBudgetCategory {
+  id: string
+  highlight_id: string
+  category_type: BudgetCategoryType
+  custom_label: string | null
+  target_amount: number
+  order_index: number
+  created_at: string
+}
+
+export interface ProjectBudgetProgress extends ProjectBudgetCategory {
+  raised_amount: number
 }
 
 export interface Milestone {
@@ -95,12 +121,52 @@ export interface Milestone {
 export interface PrayerRequest {
   id: string
   profile_id: string
-  requester_id: string
+  requester_id: string | null
   requester_type: RequesterType
   content: string
   is_answered: boolean
   answered_at: string | null
+  is_private: boolean
+  nonce: string | null
   created_at: string
+}
+
+export interface PrayerRequestReply {
+  id: string
+  prayer_request_id: string
+  author_user_id: string | null
+  ciphertext: string | null
+  nonce: string | null
+  content: string | null
+  created_at: string
+}
+
+export interface UserEncryptionKey {
+  user_id: string
+  public_key: string
+  encrypted_private_key: string
+  kdf_salt: string
+  created_at: string
+  updated_at: string
+}
+
+export type E2EEResourceType = 'conversation' | 'prayer_request' | 'profile_sensitive_fields'
+
+export interface EncryptedDekGrant {
+  id: string
+  resource_type: E2EEResourceType
+  resource_id: string
+  grantee_user_id: string
+  wrapped_dek: string
+  revoked_at: string | null
+  created_at: string
+}
+
+export interface ProfileSensitiveData {
+  profile_id: string
+  ciphertext: string
+  nonce: string
+  updated_at: string
 }
 
 export interface Partner {
@@ -117,6 +183,52 @@ export interface Partner {
   created_at: string
 }
 
+export type VisibilityGrantSection = 'full_profile' | 'financial_summary' | 'prayer_requests' | 'sensitive_fields' | 'messages'
+
+export interface PartnerVisibilityGrant {
+  id: string
+  profile_id: string
+  partner_id: string
+  section: VisibilityGrantSection
+  granted_at: string
+}
+
+export type PledgePaymentMethod = 'pix' | 'paypal' | 'wise' | 'bank_transfer' | 'other'
+export type PledgeStatus = 'pending' | 'confirmed' | 'rejected'
+
+export interface Pledge {
+  id: string
+  highlight_id: string | null
+  profile_id: string
+  partner_id: string | null
+  reporter_user_id: string | null
+  reporter_name: string
+  reporter_email: string | null
+  reported_amount: number
+  currency: string
+  payment_method: PledgePaymentMethod
+  reported_at: string
+  proof_url: string | null
+  is_recurring_pledge: boolean
+  status: PledgeStatus
+  confirmed_transaction_id: string | null
+  reviewed_by_user_id: string | null
+  reviewed_at: string | null
+  rejection_reason: string | null
+  created_at: string
+}
+
+export type ProjectMemberRole = 'lead' | 'member' | 'viewer'
+
+export interface ProjectMember {
+  id: string
+  highlight_id: string
+  user_id: string
+  role: ProjectMemberRole
+  invited_by_user_id: string | null
+  joined_at: string
+}
+
 export interface FinancialAccount {
   id: string
   profile_id: string
@@ -126,7 +238,8 @@ export interface FinancialAccount {
   account_type: AccountType
   credit_limit: number | null
   is_shared: boolean
-  created_by_user_id: string
+  created_by_user_id: string | null
+  highlight_id: string | null
   created_at: string
   updated_at: string
 }
@@ -153,7 +266,7 @@ export interface Transaction {
   id: string
   account_id: string
   profile_id: string
-  created_by_user_id: string
+  created_by_user_id: string | null
   type: TransactionType
   amount: number
   currency: string
@@ -165,6 +278,8 @@ export interface Transaction {
   is_credit_purchase: boolean
   due_date: string | null
   date: string
+  highlight_id: string | null
+  budget_category_id: string | null
   created_at: string
 }
 
@@ -184,6 +299,7 @@ export interface Message {
   profile_id: string
   content: string
   is_encrypted: boolean
+  nonce: string | null
   created_at: string
 }
 

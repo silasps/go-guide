@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { PrayerInbox } from '@/components/prayer/prayer-inbox'
 import { NewPrayerButton } from '@/components/prayer/new-prayer-button'
+import { E2EEGate } from '@/components/messages/e2ee-gate'
 
 export default async function OracoesPage() {
   const supabase = await createClient()
@@ -13,6 +14,10 @@ export default async function OracoesPage() {
     .eq('profile_id', profile!.id)
     .order('created_at', { ascending: false })
 
+  const hasPrivate = (requests ?? []).some(r => r.is_private)
+
+  const inbox = <PrayerInbox requests={requests ?? []} myUserId={user!.id} />
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -22,7 +27,7 @@ export default async function OracoesPage() {
         </div>
         <NewPrayerButton profileId={profile!.id} />
       </div>
-      <PrayerInbox requests={requests ?? []} profileId={profile!.id} />
+      {hasPrivate ? <E2EEGate userId={user!.id}>{inbox}</E2EEGate> : inbox}
     </div>
   )
 }

@@ -9,16 +9,25 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { Trash2, Search } from 'lucide-react'
+import { Trash2, Search, MessageCircle } from 'lucide-react'
+import { VisibilityGrantsDialog } from './visibility-grants-dialog'
+import Link from 'next/link'
 
-const TYPE_LABEL: Record<string, string> = { financial: 'Financeiro', prayer: 'Oração', both: 'Ambos' }
+const TYPE_LABEL: Record<string, string> = { financial: 'Financeiro', prayer: 'Oração', both: 'Ambos', ambassador: 'Embaixador' }
 const TYPE_VARIANT: Record<string, 'default' | 'secondary' | 'outline'> = {
   financial: 'default',
   prayer: 'secondary',
   both: 'outline',
+  ambassador: 'outline',
 }
 
-export function PartnersList({ partners: initial }: { partners: Partner[] }) {
+interface Props {
+  partners: Partner[]
+  profileId: string
+  grantsByPartner: Record<string, string[]>
+}
+
+export function PartnersList({ partners: initial, profileId, grantsByPartner }: Props) {
   const [partners, setPartners] = useState(initial)
   const [search, setSearch] = useState('')
 
@@ -69,6 +78,20 @@ export function PartnersList({ partners: initial }: { partners: Partner[] }) {
             </div>
             <Badge variant={TYPE_VARIANT[p.type]} className="text-xs shrink-0">{TYPE_LABEL[p.type]}</Badge>
             <span className="text-xs text-muted-foreground shrink-0 hidden sm:block">{formatDate(p.joined_at)}</span>
+            {p.user_id && (
+              <>
+                <Link href={`/dashboard/mensagens/${p.user_id}`} className="shrink-0 text-muted-foreground hover:text-foreground transition-colors">
+                  <MessageCircle className="h-4 w-4" />
+                </Link>
+                <VisibilityGrantsDialog
+                  profileId={profileId}
+                  partnerId={p.id}
+                  partnerUserId={p.user_id!}
+                  partnerName={p.name}
+                  initialGrants={grantsByPartner[p.id] ?? []}
+                />
+              </>
+            )}
             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive shrink-0" onClick={() => handleDelete(p.id, p.name)}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>

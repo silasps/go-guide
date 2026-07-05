@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/media/compress'
-import { Highlight, Milestone } from '@/types/database'
+import { Highlight, Milestone, ProjectBudgetCategory, BudgetCategoryType } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -15,6 +15,22 @@ import Image from 'next/image'
 
 const CURRENCIES = ['BRL', 'USD', 'EUR', 'GBP', 'CHF', 'CAD', 'AUD']
 
+const BUDGET_CATEGORY_LABELS: Record<BudgetCategoryType, string> = {
+  airfare: 'Passagem aérea',
+  bus: 'Ônibus',
+  boat: 'Barco',
+  ferry: 'Balsa',
+  rideshare: 'Uber/táxi',
+  lodging: 'Estadia',
+  food: 'Alimentação',
+  equipment: 'Equipamento',
+  visa_documentation: 'Visto/documentação',
+  insurance: 'Seguro viagem',
+  training: 'Treinamento',
+  shipping: 'Envio de carga',
+  other: 'Outros',
+}
+
 const SUPPORT_TYPES = [
   { value: 'financial',   emoji: '💰', label: 'Apoio financeiro',    desc: 'Doação mensal ou pontual' },
   { value: 'prayer',      emoji: '🙏', label: 'Oração',              desc: 'Compromisso de orar regularmente' },
@@ -23,13 +39,17 @@ const SUPPORT_TYPES = [
   { value: 'ongoing',     emoji: '🔄', label: 'Ministério contínuo', desc: 'Sem meta específica, apoio de longo prazo' },
 ] as const
 
+function uniqueFileName(ext: string) {
+  return `${crypto.randomUUID()}.${ext}`
+}
+
 function parsePosition(pos: string): { x: number; y: number } {
   const [x, y] = pos.replace(/%/g, '').split(' ').map(Number)
   return { x: isNaN(x) ? 50 : x, y: isNaN(y) ? 50 : y }
 }
 
 interface Props {
-  highlight?: Highlight & { milestones?: Milestone[] }
+  highlight?: Highlight & { milestones?: Milestone[]; budgetCategories?: ProjectBudgetCategory[] }
   profileId: string
   backPath?: string
 }
@@ -63,6 +83,8 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
   const [position, setPosition] = useState<{ x: number; y: number }>(
     parsePosition(highlight?.cover_position ?? '50% 50%')
   )
+  const [tripStartDate, setTripStartDate] = useState(highlight?.trip_start_date ?? '')
+  const [fundingDeadline, setFundingDeadline] = useState(highlight?.funding_deadline ?? '')
   const [scripture, setScripture] = useState(highlight?.scripture ?? '')
   const [letter, setLetter] = useState(highlight?.letter ?? '')
   const [status, setStatus] = useState<'active' | 'hidden' | 'completed'>(
@@ -72,6 +94,29 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
     highlight?.milestones ?? []
   )
   const [newMilestone, setNewMilestone] = useState('')
+
+  const [budgetMode, setBudgetMode] = useState<'single' | 'detailed'>(
+    (highlight?.budgetCategories?.length ?? 0) > 0 ? 'detailed' : 'single'
+  )
+  const [budgetCategories, setBudgetCategories] = useState<Array<{ category_type: BudgetCategoryType; custom_label: string; target_amount: string }>>(
+    (highlight?.budgetCategories ?? []).map(b => ({
+      category_type: b.category_type,
+      custom_label: b.custom_label ?? '',
+      target_amount: toMasked(String(Math.round(b.target_amount))),
+    }))
+  )
+  const [newBudgetCategoryType, setNewBudgetCategoryType] = useState<BudgetCategoryType>('airfare')
+
+  function addBudgetCategory() {
+    setBudgetCategories(prev => [...prev, { category_type: newBudgetCategoryType, custom_label: '', target_amount: '' }])
+  }
+  function removeBudgetCategory(idx: number) {
+    setBudgetCategories(prev => prev.filter((_, i) => i !== idx))
+  }
+  function updateBudgetCategory(idx: number, patch: Partial<{ category_type: BudgetCategoryType; custom_label: string; target_amount: string }>) {
+    setBudgetCategories(prev => prev.map((b, i) => i === idx ? { ...b, ...patch } : b))
+  }
+  const budgetTotal = budgetCategories.reduce((sum, b) => sum + (parseFloat(fromMasked(b.target_amount)) || 0), 0)
 
   // Drag state (refs to avoid re-renders during drag)
   const dragging = useRef(false)
@@ -145,10 +190,11 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
 
     try {
       const supabase = createClient()
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
       let cover_url = highlight?.cover_url ?? null
 
       if (coverFile) {
-        const path = `${profileId}/highlights/${Date.now()}.webp`
+        const path = `${currentUser!.id}/highlights/${uniqueFileName('webp')}`
         const { error } = await supabase.storage.from('media').upload(path, coverFile, { upsert: true })
         if (error) throw error
         cover_url = supabase.storage.from('media').getPublicUrl(path).data.publicUrl
@@ -157,6 +203,7 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
       const cover_position = `${Math.round(position.x)}% ${Math.round(position.y)}%`
       const types = goalTypes.length > 0 ? goalTypes : ['ongoing']
       const hasFinancial = types.includes('financial')
+      const isDetailedBudget = hasFinancial && budgetMode === 'detailed'
 
       const res = await fetch('/api/highlights', {
         method: 'POST',
@@ -167,15 +214,26 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
           title: title.trim(),
           description: description.trim(),
           goalTypes,
-          goalAmount: hasFinancial && goalAmount ? parseFloat(fromMasked(goalAmount)) : null,
+          goalAmount: isDetailedBudget ? budgetTotal : (hasFinancial && goalAmount ? parseFloat(fromMasked(goalAmount)) : null),
           currentAmount: hasFinancial ? (parseFloat(fromMasked(currentAmount)) || 0) : 0,
           currency,
           coverUrl: cover_url,
           coverPosition: cover_position,
+          tripStartDate: tripStartDate || null,
+          fundingDeadline: fundingDeadline || null,
           scripture: scripture.trim(),
           letter: letter.trim(),
           status,
           milestones,
+          budgetCategories: isDetailedBudget
+            ? budgetCategories
+                .filter(b => parseFloat(fromMasked(b.target_amount)) > 0)
+                .map(b => ({
+                  category_type: b.category_type,
+                  custom_label: b.category_type === 'other' ? (b.custom_label.trim() || 'Outros') : null,
+                  target_amount: parseFloat(fromMasked(b.target_amount)),
+                }))
+            : [],
         }),
       })
       if (!res.ok) {
@@ -274,6 +332,17 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
             <Textarea id="description" value={description} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)} placeholder="Descreva o projeto e seu impacto..." rows={3} />
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="trip_start_date">Data da viagem</Label>
+              <Input id="trip_start_date" type="date" value={tripStartDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTripStartDate(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="funding_deadline">Prazo para bater a meta</Label>
+              <Input id="funding_deadline" type="date" value={fundingDeadline} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFundingDeadline(e.target.value)} />
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label>Como os parceiros podem ajudar?</Label>
             <p className="text-xs text-muted-foreground">Selecione uma ou mais formas de apoio para este projeto.</p>
@@ -310,37 +379,109 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
           </div>
 
           {goalTypes.includes('financial') && (
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-2 col-span-1">
-                <Label htmlFor="currency">Moeda</Label>
-                <select
-                  id="currency"
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
-                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                >
-                  {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-2 col-span-1">
+                  <Label htmlFor="currency">Moeda</Label>
+                  <select
+                    id="currency"
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                    className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  >
+                    {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                {budgetMode === 'single' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="goal">Meta</Label>
+                    <Input
+                      id="goal"
+                      inputMode="numeric"
+                      value={goalAmount}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGoalAmount(toMasked(e.target.value))}
+                      placeholder="0"
+                    />
+                  </div>
+                )}
+                {budgetMode === 'single' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="current">Arrecadado</Label>
+                    <Input
+                      id="current"
+                      inputMode="numeric"
+                      value={currentAmount}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCurrentAmount(toMasked(e.target.value))}
+                      placeholder="0"
+                    />
+                  </div>
+                )}
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="goal">Meta</Label>
-                <Input
-                  id="goal"
-                  inputMode="numeric"
-                  value={goalAmount}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGoalAmount(toMasked(e.target.value))}
-                  placeholder="0"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="current">Arrecadado</Label>
-                <Input
-                  id="current"
-                  inputMode="numeric"
-                  value={currentAmount}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCurrentAmount(toMasked(e.target.value))}
-                  placeholder="0"
-                />
+                <div className="flex items-center justify-between">
+                  <Label>Orçamento detalhado por categoria</Label>
+                  <button
+                    type="button"
+                    onClick={() => setBudgetMode(m => m === 'single' ? 'detailed' : 'single')}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    {budgetMode === 'single' ? 'Detalhar por categoria' : 'Usar meta única'}
+                  </button>
+                </div>
+
+                {budgetMode === 'detailed' && (
+                  <div className="space-y-2 rounded-xl border p-3">
+                    {budgetCategories.map((b, i) => (
+                      <div key={i} className="flex gap-2 items-start">
+                        <select
+                          value={b.category_type}
+                          onChange={(e) => updateBudgetCategory(i, { category_type: e.target.value as BudgetCategoryType })}
+                          className="h-8 rounded-lg border border-input bg-transparent px-2 text-xs outline-none focus-visible:border-ring flex-1 min-w-0"
+                        >
+                          {Object.entries(BUDGET_CATEGORY_LABELS).map(([value, label]) => (
+                            <option key={value} value={value}>{label}</option>
+                          ))}
+                        </select>
+                        {b.category_type === 'other' && (
+                          <Input
+                            value={b.custom_label}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateBudgetCategory(i, { custom_label: e.target.value })}
+                            placeholder="Qual?"
+                            className="h-8 text-xs flex-1"
+                          />
+                        )}
+                        <Input
+                          inputMode="numeric"
+                          value={b.target_amount}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateBudgetCategory(i, { target_amount: toMasked(e.target.value) })}
+                          placeholder="Valor"
+                          className="h-8 text-xs w-24 shrink-0"
+                        />
+                        <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeBudgetCategory(i)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                    <div className="flex gap-2 pt-1">
+                      <select
+                        value={newBudgetCategoryType}
+                        onChange={(e) => setNewBudgetCategoryType(e.target.value as BudgetCategoryType)}
+                        className="h-8 flex-1 rounded-lg border border-input bg-transparent px-2 text-xs outline-none focus-visible:border-ring"
+                      >
+                        {Object.entries(BUDGET_CATEGORY_LABELS).map(([value, label]) => (
+                          <option key={value} value={value}>{label}</option>
+                        ))}
+                      </select>
+                      <Button type="button" variant="outline" size="sm" onClick={addBudgetCategory} className="gap-1.5">
+                        <Plus className="h-3.5 w-3.5" /> Adicionar
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground pt-1">
+                      Meta total (soma das categorias): <span className="font-medium text-foreground">{budgetTotal.toLocaleString('pt-BR', { style: 'currency', currency })}</span>
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}

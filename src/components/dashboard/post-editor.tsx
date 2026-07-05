@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
-import { compressImage, validateVideo, getMediaType, formatFileSize, VIDEO_MAX_SIZE_MB } from '@/lib/media/compress'
+import { compressImage, validateVideo, validateVideoDuration, getMediaType, formatFileSize, VIDEO_MAX_SIZE_MB } from '@/lib/media/compress'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -63,6 +63,11 @@ export function PostEditor({ post, profileId, userId }: Props) {
         const validation = validateVideo(file)
         if (!validation.valid) {
           setMediaError(validation.error!)
+          continue
+        }
+        const durationCheck = await validateVideoDuration(file)
+        if (!durationCheck.valid) {
+          setMediaError(durationCheck.error!)
           continue
         }
         newFiles.push({ file, preview: URL.createObjectURL(file), type: 'video' })

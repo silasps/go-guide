@@ -10,6 +10,7 @@ const IMAGE_OPTIONS = {
 
 export const VIDEO_MAX_SIZE_MB = 500
 export const VIDEO_MAX_SIZE_BYTES = VIDEO_MAX_SIZE_MB * 1024 * 1024
+export const VIDEO_MAX_DURATION_SECONDS = 30
 
 export async function compressImage(file: File): Promise<File> {
   if (!file.type.startsWith('image/')) return file
@@ -25,6 +26,36 @@ export function validateVideo(file: File): { valid: boolean; error?: string } {
     }
   }
   return { valid: true }
+}
+
+/** Lê a duração de um vídeo carregando-o offscreen, sem fazer upload. */
+export function getVideoDuration(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video')
+    video.preload = 'metadata'
+    const url = URL.createObjectURL(file)
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(url)
+      resolve(video.duration)
+    }
+    video.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Não foi possível ler o vídeo.'))
+    }
+    video.src = url
+  })
+}
+
+export async function validateVideoDuration(file: File): Promise<{ valid: boolean; duration?: number; error?: string }> {
+  try {
+    const duration = await getVideoDuration(file)
+    if (duration > VIDEO_MAX_DURATION_SECONDS) {
+      return { valid: false, duration, error: `Vídeos de até ${VIDEO_MAX_DURATION_SECONDS}s são suportados. Este tem ${Math.round(duration)}s.` }
+    }
+    return { valid: true, duration }
+  } catch {
+    return { valid: false, error: 'Não foi possível verificar a duração do vídeo.' }
+  }
 }
 
 export function getMediaType(file: File): 'image' | 'video' | 'unknown' {

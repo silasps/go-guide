@@ -30,6 +30,7 @@ export function ProfileForm({ profile }: Props) {
   const [username, setUsername] = useState(profile.username)
   const [bio, setBio] = useState(profile.bio ?? '')
   const [location, setLocation] = useState(profile.location ?? '')
+  const [missionStartDate, setMissionStartDate] = useState(profile.mission_start_date ?? '')
   const [websiteUrl, setWebsiteUrl] = useState(profile.website_url ?? '')
   const [instagramUrl, setInstagramUrl] = useState(profile.instagram_url ?? '')
   const [youtubeUrl, setYoutubeUrl] = useState(profile.youtube_url ?? '')
@@ -85,7 +86,7 @@ export function ProfileForm({ profile }: Props) {
     let avatar_url = profile.avatar_url
     if (avatarFile) {
       const ext = 'webp'
-      const path = `${profile.id}/avatar.${ext}`
+      const path = `${profile.user_id}/avatar.${ext}`
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(path, avatarFile, { upsert: true, contentType: 'image/webp' })
@@ -105,6 +106,7 @@ export function ProfileForm({ profile }: Props) {
         username,
         bio: bio || null,
         location: location || null,
+        mission_start_date: missionStartDate || null,
         avatar_url,
         website_url: websiteUrl || null,
         instagram_url: instagramUrl || null,
@@ -220,6 +222,18 @@ export function ProfileForm({ profile }: Props) {
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLocation(e.target.value)}
           placeholder="Nairóbi, Quênia"
         />
+      </div>
+
+      {/* Início da missão */}
+      <div className="space-y-2">
+        <Label htmlFor="mission_start_date">Em campo desde</Label>
+        <Input
+          id="mission_start_date"
+          type="date"
+          value={missionStartDate}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMissionStartDate(e.target.value)}
+        />
+        <p className="text-xs text-muted-foreground">Usado na chamada &quot;faça parte do que o Senhor está fazendo desde {'{ano}'}&quot; na tela de parceria.</p>
       </div>
 
       {/* Redes sociais */}

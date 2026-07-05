@@ -1,0 +1,114 @@
+'use client'
+
+import { useState } from 'react'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { PRICING_PLANS, type PlanId } from '@/lib/pricing'
+import { toast } from 'sonner'
+import { Check, Loader2 } from 'lucide-react'
+
+export function PricingToggle() {
+  const [interval, setInterval] = useState<'monthly' | 'yearly'>('monthly')
+  const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null)
+
+  async function handleSubscribe(plan: PlanId) {
+    if (plan === 'free') {
+      window.location.href = '/cadastro'
+      return
+    }
+
+    setLoadingPlan(plan)
+    try {
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, interval }),
+      })
+
+      if (res.status === 401) {
+        window.location.href = `/cadastro?redirect=/planos`
+        return
+      }
+      if (!res.ok) {
+        toast.info('Pagamentos internacionais chegando em breve — estamos ativando o Stripe para aceitar cartões do mundo todo.')
+        return
+      }
+
+      const { url } = await res.json()
+      if (url) window.location.href = url
+    } finally {
+      setLoadingPlan(null)
+    }
+  }
+
+  return (
+    <div>
+      {/* Toggle mensal/anual */}
+      <div className="flex items-center justify-center gap-3 mb-10">
+        <button
+          onClick={() => setInterval('monthly')}
+          className={cn('text-sm font-medium px-3 py-1.5 rounded-full transition-colors', interval === 'monthly' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}
+        >
+          Mensal
+        </button>
+        <button
+          onClick={() => setInterval('yearly')}
+          className={cn('text-sm font-medium px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5', interval === 'yearly' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}
+        >
+          Anual
+          <Badge variant="secondary" className="text-[10px]">2 meses grátis</Badge>
+        </button>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-3 items-start">
+        {PRICING_PLANS.map((plan) => {
+          const price = interval === 'monthly' ? plan.priceMonthly : plan.priceYearly
+          return (
+            <div
+              key={plan.id}
+              className={cn(
+                'rounded-xl ring-1 ring-foreground/10 bg-card p-6 flex flex-col',
+                plan.highlighted && 'ring-2 ring-primary shadow-lg relative'
+              )}
+            >
+              {plan.highlighted && (
+                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">Mais popular</Badge>
+              )}
+              <h3 className="font-semibold text-lg">{plan.name}</h3>
+              <p className="text-sm text-muted-foreground mt-1">{plan.tagline}</p>
+              <div className="mt-4 mb-6">
+                <span className="text-3xl font-bold">
+                  {price === 0 ? 'Grátis' : `$${price}`}
+                </span>
+                {price > 0 && (
+                  <span className="text-muted-foreground text-sm">/{interval === 'monthly' ? 'mês' : 'ano'}</span>
+                )}
+              </div>
+              <ul className="space-y-2.5 mb-6 flex-1">
+                {plan.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm">
+                    <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                variant={plan.highlighted ? 'default' : 'outline'}
+                disabled={loadingPlan === plan.id}
+                onClick={() => handleSubscribe(plan.id)}
+              >
+                {loadingPlan === plan.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {plan.cta}
+              </Button>
+            </div>
+          )
+        })}
+      </div>
+
+      <p className="text-center text-xs text-muted-foreground mt-8">
+        Aceita cartões do mundo todo, cobrança automática na moeda local. Pagamentos internacionais via Stripe — ativação em breve.
+      </p>
+    </div>
+  )
+}

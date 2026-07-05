@@ -8,6 +8,8 @@ import { toast } from 'sonner'
 import { Loader2, Globe, Lock, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
+import { E2EEGate } from '@/components/messages/e2ee-gate'
+import { SensitiveDataForm } from './sensitive-data-form'
 
 interface Props {
   profile: Profile
@@ -92,6 +94,13 @@ export function PrivacyForm({ profile }: Props) {
         {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         Salvar
       </Button>
+
+      <div className="pt-4 border-t space-y-3">
+        <h3 className="text-sm font-medium">Dados sensíveis (cifrados)</h3>
+        <E2EEGate userId={profile.user_id}>
+          <SensitiveDataForm profileId={profile.id} userId={profile.user_id} />
+        </E2EEGate>
+      </div>
     </div>
   )
 }

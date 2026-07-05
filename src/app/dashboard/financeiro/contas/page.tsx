@@ -1,0 +1,34 @@
+import { createClient } from '@/lib/supabase/server'
+import { AccountCard } from '@/components/financial/account-card'
+import { AccountForm } from '@/components/financial/account-form'
+
+export default async function ContasPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', user!.id).single()
+
+  const { data: accounts } = await supabase.from('financial_accounts').select('*').order('created_at')
+  const accountIds = (accounts ?? []).map(a => a.id)
+  const { data: members } = accountIds.length > 0
+    ? await supabase.from('account_members').select('*').in('account_id', accountIds)
+    : { data: [] }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">{accounts?.length ?? 0} conta(s)</p>
+        <AccountForm profileId={profile!.id} />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {(accounts ?? []).map(a => (
+          <AccountCard
+            key={a.id}
+            account={a}
+            profileId={profile!.id}
+            members={(members ?? []).filter(m => m.account_id === a.id)}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
