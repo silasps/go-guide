@@ -2,25 +2,28 @@
 
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { Profile } from '@/types/database'
+import { Profile, ProfileManager } from '@/types/database'
 import { ProfileForm } from './profile-form'
 import { PaymentForm } from './payment-form'
 import { PrivacyForm } from './privacy-form'
 import { AccountForm } from './account-form'
-import { User, CreditCard, Lock, Settings } from 'lucide-react'
+import { AccessManagersForm } from './access-managers-form'
+import { User, CreditCard, Lock, Settings, Users } from 'lucide-react'
 
 const tabs = [
   { id: 'perfil', label: 'Perfil', icon: User },
   { id: 'pagamentos', label: 'Pagamentos', icon: CreditCard },
   { id: 'privacidade', label: 'Privacidade', icon: Lock },
+  { id: 'acesso', label: 'Acesso', icon: Users },
   { id: 'conta', label: 'Conta', icon: Settings },
 ]
 
 interface Props {
   profile: Profile
+  managers: ProfileManager[]
 }
 
-export function SettingsTabs({ profile }: Props) {
+export function SettingsTabs({ profile, managers }: Props) {
   const [activeTab, setActiveTab] = useState('perfil')
 
   return (
@@ -50,6 +53,7 @@ export function SettingsTabs({ profile }: Props) {
         {activeTab === 'perfil' && <ProfileForm profile={profile} />}
         {activeTab === 'pagamentos' && <PaymentForm profile={profile} />}
         {activeTab === 'privacidade' && <PrivacyForm profile={profile} />}
+        {activeTab === 'acesso' && <AccessManagersForm profile={profile} managers={managers} />}
         {activeTab === 'conta' && <AccountForm profile={profile} />}
       </div>
     </div>

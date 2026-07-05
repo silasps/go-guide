@@ -1,10 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
+import { getActiveProfile } from '@/lib/profile/active-profile'
 import { HighlightForm } from '@/components/highlights/highlight-form'
 
 export default async function NovoDestaquePage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', user!.id).single()
+  const profile = await getActiveProfile()
 
   return (
     <div className="space-y-6">

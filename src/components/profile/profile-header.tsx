@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
 import { Profile } from '@/types/database'
 import { getInitials } from '@/lib/utils'
 import { MapPin, Link2 } from 'lucide-react'
@@ -16,9 +17,10 @@ function extractDomain(url: string) {
   }
 }
 
-export function ProfileHeader({ profile }: Props) {
+export async function ProfileHeader({ profile }: Props) {
+  const t = await getTranslations('PublicProfile')
   const isPublic = profile.privacy_mode === 'public'
-  const displayName = profile.privacy_mode === 'stealth' ? 'Missionário' : profile.display_name
+  const displayName = profile.privacy_mode === 'stealth' ? t('missionaryFallbackName') : profile.display_name
 
   const donationLink = profile.external_donation_url || profile.paypal_url || profile.wise_url
 
@@ -48,7 +50,7 @@ export function ProfileHeader({ profile }: Props) {
 
         <div className="space-y-0.5">
           <h1 className="text-lg font-semibold leading-tight">{displayName}</h1>
-          {isPublic && profile.location && (
+          {isPublic && profile.show_location && profile.location && (
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
               <MapPin className="h-3.5 w-3.5 shrink-0" />
               {profile.location}
@@ -92,7 +94,7 @@ export function ProfileHeader({ profile }: Props) {
       {/* Pix badge */}
       {profile.pix_key && !donationLink && (
         <span className="inline-block text-xs bg-muted px-2.5 py-1 rounded-full text-muted-foreground">
-          Pix disponível — solicite a chave ao missionário
+          {t('pixAvailable')}
         </span>
       )}
     </div>

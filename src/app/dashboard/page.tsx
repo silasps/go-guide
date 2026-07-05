@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { getActiveProfile } from '@/lib/profile/active-profile'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Users, FileText, Heart, Sparkles, Plus, FolderOpen, ArrowRight } from 'lucide-react'
 import { SetupChecklistBanner } from '@/components/dashboard/setup-checklist-banner'
@@ -8,13 +10,8 @@ import { cn } from '@/lib/utils'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('user_id', user!.id)
-    .single()
+  const profile = await getActiveProfile()
+  const t = await getTranslations('DashboardOverview')
 
   const [
     { count: partnersCount },
@@ -29,15 +26,15 @@ export default async function DashboardPage() {
   ])
 
   const stats = [
-    { label: 'Parceiros', value: partnersCount ?? 0, icon: Users, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/40' },
-    { label: 'Publicações', value: postsCount ?? 0, icon: FileText, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/40' },
-    { label: 'Orações pendentes', value: prayerCount ?? 0, icon: Heart, color: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-950/40' },
-    { label: 'Créditos IA', value: profile?.ai_credits ?? 0, icon: Sparkles, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-950/40' },
+    { label: t('statPartners'), value: partnersCount ?? 0, icon: Users, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/40', href: '/dashboard/parceiros' },
+    { label: t('statPosts'), value: postsCount ?? 0, icon: FileText, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/40', href: '/dashboard/publicacoes' },
+    { label: t('statPrayers'), value: prayerCount ?? 0, icon: Heart, color: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-950/40', href: '/dashboard/oracoes' },
+    { label: t('statAiCredits'), value: profile?.ai_credits ?? 0, icon: Sparkles, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-950/40', href: '/planos' },
   ]
 
   const quickActions = [
-    { href: '/dashboard/publicacoes/nova', label: 'Nova publicação', icon: Plus, description: 'Compartilhe uma atualização' },
-    { href: '/dashboard/projetos/novo', label: 'Novo projeto', icon: FolderOpen, description: 'Campanha ou destaque' },
+    { href: '/dashboard/publicacoes/nova', label: t('newPost'), icon: Plus, description: t('newPostDesc') },
+    { href: '/dashboard/projetos/novo', label: t('newProject'), icon: FolderOpen, description: t('newProjectDesc') },
   ]
 
   const firstName = profile?.display_name?.split(' ')[0]
@@ -53,26 +50,28 @@ export default async function DashboardPage() {
 
       {/* Greeting */}
       <div>
-        <h1 className="text-xl font-semibold">Olá, {firstName} 👋</h1>
-        <p className="text-muted-foreground text-sm mt-0.5">Aqui está um resumo da sua missão.</p>
+        <h1 className="text-xl font-semibold">{t('greeting', { name: firstName ?? '' })}</h1>
+        <p className="text-muted-foreground text-sm mt-0.5">{t('subtitle')}</p>
       </div>
 
       {/* Stats grid — 2 col mobile, 4 col desktop */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        {stats.map(({ label, value, icon: Icon, color, bg }) => (
-          <Card key={label} className="border-0 shadow-none bg-card">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium mb-1">{label}</p>
-                  <p className="text-2xl font-bold">{value}</p>
+        {stats.map(({ label, value, icon: Icon, color, bg, href }) => (
+          <Link key={label} href={href}>
+            <Card className="border-0 shadow-none bg-card transition-colors hover:bg-muted/60">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium mb-1">{label}</p>
+                    <p className="text-2xl font-bold">{value}</p>
+                  </div>
+                  <div className={cn('p-2 rounded-lg shrink-0', bg)}>
+                    <Icon className={cn('h-4 w-4', color)} />
+                  </div>
                 </div>
-                <div className={cn('p-2 rounded-lg shrink-0', bg)}>
-                  <Icon className={cn('h-4 w-4', color)} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
 
@@ -81,12 +80,12 @@ export default async function DashboardPage() {
         {/* Recent posts */}
         <Card>
           <CardHeader className="pb-3 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-semibold">Publicações recentes</CardTitle>
+            <CardTitle className="text-sm font-semibold">{t('recentPosts')}</CardTitle>
             <Link
               href="/dashboard/publicacoes"
               className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
             >
-              Ver todas <ArrowRight className="h-3 w-3" />
+              {t('viewAll')} <ArrowRight className="h-3 w-3" />
             </Link>
           </CardHeader>
           <CardContent className="pt-0">
@@ -98,7 +97,7 @@ export default async function DashboardPage() {
         <div className="space-y-3">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold">Ações rápidas</CardTitle>
+              <CardTitle className="text-sm font-semibold">{t('quickActions')}</CardTitle>
             </CardHeader>
             <CardContent className="pt-0 space-y-2">
               {quickActions.map(({ href, label, icon: Icon, description }) => (
@@ -121,13 +120,13 @@ export default async function DashboardPage() {
 
           <Card>
             <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground mb-2 font-medium">Seu perfil público</p>
+              <p className="text-xs text-muted-foreground mb-2 font-medium">{t('yourPublicProfile')}</p>
               <Link
                 href={`/${profile?.username}`}
                 target="_blank"
                 className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'w-full text-xs')}
               >
-                Ver como parceiros veem
+                {t('viewAsPartners')}
               </Link>
             </CardContent>
           </Card>
@@ -139,6 +138,9 @@ export default async function DashboardPage() {
 
 async function RecentPosts({ profileId }: { profileId: string }) {
   const supabase = await createClient()
+  const locale = await getLocale()
+  const t = await getTranslations('DashboardOverview')
+  const tPostType = await getTranslations('PostType')
   const { data: posts } = await supabase
     .from('posts')
     .select('id, content, type, published_at')
@@ -150,32 +152,30 @@ async function RecentPosts({ profileId }: { profileId: string }) {
   if (!posts?.length) {
     return (
       <div className="py-6 text-center">
-        <p className="text-sm text-muted-foreground">Nenhuma publicação ainda.</p>
+        <p className="text-sm text-muted-foreground">{t('noPostsYet')}</p>
         <Link
           href="/dashboard/publicacoes/nova"
           className={cn(buttonVariants({ size: 'sm' }), 'mt-3 gap-1.5')}
         >
           <Plus className="h-3.5 w-3.5" />
-          Criar primeira publicação
+          {t('createFirstPost')}
         </Link>
       </div>
     )
   }
-
-  const typeLabel: Record<string, string> = { text: 'Texto', image: 'Imagem', video: 'Vídeo', carousel: 'Álbum' }
 
   return (
     <ul className="divide-y">
       {posts.map((post) => (
         <li key={post.id} className="flex items-center gap-3 py-2.5 text-sm first:pt-0 last:pb-0">
           <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded shrink-0">
-            {typeLabel[post.type] ?? post.type}
+            {tPostType.has(post.type) ? tPostType(post.type as 'text') : post.type}
           </span>
           <span className="truncate text-muted-foreground flex-1">
-            {post.content?.slice(0, 60) ?? '(sem texto)'}
+            {post.content?.slice(0, 60) ?? t('noText')}
           </span>
           <span className="text-xs text-muted-foreground ml-auto shrink-0">
-            {post.published_at ? new Date(post.published_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : '—'}
+            {post.published_at ? new Date(post.published_at).toLocaleDateString(locale, { day: '2-digit', month: 'short' }) : '—'}
           </span>
         </li>
       ))}

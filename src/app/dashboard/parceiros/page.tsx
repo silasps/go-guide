@@ -1,11 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
+import { getActiveProfile } from '@/lib/profile/active-profile'
 import { PartnersList } from '@/components/partners/partners-list'
 import { AddPartnerButton } from '@/components/partners/add-partner-button'
 
 export default async function ParceirosPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const { data: profile } = await supabase.from('profiles').select('id, plan').eq('user_id', user!.id).single()
+  const profile = await getActiveProfile()
 
   const { data: partners } = await supabase
     .from('partners')

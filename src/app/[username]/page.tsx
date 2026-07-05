@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getTranslations } from 'next-intl/server'
 import type { Metadata } from 'next'
 import { ProfileHeader } from '@/components/profile/profile-header'
 import { ProjectsSection } from '@/components/profile/projects-section'
@@ -19,12 +20,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .eq('username', username)
     .single()
 
-  if (!profile) return { title: 'Perfil não encontrado' }
+  const t = await getTranslations('PublicProfile')
+  if (!profile) return { title: t('notFoundTitle') }
 
   const isIndexable = profile.privacy_mode === 'public'
 
   return {
-    title: profile.privacy_mode === 'stealth' ? 'Missionário' : profile.display_name,
+    title: profile.privacy_mode === 'stealth' ? t('missionaryFallbackName') : profile.display_name,
     description: profile.bio ?? undefined,
     openGraph: isIndexable
       ? {
@@ -87,14 +89,15 @@ export default async function ProfilePage({ params }: Props) {
   )
 }
 
-function PrivateProfileScreen({ name }: { name: string }) {
+async function PrivateProfileScreen({ name }: { name: string }) {
+  const t = await getTranslations('PublicProfile')
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="text-center space-y-4 max-w-sm">
         <div className="text-5xl">🔒</div>
         <h1 className="text-xl font-semibold">{name}</h1>
         <p className="text-muted-foreground text-sm">
-          Este perfil é privado. Entre em contato com o missionário para solicitar acesso.
+          {t('privateProfileMessage')}
         </p>
       </div>
     </div>

@@ -1,4 +1,6 @@
 export type PrivacyMode = 'public' | 'private' | 'stealth'
+export type ProfileAccountType = 'individual' | 'family' | 'organization'
+export type Locale = 'pt' | 'en' | 'es'
 export type Plan = 'free' | 'pro' | 'mission'
 export type PostType = 'text' | 'image' | 'video' | 'carousel'
 export type PartnerType = 'financial' | 'prayer' | 'both' | 'ambassador'
@@ -32,6 +34,8 @@ export interface Profile {
   display_name: string
   bio: string | null
   location: string | null
+  show_location: boolean
+  account_type: ProfileAccountType
   avatar_url: string | null
   cover_url: string | null
   privacy_mode: PrivacyMode
@@ -48,7 +52,9 @@ export interface Profile {
   wise_url: string | null
   external_donation_url: string | null
   ai_credits: number
+  extra_manager_seats: number
   mission_start_date: string | null
+  locale: Locale
   created_at: string
   updated_at: string
 }
@@ -227,6 +233,17 @@ export interface ProjectMember {
   role: ProjectMemberRole
   invited_by_user_id: string | null
   joined_at: string
+}
+
+export type ProfileManagerRole = 'manager' | 'viewer'
+
+export interface ProfileManager {
+  id: string
+  profile_id: string
+  user_id: string
+  role: ProfileManagerRole
+  invited_by_user_id: string | null
+  created_at: string
 }
 
 export interface FinancialAccount {

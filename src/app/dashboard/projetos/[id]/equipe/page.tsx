@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getActiveProfile } from '@/lib/profile/active-profile'
 import { ProjectTeamPanel } from '@/components/highlights/project-team-panel'
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
@@ -11,8 +12,7 @@ interface Props { params: Promise<{ id: string }> }
 export default async function ProjectTeamPage({ params }: Props) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', user!.id).single()
+  const profile = await getActiveProfile()
   if (!profile) notFound()
 
   const { data: highlight } = await supabase.from('highlights').select('id, title').eq('id', id).eq('profile_id', profile.id).single()

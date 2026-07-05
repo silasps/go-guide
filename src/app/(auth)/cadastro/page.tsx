@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,6 +13,7 @@ import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 
 export default function CadastroPage() {
+  const t = useTranslations('Auth')
   const router = useRouter()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -21,7 +23,7 @@ export default function CadastroPage() {
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
     if (password.length < 8) {
-      toast.error('A senha deve ter pelo menos 8 caracteres.')
+      toast.error(t('passwordTooShort'))
       return
     }
     setLoading(true)
@@ -39,7 +41,7 @@ export default function CadastroPage() {
       return
     }
 
-    toast.success('Conta criada! Bem-vindo ao go→guide.')
+    toast.success(t('signupSuccess'))
     router.push('/onboarding')
   }
 
@@ -54,8 +56,8 @@ export default function CadastroPage() {
   return (
     <Card>
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl">Criar conta</CardTitle>
-        <CardDescription>Comece sua jornada missionária digital</CardDescription>
+        <CardTitle className="text-2xl">{t('signupTitle')}</CardTitle>
+        <CardDescription>{t('signupSubtitle')}</CardDescription>
       </CardHeader>
 
       <CardContent>
@@ -66,7 +68,7 @@ export default function CadastroPage() {
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
           </svg>
-          Continuar com Google
+          {t('continueGoogle')}
         </Button>
 
         <div className="relative mb-4">
@@ -74,17 +76,17 @@ export default function CadastroPage() {
             <span className="w-full border-t" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">ou</span>
+            <span className="bg-card px-2 text-muted-foreground">{t('or')}</span>
           </div>
         </div>
 
         <form onSubmit={handleSignup} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nome completo</Label>
+            <Label htmlFor="name">{t('fullName')}</Label>
             <Input
               id="name"
               type="text"
-              placeholder="João Silva"
+              placeholder={t('fullNamePlaceholder')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -92,11 +94,11 @@ export default function CadastroPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t('email')}</Label>
             <Input
               id="email"
               type="email"
-              placeholder="seu@email.com"
+              placeholder={t('emailPlaceholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -105,11 +107,11 @@ export default function CadastroPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Senha</Label>
+            <Label htmlFor="password">{t('password')}</Label>
             <Input
               id="password"
               type="password"
-              placeholder="Mínimo 8 caracteres"
+              placeholder={t('passwordPlaceholder')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -119,16 +121,16 @@ export default function CadastroPage() {
 
           <Button type="submit" className="w-full" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Criar conta grátis
+            {t('signupSubmit')}
           </Button>
         </form>
       </CardContent>
 
       <CardFooter className="justify-center">
         <p className="text-sm text-muted-foreground">
-          Já tem conta?{' '}
+          {t('hasAccount')}{' '}
           <Link href="/login" className="text-primary hover:underline font-medium">
-            Entrar
+            {t('login')}
           </Link>
         </p>
       </CardFooter>

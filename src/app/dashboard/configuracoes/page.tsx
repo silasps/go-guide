@@ -1,15 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
+import { getActiveProfile } from '@/lib/profile/active-profile'
 import { SettingsTabs } from '@/components/dashboard/settings/settings-tabs'
 
 export default async function ConfiguracoesPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const profile = await getActiveProfile()
 
-  const { data: profile } = await supabase
-    .from('profiles')
+  const { data: managers } = await supabase
+    .from('profile_managers')
     .select('*')
-    .eq('user_id', user!.id)
-    .single()
+    .eq('profile_id', profile!.id)
+    .order('created_at')
 
   return (
     <div className="max-w-2xl">
@@ -17,7 +18,7 @@ export default async function ConfiguracoesPage() {
         <h1 className="text-xl font-semibold">Configurações</h1>
         <p className="text-muted-foreground text-sm mt-0.5">Gerencie seu perfil, pagamentos e privacidade.</p>
       </div>
-      <SettingsTabs profile={profile!} />
+      <SettingsTabs profile={profile!} managers={managers ?? []} />
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getActiveProfile } from '@/lib/profile/active-profile'
 import { PrayerInbox } from '@/components/prayer/prayer-inbox'
 import { NewPrayerButton } from '@/components/prayer/new-prayer-button'
 import { E2EEGate } from '@/components/messages/e2ee-gate'
@@ -6,7 +7,7 @@ import { E2EEGate } from '@/components/messages/e2ee-gate'
 export default async function OracoesPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', user!.id).single()
+  const profile = await getActiveProfile()
 
   const { data: requests } = await supabase
     .from('prayer_requests')

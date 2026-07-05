@@ -1,11 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
+import { getActiveProfile } from '@/lib/profile/active-profile'
 import { AccountCard } from '@/components/financial/account-card'
 import { AccountForm } from '@/components/financial/account-form'
 
 export default async function ContasPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', user!.id).single()
+  const profile = await getActiveProfile()
 
   const { data: accounts } = await supabase.from('financial_accounts').select('*').order('created_at')
   const accountIds = (accounts ?? []).map(a => a.id)

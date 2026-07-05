@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getActiveProfile, getAccessibleProfiles } from '@/lib/profile/active-profile'
 import { DashboardSidebar, MobileBottomNav, MobileHeader } from '@/components/dashboard/sidebar'
 import { NotificationsBell } from '@/components/dashboard/notifications-bell'
 
@@ -9,17 +10,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('user_id', user.id)
-    .single()
+  const [profile, accessibleProfiles] = await Promise.all([
+    getActiveProfile(),
+    getAccessibleProfiles(),
+  ])
 
   if (!profile) redirect('/login')
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <DashboardSidebar profile={profile} />
+      <DashboardSidebar profile={profile} accessibleProfiles={accessibleProfiles} />
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <header className="h-14 md:h-12 border-b flex items-center justify-between px-4 md:justify-end md:px-6 shrink-0">

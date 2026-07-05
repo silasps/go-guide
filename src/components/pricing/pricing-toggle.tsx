@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -9,6 +10,8 @@ import { toast } from 'sonner'
 import { Check, Loader2 } from 'lucide-react'
 
 export function PricingToggle() {
+  const t = useTranslations('PricingPage')
+  const tPricing = useTranslations('Pricing')
   const [interval, setInterval] = useState<'monthly' | 'yearly'>('monthly')
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null)
 
@@ -31,7 +34,7 @@ export function PricingToggle() {
         return
       }
       if (!res.ok) {
-        toast.info('Pagamentos internacionais chegando em breve — estamos ativando o Stripe para aceitar cartões do mundo todo.')
+        toast.info(t('notConfigured'))
         return
       }
 
@@ -50,14 +53,14 @@ export function PricingToggle() {
           onClick={() => setInterval('monthly')}
           className={cn('text-sm font-medium px-3 py-1.5 rounded-full transition-colors', interval === 'monthly' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}
         >
-          Mensal
+          {t('monthly')}
         </button>
         <button
           onClick={() => setInterval('yearly')}
           className={cn('text-sm font-medium px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5', interval === 'yearly' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}
         >
-          Anual
-          <Badge variant="secondary" className="text-[10px]">2 meses grátis</Badge>
+          {t('yearly')}
+          <Badge variant="secondary" className="text-[10px]">{t('twoMonthsFree')}</Badge>
         </button>
       </div>
 
@@ -73,20 +76,20 @@ export function PricingToggle() {
               )}
             >
               {plan.highlighted && (
-                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">Mais popular</Badge>
+                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">{t('mostPopular')}</Badge>
               )}
-              <h3 className="font-semibold text-lg">{plan.name}</h3>
-              <p className="text-sm text-muted-foreground mt-1">{plan.tagline}</p>
+              <h3 className="font-semibold text-lg">{tPricing(`${plan.id}.name`)}</h3>
+              <p className="text-sm text-muted-foreground mt-1">{tPricing(`${plan.id}.tagline`)}</p>
               <div className="mt-4 mb-6">
                 <span className="text-3xl font-bold">
-                  {price === 0 ? 'Grátis' : `$${price}`}
+                  {price === 0 ? t('free') : `$${price}`}
                 </span>
                 {price > 0 && (
-                  <span className="text-muted-foreground text-sm">/{interval === 'monthly' ? 'mês' : 'ano'}</span>
+                  <span className="text-muted-foreground text-sm">{interval === 'monthly' ? t('perMonth') : t('perYear')}</span>
                 )}
               </div>
               <ul className="space-y-2.5 mb-6 flex-1">
-                {plan.features.map((f) => (
+                {tPricing.raw(`${plan.id}.features`).map((f: string) => (
                   <li key={f} className="flex items-start gap-2 text-sm">
                     <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                     <span>{f}</span>
@@ -99,7 +102,7 @@ export function PricingToggle() {
                 onClick={() => handleSubscribe(plan.id)}
               >
                 {loadingPlan === plan.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {plan.cta}
+                {tPricing(`${plan.id}.cta`)}
               </Button>
             </div>
           )
@@ -107,7 +110,7 @@ export function PricingToggle() {
       </div>
 
       <p className="text-center text-xs text-muted-foreground mt-8">
-        Aceita cartões do mundo todo, cobrança automática na moeda local. Pagamentos internacionais via Stripe — ativação em breve.
+        {t('acceptsGlobalCards')}
       </p>
     </div>
   )

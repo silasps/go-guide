@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import { OnboardingWizard } from '@/components/onboarding/onboarding-wizard'
 
@@ -15,11 +16,13 @@ export default async function OnboardingPage() {
 
   if (!profile) redirect('/login')
 
+  const t = await getTranslations('Onboarding')
+
   return (
     <div className="min-h-screen bg-muted/30 flex flex-col items-center justify-center px-4 py-10">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold">Bem-vindo ao go→guide</h1>
-        <p className="text-muted-foreground mt-2">Vamos configurar seu sistema em poucos passos</p>
+        <h1 className="text-3xl font-bold">{t('welcomeTitle')}</h1>
+        <p className="text-muted-foreground mt-2">{t('welcomeSubtitle')}</p>
       </div>
       <OnboardingWizard profile={profile} />
     </div>

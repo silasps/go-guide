@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/media/compress'
 import { Profile } from '@/types/database'
+import { AccountTypeSelector, useAccountTypeCopy } from '@/components/profile/account-type-selector'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,9 +28,12 @@ export function ProfileForm({ profile }: Props) {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(profile.avatar_url)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [displayName, setDisplayName] = useState(profile.display_name)
+  const [accountType, setAccountType] = useState(profile.account_type)
+  const { bioPlaceholder, bioHint, displayNamePlaceholder } = useAccountTypeCopy(accountType)
   const [username, setUsername] = useState(profile.username)
   const [bio, setBio] = useState(profile.bio ?? '')
   const [location, setLocation] = useState(profile.location ?? '')
+  const [showLocation, setShowLocation] = useState(profile.show_location ?? true)
   const [missionStartDate, setMissionStartDate] = useState(profile.mission_start_date ?? '')
   const [websiteUrl, setWebsiteUrl] = useState(profile.website_url ?? '')
   const [instagramUrl, setInstagramUrl] = useState(profile.instagram_url ?? '')
@@ -103,9 +107,11 @@ export function ProfileForm({ profile }: Props) {
       .from('profiles')
       .update({
         display_name: displayName,
+        account_type: accountType,
         username,
         bio: bio || null,
         location: location || null,
+        show_location: showLocation,
         mission_start_date: missionStartDate || null,
         avatar_url,
         website_url: websiteUrl || null,
@@ -166,6 +172,12 @@ export function ProfileForm({ profile }: Props) {
         <p className="text-xs text-muted-foreground">JPG, PNG ou WebP · máx 5MB</p>
       </div>
 
+      {/* Tipo de conta */}
+      <div className="space-y-2">
+        <Label>Este perfil representa</Label>
+        <AccountTypeSelector value={accountType} onChange={setAccountType} />
+      </div>
+
       {/* Nome e username */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
@@ -174,7 +186,7 @@ export function ProfileForm({ profile }: Props) {
             id="display_name"
             value={displayName}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value)}
-            placeholder="João Silva"
+            placeholder={displayNamePlaceholder}
           />
         </div>
         <div className="space-y-2">
@@ -202,11 +214,12 @@ export function ProfileForm({ profile }: Props) {
       {/* Bio */}
       <div className="space-y-2">
         <Label htmlFor="bio">Bio</Label>
+        <p className="text-xs text-muted-foreground">{bioHint}</p>
         <Textarea
           id="bio"
           value={bio}
           onChange={(e) => setBio(e.target.value)}
-          placeholder="Missionário na África desde 2018..."
+          placeholder={bioPlaceholder}
           rows={3}
           maxLength={300}
         />
@@ -222,6 +235,18 @@ export function ProfileForm({ profile }: Props) {
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLocation(e.target.value)}
           placeholder="Nairóbi, Quênia"
         />
+        <label className="flex items-start gap-2 text-sm cursor-pointer pt-1">
+          <input
+            type="checkbox"
+            checked={showLocation}
+            onChange={(e) => setShowLocation(e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-input"
+          />
+          <span>
+            Mostrar minha localização no perfil público
+            <span className="block text-xs text-muted-foreground">Dado protegido: só aparece publicamente se esta opção estiver marcada.</span>
+          </span>
+        </label>
       </div>
 
       {/* Início da missão */}

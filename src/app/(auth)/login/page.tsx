@@ -3,6 +3,7 @@
 import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,6 +13,7 @@ import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 
 function LoginForm() {
+  const t = useTranslations('Auth')
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') ?? '/dashboard'
@@ -28,7 +30,7 @@ function LoginForm() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
-      toast.error('Email ou senha incorretos.')
+      toast.error(t('loginError'))
       setLoading(false)
       return
     }
@@ -48,8 +50,8 @@ function LoginForm() {
   return (
     <Card>
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl">Entrar</CardTitle>
-        <CardDescription>Acesse sua conta missionária</CardDescription>
+        <CardTitle className="text-2xl">{t('loginTitle')}</CardTitle>
+        <CardDescription>{t('loginSubtitle')}</CardDescription>
       </CardHeader>
 
       <CardContent>
@@ -60,7 +62,7 @@ function LoginForm() {
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
           </svg>
-          Continuar com Google
+          {t('continueGoogle')}
         </Button>
 
         <div className="relative mb-4">
@@ -68,17 +70,17 @@ function LoginForm() {
             <span className="w-full border-t" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">ou</span>
+            <span className="bg-card px-2 text-muted-foreground">{t('or')}</span>
           </div>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t('email')}</Label>
             <Input
               id="email"
               type="email"
-              placeholder="seu@email.com"
+              placeholder={t('emailPlaceholder')}
               value={email}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
               required
@@ -88,9 +90,9 @@ function LoginForm() {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password">Senha</Label>
+              <Label htmlFor="password">{t('password')}</Label>
               <Link href="/recuperar-senha" className="text-xs text-muted-foreground hover:underline">
-                Esqueceu a senha?
+                {t('forgotPassword')}
               </Link>
             </div>
             <Input
@@ -105,16 +107,16 @@ function LoginForm() {
 
           <Button type="submit" className="w-full" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Entrar
+            {t('loginSubmit')}
           </Button>
         </form>
       </CardContent>
 
       <CardFooter className="justify-center">
         <p className="text-sm text-muted-foreground">
-          Não tem conta?{' '}
+          {t('noAccount')}{' '}
           <Link href="/cadastro" className="text-primary hover:underline font-medium">
-            Criar conta
+            {t('createAccount')}
           </Link>
         </p>
       </CardFooter>
@@ -123,8 +125,9 @@ function LoginForm() {
 }
 
 export default function LoginPage() {
+  const t = useTranslations('Auth')
   return (
-    <Suspense fallback={<div className="h-96 flex items-center justify-center text-muted-foreground text-sm">Carregando...</div>}>
+    <Suspense fallback={<div className="h-96 flex items-center justify-center text-muted-foreground text-sm">{t('loading')}</div>}>
       <LoginForm />
     </Suspense>
   )

@@ -1,10 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
+import { getActiveProfile } from '@/lib/profile/active-profile'
 import { ReconciliationQueue } from '@/components/financial/reconciliation-queue'
 
 export default async function ConciliacaoPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', user!.id).single()
+  const profile = await getActiveProfile()
 
   const { data: pledges } = await supabase
     .from('pledges')

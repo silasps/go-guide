@@ -1,10 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
+import { getActiveProfile } from '@/lib/profile/active-profile'
 import { CategoryTree } from '@/components/financial/category-tree'
 
 export default async function CategoriasPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', user!.id).single()
+  const profile = await getActiveProfile()
 
   const { data: categories } = await supabase
     .from('transaction_categories')

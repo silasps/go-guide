@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getActiveProfile } from '@/lib/profile/active-profile'
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -7,13 +8,7 @@ import { PostsList } from '@/components/dashboard/posts-list'
 
 export default async function PublicacoesPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, plan')
-    .eq('user_id', user!.id)
-    .single()
+  const profile = await getActiveProfile()
 
   const { data: posts } = await supabase
     .from('posts')

@@ -34,13 +34,25 @@ export async function saveHighlight(formData: {
     { auth: { persistSession: false } }
   )
 
-  const { data: profile } = await service
+  const { data: profileRow } = await service
     .from('profiles')
-    .select('id')
-    .eq('user_id', user.id)
+    .select('id, user_id')
     .eq('id', formData.profileId)
     .single()
-  if (!profile) throw new Error('Perfil não autorizado')
+  if (!profileRow) throw new Error('Perfil não encontrado')
+
+  let authorized = profileRow.user_id === user.id
+  if (!authorized) {
+    const { data: manager } = await service
+      .from('profile_managers')
+      .select('id')
+      .eq('profile_id', formData.profileId)
+      .eq('user_id', user.id)
+      .eq('role', 'manager')
+      .maybeSingle()
+    authorized = Boolean(manager)
+  }
+  if (!authorized) throw new Error('Perfil não autorizado')
 
   const payload = {
     profile_id: formData.profileId,

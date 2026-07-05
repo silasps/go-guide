@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { PostEditor } from '@/components/dashboard/post-editor'
 import { createClient } from '@/lib/supabase/server'
+import { getActiveProfile } from '@/lib/profile/active-profile'
 
 export default async function NovaPublicacaoPage() {
   const supabase = await createClient()
@@ -10,11 +11,7 @@ export default async function NovaPublicacaoPage() {
 
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('user_id', user.id)
-    .single()
+  const profile = await getActiveProfile()
 
   if (!profile) redirect('/login')
 

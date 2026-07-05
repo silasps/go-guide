@@ -56,9 +56,9 @@ export function getInitials(name: string) {
 
 export function planLimits(plan: string) {
   const limits = {
-    free: { partners: 2, postsPerMonth: 1, aiCreditsIncluded: 0 },
-    pro: { partners: Infinity, postsPerMonth: Infinity, aiCreditsIncluded: 50 },
-    mission: { partners: Infinity, postsPerMonth: Infinity, aiCreditsIncluded: 150 },
+    free: { partners: 2, postsPerMonth: 1, aiCreditsIncluded: 0, managersIncluded: 0 },
+    pro: { partners: Infinity, postsPerMonth: Infinity, aiCreditsIncluded: 50, managersIncluded: 1 },
+    mission: { partners: Infinity, postsPerMonth: Infinity, aiCreditsIncluded: 150, managersIncluded: 2 },
   }
   return limits[plan as keyof typeof limits] ?? limits.free
 }

@@ -2,8 +2,10 @@
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Profile } from '@/types/database'
+import { AccountTypeSelector, useAccountTypeCopy } from '@/components/profile/account-type-selector'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,21 +16,24 @@ import { Loader2, Check, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const CURRENCIES = ['BRL', 'USD', 'EUR', 'GBP', 'CHF', 'CAD', 'AUD']
-const STEP_LABELS = ['Perfil', 'Recebimento', 'Primeiro projeto', 'Concluído']
 
 interface Props {
   profile: Profile
 }
 
 export function OnboardingWizard({ profile }: Props) {
+  const t = useTranslations('Onboarding')
   const router = useRouter()
   const [step, setStep] = useState(1)
 
   // Passo 1 — perfil
   const [displayName, setDisplayName] = useState(profile.display_name)
+  const [accountType, setAccountType] = useState(profile.account_type)
+  const { bioPlaceholder, bioHint, displayNamePlaceholder } = useAccountTypeCopy(accountType)
   const [username, setUsername] = useState(profile.username)
   const [bio, setBio] = useState(profile.bio ?? '')
   const [location, setLocation] = useState(profile.location ?? '')
+  const [showLocation, setShowLocation] = useState(profile.show_location ?? true)
   const [missionStartDate, setMissionStartDate] = useState(profile.mission_start_date ?? '')
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle')
   const [usernameTimer, setUsernameTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
@@ -50,6 +55,8 @@ export function OnboardingWizard({ profile }: Props) {
   const [projectCreated, setProjectCreated] = useState(false)
 
   const [saving, setSaving] = useState(false)
+
+  const STEP_LABELS = [t('stepLabel1'), t('stepLabel2'), t('stepLabel3'), t('stepLabel4')]
 
   function handleUsernameChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '')
@@ -85,13 +92,15 @@ export function OnboardingWizard({ profile }: Props) {
     const supabase = createClient()
     const { error } = await supabase.from('profiles').update({
       display_name: displayName.trim() || profile.display_name,
+      account_type: accountType,
       username: username.trim() || profile.username,
       bio: bio.trim() || null,
       location: location.trim() || null,
+      show_location: showLocation,
       mission_start_date: missionStartDate || null,
     }).eq('id', profile.id)
     setSaving(false)
-    if (error) { toast.error('Erro ao salvar perfil.'); return }
+    if (error) { toast.error(t('errorSavingProfile')); return }
     setStep(2)
   }
 
@@ -105,7 +114,7 @@ export function OnboardingWizard({ profile }: Props) {
       external_donation_url: donationUrl.trim() || null,
     }).eq('id', profile.id)
     setSaving(false)
-    if (error) { toast.error('Erro ao salvar dados de recebimento.'); return }
+    if (error) { toast.error(t('errorSavingPayment')); return }
     setPaymentConfigured(Boolean(pixKey || paypalUrl || wiseUrl || donationUrl))
     setStep(3)
   }
@@ -136,7 +145,7 @@ export function OnboardingWizard({ profile }: Props) {
       }),
     })
     setSaving(false)
-    if (!res.ok) { toast.error('Erro ao criar projeto.'); return }
+    if (!res.ok) { toast.error(t('errorCreatingProject')); return }
     setProjectCreated(true)
     setStep(4)
   }
@@ -162,45 +171,62 @@ export function OnboardingWizard({ profile }: Props) {
         {step === 1 && (
           <>
             <CardHeader>
-              <CardTitle>Seu perfil missionário</CardTitle>
-              <CardDescription>Essas informações aparecem no seu perfil público — pode ser sobre você ou sua família em campo.</CardDescription>
+              <CardTitle>{t('step1Title')}</CardTitle>
+              <CardDescription>{t('step1Description')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Nome *</Label>
-                <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="João e Maria Silva" />
+                <Label>{t('accountTypeLabel')}</Label>
+                <AccountTypeSelector value={accountType} onChange={setAccountType} />
               </div>
               <div className="space-y-2">
-                <Label>Usuário *</Label>
+                <Label>{t('nameLabel')}</Label>
+                <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder={displayNamePlaceholder} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('usernameLabel')}</Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">@</span>
-                  <Input className="pl-7 pr-7" value={username} onChange={handleUsernameChange} placeholder="joaoemaria" />
+                  <Input className="pl-7 pr-7" value={username} onChange={handleUsernameChange} placeholder={t('usernamePlaceholder')} />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2">{usernameIcon()}</span>
                 </div>
-                {usernameStatus === 'taken' && <p className="text-xs text-destructive">Username indisponível.</p>}
-                {usernameStatus === 'invalid' && <p className="text-xs text-destructive">Apenas letras minúsculas, números e _. Mínimo 3 chars.</p>}
+                {usernameStatus === 'taken' && <p className="text-xs text-destructive">{t('usernameTaken')}</p>}
+                {usernameStatus === 'invalid' && <p className="text-xs text-destructive">{t('usernameInvalid')}</p>}
               </div>
               <div className="space-y-2">
-                <Label>Bio</Label>
-                <Textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Missionários na África desde 2020..." rows={2} />
+                <Label>{t('bioLabel')}</Label>
+                <p className="text-xs text-muted-foreground">{bioHint}</p>
+                <Textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder={bioPlaceholder} rows={2} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Localização</Label>
-                  <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Nairóbi, Quênia" />
+                  <Label>{t('locationLabel')}</Label>
+                  <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder={t('locationPlaceholder')} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Em campo desde</Label>
+                  <Label>{t('missionStartLabel')}</Label>
                   <Input type="date" value={missionStartDate} onChange={(e) => setMissionStartDate(e.target.value)} />
                 </div>
               </div>
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showLocation}
+                  onChange={(e) => setShowLocation(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-input"
+                />
+                <span>
+                  {t('showLocationLabel')}
+                  <span className="block text-xs text-muted-foreground">{t('showLocationHint')}</span>
+                </span>
+              </label>
               <Button
                 className="w-full"
                 disabled={saving || !displayName.trim() || !username.trim() || usernameStatus === 'taken' || usernameStatus === 'invalid'}
                 onClick={handleProfileContinue}
               >
                 {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Continuar
+                {t('continueButton')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardContent>
@@ -210,17 +236,15 @@ export function OnboardingWizard({ profile }: Props) {
         {step === 2 && (
           <>
             <CardHeader>
-              <CardTitle>Configure o recebimento</CardTitle>
-              <CardDescription>
-                Como seus parceiros vão te apoiar financeiramente? O dinheiro vai direto a você — a plataforma não intermedia.
-              </CardDescription>
+              <CardTitle>{t('step2Title')}</CardTitle>
+              <CardDescription>{t('step2Description')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {[
-                { id: 'pix', label: 'Chave Pix', value: pixKey, set: setPixKey, placeholder: 'CPF, e-mail, telefone ou aleatória' },
-                { id: 'paypal', label: 'PayPal', value: paypalUrl, set: setPaypalUrl, placeholder: 'https://paypal.me/seunome' },
-                { id: 'wise', label: 'Wise', value: wiseUrl, set: setWiseUrl, placeholder: 'https://wise.com/pay/...' },
-                { id: 'donation', label: 'Link de doação externo', value: donationUrl, set: setDonationUrl, placeholder: 'https://...' },
+                { id: 'pix', label: t('pixLabel'), value: pixKey, set: setPixKey, placeholder: t('pixPlaceholder') },
+                { id: 'paypal', label: 'PayPal', value: paypalUrl, set: setPaypalUrl, placeholder: t('paypalPlaceholder') },
+                { id: 'wise', label: 'Wise', value: wiseUrl, set: setWiseUrl, placeholder: t('wisePlaceholder') },
+                { id: 'donation', label: t('donationLabel'), value: donationUrl, set: setDonationUrl, placeholder: t('donationPlaceholder') },
               ].map(({ id, label, value, set, placeholder }) => (
                 <div key={id} className="space-y-2">
                   <Label htmlFor={id}>{label}</Label>
@@ -229,11 +253,11 @@ export function OnboardingWizard({ profile }: Props) {
               ))}
               <div className="flex gap-2">
                 <Button variant="ghost" className="flex-1" disabled={saving} onClick={() => setStep(3)}>
-                  Pular por agora
+                  {t('skipForNow')}
                 </Button>
                 <Button className="flex-1" disabled={saving} onClick={handlePaymentContinue}>
                   {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Continuar
+                  {t('continueButton')}
                 </Button>
               </div>
             </CardContent>
@@ -243,21 +267,21 @@ export function OnboardingWizard({ profile }: Props) {
         {step === 3 && (
           <>
             <CardHeader>
-              <CardTitle>Crie seu primeiro projeto</CardTitle>
-              <CardDescription>Uma campanha simples para compartilhar com seus parceiros. Você pode detalhar depois.</CardDescription>
+              <CardTitle>{t('step3Title')}</CardTitle>
+              <CardDescription>{t('step3Description')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Título</Label>
-                <Input value={projectTitle} onChange={(e) => setProjectTitle(e.target.value)} placeholder="Viagem ao campo missionário 2026" />
+                <Label>{t('titleLabel')}</Label>
+                <Input value={projectTitle} onChange={(e) => setProjectTitle(e.target.value)} placeholder={t('titlePlaceholder')} />
               </div>
               <div className="space-y-2">
-                <Label>Descrição</Label>
-                <Textarea value={projectDescription} onChange={(e) => setProjectDescription(e.target.value)} rows={2} placeholder="Conte brevemente sobre este projeto..." />
+                <Label>{t('descriptionLabel')}</Label>
+                <Textarea value={projectDescription} onChange={(e) => setProjectDescription(e.target.value)} rows={2} placeholder={t('descriptionPlaceholder')} />
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-2">
-                  <Label>Moeda</Label>
+                  <Label>{t('currencyLabel')}</Label>
                   <select
                     value={projectCurrency}
                     onChange={(e) => setProjectCurrency(e.target.value)}
@@ -267,17 +291,17 @@ export function OnboardingWizard({ profile }: Props) {
                   </select>
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <Label>Meta financeira</Label>
+                  <Label>{t('goalLabel')}</Label>
                   <Input type="number" value={projectGoal} onChange={(e) => setProjectGoal(e.target.value)} placeholder="10000" />
                 </div>
               </div>
               <div className="flex gap-2">
                 <Button variant="ghost" className="flex-1" disabled={saving} onClick={() => setStep(4)}>
-                  Pular por agora
+                  {t('skipForNow')}
                 </Button>
                 <Button className="flex-1" disabled={saving} onClick={handleProjectContinue}>
                   {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {projectTitle.trim() ? 'Criar projeto e continuar' : 'Continuar'}
+                  {projectTitle.trim() ? t('createProjectButton') : t('continueButton')}
                 </Button>
               </div>
             </CardContent>
@@ -287,35 +311,35 @@ export function OnboardingWizard({ profile }: Props) {
         {step === 4 && (
           <>
             <CardHeader>
-              <CardTitle>Tudo pronto!</CardTitle>
-              <CardDescription>Você pode revisar ou completar qualquer item depois, no seu painel.</CardDescription>
+              <CardTitle>{t('step4Title')}</CardTitle>
+              <CardDescription>{t('step4Description')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <ul className="space-y-2.5">
                 <li className="flex items-center gap-2 text-sm">
                   <Check className="h-4 w-4 text-green-500 shrink-0" />
-                  Perfil configurado
+                  {t('profileConfigured')}
                 </li>
                 <li className="flex items-center gap-2 text-sm">
                   {paymentConfigured
                     ? <Check className="h-4 w-4 text-green-500 shrink-0" />
                     : <span className="h-4 w-4 rounded-full border border-amber-400 shrink-0" />}
-                  Recebimento de contribuições {paymentConfigured ? 'configurado' : '— pendente'}
+                  {paymentConfigured ? t('paymentConfiguredDone') : t('paymentConfiguredPending')}
                 </li>
                 <li className="flex items-center gap-2 text-sm">
                   {projectCreated
                     ? <Check className="h-4 w-4 text-green-500 shrink-0" />
                     : <span className="h-4 w-4 rounded-full border border-amber-400 shrink-0" />}
-                  Primeiro projeto {projectCreated ? 'criado' : '— pendente'}
+                  {projectCreated ? t('projectConfiguredDone') : t('projectConfiguredPending')}
                 </li>
               </ul>
               {(!paymentConfigured || !projectCreated) && (
                 <p className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg px-3 py-2">
-                  Vamos te lembrar dos itens pendentes no seu painel até você completá-los.
+                  {t('reminderNote')}
                 </p>
               )}
               <Button className="w-full" onClick={finish}>
-                Ir para o dashboard
+                {t('goToDashboard')}
               </Button>
             </CardContent>
           </>

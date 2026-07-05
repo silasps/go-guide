@@ -39,6 +39,7 @@ Módulos principais:
 | Ícones | `lucide-react` |
 | Toasts | `sonner` |
 | Dark mode | `next-themes` (`attribute="class"`) |
+| i18n | `next-intl` — PT/EN/ES, sem prefixo de URL (ver seção 5.6) |
 | Backend/DB | Supabase (Postgres + Auth + Storage + Realtime), acessado via `@supabase/ssr` e `@supabase/supabase-js` |
 | Criptografia E2EE | `libsodium-wrappers` (X25519 + XSalsa20-Poly1305 + Argon2id), 100% client-side |
 | Compressão de mídia | `browser-image-compression` (imagens → WebP) |
@@ -105,7 +106,7 @@ Extensões: `uuid-ossp`, `pgcrypto`. Todas as PKs são `UUID DEFAULT uuid_genera
 #### `profiles` (hub central — 1:1 com `auth.users`)
 - `id` PK, `user_id UUID UNIQUE FK auth.users ON DELETE CASCADE`
 - `username TEXT UNIQUE NOT NULL` (único case-insensitive via índice em `LOWER(username)`)
-- `display_name`, `bio`, `location`, `avatar_url`, `cover_url`
+- `display_name`, `bio`, `location`, `show_location BOOLEAN DEFAULT true` (migration 021 — controla se `location` aparece no perfil público; independente de `privacy_mode`), `account_type TEXT DEFAULT 'individual' CHECK IN ('individual','family','organization')` (migration 022 — só personaliza textos de onboarding/bio via `AccountTypeSelector` em `src/components/profile/account-type-selector.tsx`; não afeta plano nem permissões), `avatar_url`, `cover_url`
 - `privacy_mode TEXT DEFAULT 'public' CHECK IN ('public','private','stealth')`
 - `plan TEXT DEFAULT 'free' CHECK IN ('free','pro','mission')`
 - `stripe_customer_id`, `accent_color TEXT DEFAULT '#6366f1'` (cor livre por usuário, aplicada inline)
@@ -113,9 +114,21 @@ Extensões: `uuid-ossp`, `pgcrypto`. Todas as PKs são `UUID DEFAULT uuid_genera
 - Recebimento: `pix_key`, `paypal_url`, `wise_url`, `external_donation_url`
 - `ai_credits INTEGER DEFAULT 0`
 - `mission_start_date DATE` (migration 012)
+- `extra_manager_seats INTEGER DEFAULT 0` (migration 023 — assentos de gestor extras comprados; ver `profile_managers` abaixo)
+- `locale TEXT DEFAULT 'pt' CHECK IN ('pt','en','es')` (migration 024 — idioma preferido; ver seção 5.6)
 - timestamps + trigger `update_updated_at`
 
 Criado automaticamente por trigger `handle_new_user()` (`SECURITY DEFINER`, `AFTER INSERT ON auth.users`): `username = slug(email) + '_' + 6 chars do UUID`, `display_name` = `raw_user_meta_data->>'full_name'` ou prefixo do e-mail.
+
+#### `profile_managers` (contas vinculadas — migration 023)
+- `profile_id FK profiles ON DELETE CASCADE`, `user_id FK auth.users ON DELETE CASCADE`, `role CHECK IN ('manager','viewer')` DEFAULT `manager`, `invited_by_user_id`, `UNIQUE (profile_id, user_id)`
+- Dá a um usuário adicional acesso "estilo Instagram" a outro perfil, sem fundir nenhum dado: `manager` = mesmo nível do dono (posts, projetos, financeiro, oração, parceiros — tudo escopado por `profile_id` continua igual, só quem pode agir muda); `viewer` = leitura (perfil, posts, projetos, prayer_requests, history_blocks — não financeiro/E2EE por padrão nesta rodada).
+- `is_profile_owner(p_profile_id)` (função SQL, migration 004, redefinida na 023) passou a checar também `profile_managers.role = 'manager'` — isso propaga automaticamente para toda política de RLS que já usava essa função (`partners`, `pledges`, `project_members`, dados E2EE, `financial_accounts`/`transactions` via `019_fix_financial_rls_recursion.sql`, budget categories). As políticas que ainda faziam o check inline (de antes da função existir — `posts`, `highlights`, `prayer_requests`, `transaction_categories`, `subscriptions`, `ai_credit_transactions`, `whatsapp_config`, `history_blocks`) foram migradas na 023 para usar o helper.
+- `is_profile_viewer_or_above(p_profile_id)` — mesma ideia, mas também aceita `role = 'viewer'`; usada nas políticas de leitura de `profiles`, `posts`, `highlights`, `prayer_requests`, `history_blocks`.
+- Convite por e-mail via RPC `invite_profile_manager(p_profile_id, p_email, p_role)` (`SECURITY DEFINER`, já que o client não pode consultar `auth.users`) — também aplica o limite de assentos (`planLimits().managersIncluded` + `extra_manager_seats`), retornando `seat_limit_reached` se estourar.
+- **Limitação conhecida (decisão consciente, não bug)**: dados E2EE (mensagens diretas, campos sensíveis do perfil, pedidos de oração privados) são cifrados com a chave do usuário real, não do perfil — um gestor não necessariamente consegue decifrar conteúdo cifrado para o dono original. Compartilhamento de chaves E2EE entre gestores fica fora de escopo por ora.
+- Perfil "ativo" da sessão de dashboard é resolvido por `getActiveProfile()` (`src/lib/profile/active-profile.ts`), que lê o cookie `active_profile_id` (setado por `setActiveProfile()`, server action em `src/app/dashboard/actions.ts`) e cai de volta ao perfil próprio se o cookie for inválido/ausente. Troca de conta é feita pelo dropdown em `DashboardSidebar` (`src/components/dashboard/sidebar.tsx`). Duas exceções deliberadas continuam presas ao usuário logado, nunca ao perfil "ativo": `/onboarding` (sempre configura o perfil recém-criado do próprio usuário) e `POST /api/account/delete` (exclusão de conta nunca pode ser feita "como" outra pessoa).
+- Cobrança: `planLimits()` (`src/lib/utils.ts`) ganhou `managersIncluded` (`free: 0`, `pro: 1`, `mission: 2`); pacotes pagos extras em `MANAGER_ADDONS` (`src/lib/pricing.ts`: +2 por R$15/mês, +4 por R$30/mês) com scaffold de checkout em `POST /api/billing/checkout` (`type: 'manager_addon'`) seguindo o mesmo padrão "sem `STRIPE_PRICE_MANAGERS_*` configurado → 501" do resto do billing. Como o webhook Stripe→`profiles` ainda não existe (mesma pendência já documentada acima para Pro/Missão), `extra_manager_seats` não é incrementado automaticamente após a compra ainda.
 
 #### `posts` (feed / publicações)
 `profile_id FK`, `type CHECK IN ('text','image','video','carousel')`, `content`, `media_urls TEXT[]`, `published_at`, `scheduled_at`, `is_draft BOOLEAN DEFAULT true`, `created_by_user_id FK auth.users ON DELETE SET NULL` (nullable, corrigido na 017), `project_id UUID FK highlights ON DELETE SET NULL` (migration 005 — vincula um post/relatório a um projeto específico).
@@ -291,6 +304,17 @@ Modelo de extrapolação linear simples (não considera sazonalidade), usado só
 - Vídeos: `VIDEO_MAX_SIZE_MB = 500`, `VIDEO_MAX_DURATION_SECONDS = 30`. `getVideoDuration` lê duração offscreen via `<video>` antes do upload (sem recompressão real — vídeos fora do limite são rejeitados, não recomprimidos).
 - `getMediaType(file)`, `formatFileSize(bytes)`.
 
+### 5.6 Internacionalização (`src/i18n/`, `messages/`) — Fase 1: site público
+
+**Status**: infraestrutura completa + site público 100% traduzido (PT/EN/ES). Onboarding, dashboard inteiro e páginas públicas de perfil (`[username]/*`) **ainda não traduzidos** — ficam em português até uma Fase 2 (decisão explícita para não fazer uma mudança gigante de uma vez).
+
+- **Biblioteca**: `next-intl`, em modo **sem prefixo de URL** (nada de `/en/...`) — plugado via `createNextIntlPlugin` em `next.config.ts`.
+- **Resolução de locale** (`src/i18n/request.ts`, roda a cada request server-side): 1) cookie `NEXT_LOCALE` se presente; 2) senão, se o usuário estiver logado, `profiles.locale` (query via `createClient()` de `@/lib/supabase/server`); 3) senão, `pt` (default em `src/i18n/config.ts`).
+- **Arquivos de tradução**: `messages/{pt,en,es}.json`, namespaces `Metadata`, `Nav`, `Footer`, `Modules` (chave = `id` do módulo), `Landing`, `PricingPage`, `Pricing` (chave = `id` do plano), `Auth`.
+- **`src/lib/modules.ts`** e **`src/lib/pricing.ts`** foram refatorados para ficarem agnósticos de idioma — só guardam `id`/ícone/cor/preço; todo texto (título, descrição, bullets, nome, tagline, features, cta) vive nos `messages/*.json` sob a chave `id`. Ao criar um módulo ou plano novo: adicionar a entrada em `modules.ts`/`pricing.ts` **e** a tradução correspondente nos 3 `messages/*.json`.
+- **Troca de idioma**: `LanguageSwitcher` (`src/components/marketing/language-switcher.tsx`, bandeiras 🇧🇷🇺🇸🇪🇸) — seta o cookie `NEXT_LOCALE` via `document.cookie`, e se houver usuário logado também atualiza `profiles.locale`, depois `router.refresh()`. Presente no `SiteNav` (desktop e painel mobile) e, de forma equivalente (sem o componente compartilhado, para não acoplar dashboard a `components/marketing/`), num card "Idioma" no topo de `AccountForm` (Configurações → Conta) — funcional mesmo com o resto do dashboard ainda em português.
+- **`profiles.locale`** (migration 024) é a fonte de verdade por usuário; o cookie é só a otimização para não repetir a query em toda request.
+
 ---
 
 ## 6. Camada de criptografia E2EE (`src/lib/crypto/`)
@@ -402,8 +426,8 @@ Carga inicial: não lidas, `LIMIT 20`. Realtime: canal `'notifications'`, filtro
 ```
 src/app/
 ├── layout.tsx                        # Root: ThemeProvider + Toaster (sonner) + fonte Inter
-├── page.tsx                          # Landing (redirect /dashboard se autenticado) — hero + "como funciona" + vitrine de módulos + teaser de planos
-├── planos/page.tsx                   # Server — página de preços pública; PricingToggle (client) chama /api/billing/checkout
+├── page.tsx                          # Landing (redirect /dashboard se autenticado) — hero (2 colunas, foto em public/hero-missionario.png) + diferenciais + "como funciona" + bento grid de módulos + deep-dive + teaser de planos; usa SiteNav/SiteFooter
+├── planos/page.tsx                   # Server — página de preços pública; PricingToggle (client) chama /api/billing/checkout; usa SiteNav/SiteFooter
 ├── globals.css
 ├── (auth)/                           # Route group sem prefixo de URL
 │   ├── layout.tsx                    # Card centralizado, sem nav
@@ -413,6 +437,7 @@ src/app/
 ├── onboarding/page.tsx                # Server — busca profile, renderiza OnboardingWizard (client, wizard de 4 passos — ver 7.1)
 ├── conta/excluir/page.tsx             # Exclusão para quem só é parceiro
 ├── [username]/                        # Perfil público
+│   ├── layout.tsx                     # LanguageSwitcher flutuante (topo direito) — envolve todas as subrotas
 │   ├── page.tsx                       # Server, generateMetadata; lógica de privacidade completa
 │   ├── historia/page.tsx              # Blocos "nossa história"
 │   ├── trajetoria/page.tsx            # Timeline de projetos concluídos
@@ -571,6 +596,15 @@ Todas as páginas de rota (exceto formulários) são **Server Components** assí
 |---|---|
 | `pricing-toggle.tsx` | `PricingToggle` — cards Free/Pro/Missão a partir de `src/lib/pricing.ts`, toggle mensal/anual, botão "Assinar" chama `POST /api/billing/checkout` |
 
+### `marketing/`
+| Componente | Papel |
+|---|---|
+| `site-nav.tsx` | `SiteNav` — nav sticky com mega-menu "Módulos" (grid com ícone+descrição a partir de `src/lib/modules.ts` + `messages/*.json`), `LanguageSwitcher` embutido, usado em `/` e `/planos` |
+| `site-footer.tsx` | `SiteFooter` — rodapé com colunas agrupadas (módulos, conta), gerado a partir de `src/lib/modules.ts` |
+| `language-switcher.tsx` | `LanguageSwitcher` — bandeiras PT/EN/ES, troca cookie `NEXT_LOCALE` + `profiles.locale` (ver seção 5.6) |
+
+> **`src/lib/modules.ts`** é a fonte única dos 7 módulos do produto (`id`, ícone, cor — texto vive em `messages/*.json`) — consumida pela landing (bento grid + deep-dive), pelo mega-menu do `SiteNav` e pelo `SiteFooter`. Ao lançar um módulo novo, adicionar a entrada aqui + a tradução nos 3 `messages/*.json` já propaga para o site público inteiro — convenção adotada para a página pública não ficar defasada conforme o produto cresce.
+
 ### `ui/` (shadcn v4 sobre `@base-ui/react`)
 `avatar`, `badge`, `button`, `card`, `dialog`, `dropdown-menu`, `input`, `label`, `progress`, `sonner`, `textarea`.
 
@@ -630,5 +664,13 @@ Todas as páginas de rota (exceto formulários) são **Server Components** assí
 
 > Adicione uma entrada aqui (mais recente no topo) toda vez que este arquivo for atualizado por causa de uma mudança real no sistema. Formato: `AAAA-MM-DD — o que mudou no sistema — o que foi atualizado neste doc`.
 
+- **2026-07-05** — Internacionalização (i18n): `ProfileCTA`, `ProfileHeader` e `[username]/page.tsx` (metadata + `PrivateProfileScreen`) traduzidos — os CTAs e o cabeçalho do perfil público principal agora respeitam o idioma; motivado pelo usuário testar a bandeira e ver os botões "Seja Parceiro"/"Enviar Oração" etc. ainda em português. Demais subpáginas de `[username]/*` (historia, trajetória, parceria, oração, mensagens, projetos) seguem pendentes.
+- **2026-07-05** — Internacionalização (i18n) Fase 2 (parcial): `OnboardingWizard` + `AccountTypeSelector` (agora com hook `useAccountTypeCopy`) e o "shell" do dashboard (sidebar desktop/mobile, notificações com mensagens interpoladas, `SetupChecklistBanner`, visão geral) traduzidos; novo `src/app/[username]/layout.tsx` adiciona `LanguageSwitcher` flutuante (topo direito) em todas as páginas públicas de perfil, mesmo antes delas serem totalmente traduzidas — parceiros internacionais já conseguem trocar o idioma da navegação. Restante do dashboard (publicações/projetos/parceiros/financeiro/orações/mensagens/configurações) e o conteúdo das páginas `[username]/*` continuam em português.
+- **2026-07-05** — Internacionalização (i18n) Fase 1: `next-intl` instalado (sem prefixo de URL), locale resolvido por cookie `NEXT_LOCALE` → `profiles.locale` (nova coluna, migration 024) → default `pt`; `messages/{pt,en,es}.json` com o site público inteiro traduzido (landing, `/planos`, `SiteNav`/`SiteFooter`, login, cadastro); `LanguageSwitcher` com bandeiras no `SiteNav` e em Configurações → Conta; `src/lib/modules.ts` e `src/lib/pricing.ts` refatorados para guardar só `id`/ícone/cor/preço, texto migrado para os `messages/*.json`. Onboarding e dashboard inteiro ainda em português — Fase 2 planejada, não escondida — seções 2, 3.1, 5.6 e 10 atualizadas.
+- **2026-07-05** — Contas vinculadas estilo Instagram: nova tabela `profile_managers` (migration 023, roles `manager`/`viewer`) + `profiles.extra_manager_seats`; `is_profile_owner()`/`is_profile_viewer_or_above()` (SQL) estendidas para reconhecer gestores, e as políticas de RLS que ainda faziam check inline (posts, highlights, prayer_requests, transaction_categories, subscriptions, ai_credit_transactions, whatsapp_config, history_blocks) migradas para os helpers; convite por e-mail via RPC `invite_profile_manager` com limite de assentos (`planLimits().managersIncluded` + pacotes pagos `MANAGER_ADDONS`); troca de conta ativa via cookie (`getActiveProfile()`, `src/lib/profile/active-profile.ts`) + dropdown na sidebar; nova aba "Acesso" nas Configurações (`AccessManagersForm`); dezenas de páginas do dashboard migradas do lookup `profiles.eq('user_id', ...)` para `getActiveProfile()` — seção 3.1 atualizada.
+- **2026-07-05** — Nova coluna `profiles.account_type` (migration 022, `individual`/`family`/`organization`, default `individual`): seletor em `AccountTypeSelector` (`src/components/profile/account-type-selector.tsx`), usado no passo 1 do `OnboardingWizard` e em `ProfileForm`, personaliza placeholder/dica de nome e bio conforme o tipo; ao escolher "organização", mostra dica recomendando conta separada (perfil público + Pix/PayPal próprios), já que hoje um `highlight` (projeto) sempre herda os dados de recebimento do perfil-dono — seção 3.1 atualizada.
+- **2026-07-05** — Hero da landing (`/`) virou 2 colunas: texto+CTA à esquerda, foto (`public/hero-missionario.png`, gerada por IA a pedido do autor) num card arredondado com badge flutuante à direita — reforça a mensagem "financeiro/parceiros/comunicação resolvidos, foco na missão". `useSignOut()` (`src/components/dashboard/sidebar.tsx`) passou a redirecionar para `/` em vez de `/login` após sair.
+- **2026-07-05** — Nova coluna `profiles.show_location` (migration 021, default `true`): checkbox "Mostrar minha localização no perfil público" no passo 1 do `OnboardingWizard` e em `ProfileForm` (configurações); `ProfileHeader` só exibe `location` quando `privacy_mode === 'public'` **e** `show_location` for `true`. Bio ganhou texto de orientação (quem/onde/por quê) em ambos os formulários — seção 3.1 atualizada.
+- **2026-07-05** — Landing page redesenhada com inspiração no benchmark de layout da stripe.com/br (nav com mega-menu, bento grid de módulos, seção "deep-dive" dos 3 módulos mais estratégicos, tira de diferenciais honestos — sem depoimentos/números fabricados): novo `src/lib/modules.ts` como fonte única dos 7 módulos (ícone/descrição/bullets/cor) consumida por `SiteNav`, `SiteFooter` e a própria landing, para a página pública não ficar defasada conforme o produto cresce — seção 10 atualizada.
 - **2026-07-05** — Landing page reformulada (tour dos módulos + "como funciona" + teaser de planos), onboarding guiado de 4 passos após o cadastro (`OnboardingWizard`, cada etapa pulável), `SetupChecklistBanner` substituindo o banner de perfil incompleto (agora cobre perfil/recebimento/primeiro projeto), nova página pública `/planos` com preços e CTA de assinatura, e scaffold de checkout Stripe (`src/lib/stripe/client.ts` + `POST /api/billing/checkout`, inativo até `STRIPE_SECRET_KEY`/`STRIPE_PRICE_*` serem preenchidos) — seções 2, 7.1, 8 e 10 atualizadas.
 - **2026-07-05** — Criação inicial deste documento, a partir de varredura completa do estado do repositório (migrations 001–017, `src/lib`, `src/app`, `src/components`, `src/proxy.ts`, `src/types`).

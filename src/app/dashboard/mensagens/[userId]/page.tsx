@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getActiveProfile } from '@/lib/profile/active-profile'
 import { E2EEGate } from '@/components/messages/e2ee-gate'
 import { MessageThread } from '@/components/messages/message-thread'
 
@@ -9,7 +10,7 @@ export default async function ConversaPage({ params }: Props) {
   const { userId } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', user!.id).single()
+  const profile = await getActiveProfile()
   if (!profile) notFound()
 
   const { data: partner } = await supabase.from('partners').select('name').eq('profile_id', profile.id).eq('user_id', userId).maybeSingle()

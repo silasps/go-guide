@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Profile } from '@/types/database'
 import { Button } from '@/components/ui/button'
@@ -9,7 +10,10 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { cn } from '@/lib/utils'
+import { LOCALE_COOKIE, LOCALES, type Locale } from '@/i18n/config'
+
+const LOCALE_LABELS: Record<Locale, string> = { pt: '🇧🇷 Português', en: '🇺🇸 English', es: '🇪🇸 Español' }
 
 interface Props {
   profile: Profile
@@ -17,6 +21,8 @@ interface Props {
 
 export function AccountForm({ profile }: Props) {
   const router = useRouter()
+  const [locale, setLocale] = useState<Locale>(profile.locale)
+  const [savingLocale, setSavingLocale] = useState(false)
 
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -24,6 +30,18 @@ export function AccountForm({ profile }: Props) {
 
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [deleting, setDeleting] = useState(false)
+
+  async function handleLocaleChange(next: Locale) {
+    if (next === locale || savingLocale) return
+    setSavingLocale(true)
+    document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000`
+    const supabase = createClient()
+    const { error } = await supabase.from('profiles').update({ locale: next }).eq('id', profile.id)
+    setSavingLocale(false)
+    if (error) { toast.error('Erro ao salvar idioma.'); return }
+    setLocale(next)
+    router.refresh()
+  }
 
   async function handleChangePassword() {
     if (newPassword.length < 8) { toast.error('Mínimo 8 caracteres.'); return }
@@ -59,12 +77,34 @@ export function AccountForm({ profile }: Props) {
 
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/')
-    router.refresh()
+    window.location.href = '/'
   }
 
   return (
     <div className="space-y-6">
+      {/* Idioma — o resto do painel ainda está só em português (tradução completa é a próxima fase) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Idioma</CardTitle>
+          <CardDescription>Escolha o idioma do site público e desta preferência de conta.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex gap-2">
+          {LOCALES.map((l) => (
+            <button
+              key={l}
+              onClick={() => handleLocaleChange(l)}
+              disabled={savingLocale}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
+                l === locale ? 'border-primary bg-primary/5 text-foreground' : 'border-border text-muted-foreground hover:bg-muted'
+              )}
+            >
+              {LOCALE_LABELS[l]}
+            </button>
+          ))}
+        </CardContent>
+      </Card>
+
       {/* Change password */}
       <Card>
         <CardHeader>

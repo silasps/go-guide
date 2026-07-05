@@ -1,10 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
+import { getActiveProfile } from '@/lib/profile/active-profile'
 import { ConversationList } from '@/components/messages/conversation-list'
 
 export default async function MensagensPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', user!.id).single()
+  const profile = await getActiveProfile()
 
   const { data: messages } = await supabase
     .from('messages')
