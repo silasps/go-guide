@@ -1,10 +1,12 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getTranslations } from 'next-intl/server'
+import { getTranslations, getLocale } from 'next-intl/server'
 import type { Metadata } from 'next'
+import type { Locale } from '@/i18n/config'
 import { ProfileHeader } from '@/components/profile/profile-header'
 import { ProjectsSection } from '@/components/profile/projects-section'
 import { ProfileCTA } from '@/components/profile/profile-cta'
+import { PublicationsFeed } from '@/components/profile/publications-feed'
 
 interface Props {
   params: Promise<{ username: string }>
@@ -76,6 +78,16 @@ export default async function ProfilePage({ params }: Props) {
     .eq('profile_id', profile.id)
     .eq('status', 'completed')
 
+  const { data: posts } = await supabase
+    .from('posts')
+    .select('*, highlight:highlights(title, slug)')
+    .eq('profile_id', profile.id)
+    .eq('is_draft', false)
+    .order('published_at', { ascending: false })
+    .limit(20)
+
+  const visitorLocale = (await getLocale()) as Locale
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-xl mx-auto px-4 py-8 space-y-8">
@@ -83,6 +95,9 @@ export default async function ProfilePage({ params }: Props) {
         <ProfileCTA username={profile.username} hasTrajectory={(completedCount ?? 0) > 0} />
         {projects && projects.length > 0 && (
           <ProjectsSection projects={projects} username={profile.username} accentColor={profile.accent_color} />
+        )}
+        {posts && posts.length > 0 && (
+          <PublicationsFeed posts={posts} username={profile.username} visitorLocale={visitorLocale} />
         )}
       </div>
     </div>

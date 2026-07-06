@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { toast } from 'sonner'
 import { Plus, Loader2 } from 'lucide-react'
 
@@ -22,6 +23,8 @@ export function AddPartnerButton({ profileId, plan, partnerCount }: Props) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [phoneAlt, setPhoneAlt] = useState('')
+  const [birthDate, setBirthDate] = useState('')
   const [type, setType] = useState<'financial' | 'prayer' | 'both'>('both')
 
   const limit = planLimits(plan).partners
@@ -37,13 +40,15 @@ export function AddPartnerButton({ profileId, plan, partnerCount }: Props) {
       name: name.trim(),
       email: email.trim() || null,
       phone: phone.trim() || null,
+      phone_alt: phoneAlt.trim() || null,
+      birth_date: birthDate || null,
       type,
     })
     setSaving(false)
     if (error) { toast.error('Erro ao adicionar parceiro.'); return }
     toast.success('Parceiro adicionado!')
     setOpen(false)
-    setName(''); setEmail(''); setPhone('')
+    setName(''); setEmail(''); setPhone(''); setPhoneAlt(''); setBirthDate('')
     window.location.reload()
   }
 
@@ -75,8 +80,16 @@ export function AddPartnerButton({ profileId, plan, partnerCount }: Props) {
               <Input type="email" value={email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} placeholder="email@exemplo.com" />
             </div>
             <div className="space-y-2">
-              <Label>Telefone / WhatsApp</Label>
-              <Input value={phone} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)} placeholder="+55 11 99999-9999" />
+              <Label>WhatsApp</Label>
+              <PhoneInput onChange={setPhone} />
+            </div>
+            <div className="space-y-2">
+              <Label>Telefone (opcional)</Label>
+              <PhoneInput onChange={setPhoneAlt} />
+            </div>
+            <div className="space-y-2">
+              <Label>Data de nascimento</Label>
+              <Input type="date" value={birthDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBirthDate(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Tipo</Label>

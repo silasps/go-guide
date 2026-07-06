@@ -4,6 +4,7 @@ import { getLocale, getTranslations } from 'next-intl/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Users, FileText, Heart, Sparkles, Plus, FolderOpen, ArrowRight } from 'lucide-react'
 import { SetupChecklistBanner } from '@/components/dashboard/setup-checklist-banner'
+import { BirthdayReminders } from '@/components/dashboard/birthday-reminders'
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -18,11 +19,13 @@ export default async function DashboardPage() {
     { count: postsCount },
     { count: prayerCount },
     { count: highlightsCount },
+    { data: birthdayPartners },
   ] = await Promise.all([
     supabase.from('partners').select('*', { count: 'exact', head: true }).eq('profile_id', profile!.id),
     supabase.from('posts').select('*', { count: 'exact', head: true }).eq('profile_id', profile!.id).eq('is_draft', false),
     supabase.from('prayer_requests').select('*', { count: 'exact', head: true }).eq('profile_id', profile!.id).eq('is_answered', false),
     supabase.from('highlights').select('*', { count: 'exact', head: true }).eq('profile_id', profile!.id),
+    supabase.from('partners').select('id, name, phone, user_id, birth_date').eq('profile_id', profile!.id).not('birth_date', 'is', null),
   ])
 
   const stats = [
@@ -47,6 +50,8 @@ export default async function DashboardPage() {
         hasPaymentMethod={Boolean(profile?.pix_key || profile?.paypal_url || profile?.wise_url || profile?.external_donation_url)}
         hasProject={(highlightsCount ?? 0) > 0}
       />
+
+      <BirthdayReminders partners={birthdayPartners ?? []} />
 
       {/* Greeting */}
       <div>

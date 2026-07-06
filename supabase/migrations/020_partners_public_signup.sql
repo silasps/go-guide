@@ -6,5 +6,6 @@
 -- próprio missionário — ninguém além dele conseguia se auto-cadastrar.
 -- Isso nunca tinha sido exercitado de ponta a ponta antes desta sessão.
 -- ============================================================
+DROP POLICY IF EXISTS "partners_public_signup" ON partners;
 CREATE POLICY "partners_public_signup" ON partners
   FOR INSERT WITH CHECK (true);

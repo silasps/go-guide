@@ -9,11 +9,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { LocaleContentTabs } from '@/components/dashboard/locale-content-tabs'
 import { toast } from 'sonner'
 import { Loader2, Camera, Check, X } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
+import type { Locale } from '@/i18n/config'
 
 interface Props {
   profile: Profile
@@ -32,6 +33,42 @@ export function ProfileForm({ profile }: Props) {
   const { bioPlaceholder, bioHint, displayNamePlaceholder } = useAccountTypeCopy(accountType)
   const [username, setUsername] = useState(profile.username)
   const [bio, setBio] = useState(profile.bio ?? '')
+  const bioLocale: Locale = profile.bio_locale ?? profile.locale
+  const [bioTranslations, setBioTranslations] = useState<Partial<Record<Locale, string>>>(() => {
+    const t: Partial<Record<Locale, string>> = {}
+    for (const [locale, v] of Object.entries(profile.bio_translations ?? {})) t[locale as Locale] = v.content
+    return t
+  })
+  const [bioTranslationSources, setBioTranslationSources] = useState<Partial<Record<Locale, 'ai' | 'human'>>>(() => {
+    const s: Partial<Record<Locale, 'ai' | 'human'>> = {}
+    for (const [locale, v] of Object.entries(profile.bio_translations ?? {})) s[locale as Locale] = v.source
+    return s
+  })
+
+  async function handleTranslateBioWithAi(locale: Locale) {
+    if (!bio.trim()) return
+    const res = await fetch('/api/ai/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profileId: profile.id, sourceLocale: bioLocale, targetLocales: [locale], text: bio }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      if (data.error === 'insufficient_ai_credits') {
+        toast.error('Créditos de IA insuficientes.', {
+          action: { label: 'Ver planos', onClick: () => router.push('/planos') },
+        })
+      } else {
+        toast.error('Erro ao traduzir. Tente novamente.')
+      }
+      return
+    }
+    const translated = data.translations?.[locale]
+    if (translated) {
+      setBioTranslations((prev) => ({ ...prev, [locale]: translated }))
+      setBioTranslationSources((prev) => ({ ...prev, [locale]: 'ai' }))
+    }
+  }
   const [location, setLocation] = useState(profile.location ?? '')
   const [showLocation, setShowLocation] = useState(profile.show_location ?? true)
   const [missionStartDate, setMissionStartDate] = useState(profile.mission_start_date ?? '')
@@ -110,6 +147,15 @@ export function ProfileForm({ profile }: Props) {
         account_type: accountType,
         username,
         bio: bio || null,
+        bio_locale: bioLocale,
+        bio_translations: Object.fromEntries(
+          Object.entries(bioTranslations)
+            .filter(([, text]) => text?.trim())
+            .map(([locale, text]) => [
+              locale,
+              { content: text!.trim(), source: bioTranslationSources[locale as Locale] ?? 'human', translated_at: new Date().toISOString() },
+            ])
+        ),
         location: location || null,
         show_location: showLocation,
         mission_start_date: missionStartDate || null,
@@ -215,13 +261,19 @@ export function ProfileForm({ profile }: Props) {
       <div className="space-y-2">
         <Label htmlFor="bio">Bio</Label>
         <p className="text-xs text-muted-foreground">{bioHint}</p>
-        <Textarea
-          id="bio"
-          value={bio}
-          onChange={(e) => setBio(e.target.value)}
-          placeholder={bioPlaceholder}
+        <LocaleContentTabs
+          originalLocale={bioLocale}
+          originalText={bio}
+          onOriginalChange={setBio}
+          translations={bioTranslations}
+          onTranslationChange={(locale, value) => {
+            setBioTranslations((prev) => ({ ...prev, [locale]: value }))
+            setBioTranslationSources((prev) => ({ ...prev, [locale]: 'human' }))
+          }}
+          onTranslateWithAi={handleTranslateBioWithAi}
           rows={3}
           maxLength={300}
+          originalPlaceholder={bioPlaceholder}
         />
         <p className="text-xs text-muted-foreground text-right">{bio.length}/300</p>
       </div>

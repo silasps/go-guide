@@ -20,7 +20,7 @@ Módulos principais:
 - **Mensagens diretas** cifradas ponta-a-ponta (E2EE) entre missionário e parceiro.
 - **Notificações** em tempo real (Supabase Realtime).
 - **Dados sensíveis do perfil** (endereço real, itinerário, etc.) cifrados e liberados seletivamente por parceiro.
-- (Planejado, schema pronto mas **sem código de integração ainda**): assinaturas Stripe (planos free/pro/mission + créditos de IA avulsos), IA copiloto via Claude API, WhatsApp Business API, conversão de câmbio via ExchangeRate-API, e-mail transacional via Resend.
+- (Planejado, schema pronto mas **sem código de integração ainda**): assinaturas Stripe (planos free/pro/mission + créditos de IA avulsos), IA copiloto via Claude API, WhatsApp Business API, conversão de câmbio via ExchangeRate-API, e-mail transacional via Brevo.
 
 ### Monetização (planejada)
 - **Free**: 2 parceiros, 1 post/mês, sem IA (pay-per-use).
@@ -44,8 +44,8 @@ Módulos principais:
 | Criptografia E2EE | `libsodium-wrappers` (X25519 + XSalsa20-Poly1305 + Argon2id), 100% client-side |
 | Compressão de mídia | `browser-image-compression` (imagens → WebP) |
 | Pagamentos (planejado, não implementado) | `stripe`, `@stripe/stripe-js` |
-| E-mail (planejado, não implementado) | `resend` |
-| IA (planejado, não implementado) | Anthropic Claude API |
+| E-mail (planejado, não implementado) | `@getbrevo/brevo` (Brevo) |
+| IA | `@anthropic-ai/sdk` (Anthropic Claude API) — tradução de conteúdo (`claude-haiku-4-5`, seção 5.6.1) implementada; demais usos futuros |
 | Câmbio (planejado, não implementado) | ExchangeRate-API |
 | Deploy | Vercel (`.vercel/project.json` presente) |
 
@@ -71,9 +71,9 @@ STRIPE_PRICE_CREDITS_20=
 STRIPE_PRICE_CREDITS_50=
 STRIPE_PRICE_CREDITS_100=
 
-# Resend
-RESEND_API_KEY=
-RESEND_FROM_EMAIL=
+# Brevo (e-mail transacional)
+BREVO_API_KEY=
+BREVO_FROM_EMAIL=
 
 # Anthropic (Claude API)
 ANTHROPIC_API_KEY=
@@ -91,7 +91,7 @@ NEXT_PUBLIC_APP_URL=
 NEXT_PUBLIC_APP_NAME=
 ```
 
-> **Status real das integrações**: Resend, Anthropic, ExchangeRate-API e WhatsApp têm **schema de dados pronto** (tabelas, colunas, RLS) mas **nenhum código de integração** foi escrito (`src/lib/ai/`, `src/lib/exchange/` e `supabase/functions/` estão vazios). Ao reconstruir, essas integrações precisam ser implementadas do zero seguindo o schema descrito abaixo.
+> **Status real das integrações**: Brevo, ExchangeRate-API e WhatsApp têm **schema de dados pronto** (tabelas, colunas, RLS) mas **nenhum código de integração** foi escrito (`src/lib/exchange/` e `supabase/functions/` estão vazios). Ao reconstruir, essas integrações precisam ser implementadas do zero seguindo o schema descrito abaixo. **Anthropic** deixou de ser "só schema": a primeira integração real (tradução de conteúdo do usuário) foi implementada — ver seção 5.6.1.
 >
 > **Stripe** tem um passo a mais que os outros: além do schema, já existe o **scaffold de checkout** (`src/lib/stripe/client.ts` + `POST /api/billing/checkout`, chamado pela página `/planos`). `getStripeClient()` retorna `null` enquanto `STRIPE_SECRET_KEY` estiver vazio, e a rota responde `501 { error: 'not_configured' }` nesse caso (o frontend mostra um toast "em breve"). Para ativar de verdade: preencher `STRIPE_SECRET_KEY` + `STRIPE_PRICE_*` (`.env.example`), criar os 4 Price IDs (Pro/Missão × mensal/anual) no Stripe, e ligar **Adaptive Pricing** no dashboard da Stripe para cobrança automática na moeda local do cartão (não requer lógica de moeda no código). Falta ainda o webhook que sincroniza `subscriptions`/`profiles.plan` após o checkout — não implementado.
 
@@ -115,7 +115,8 @@ Extensões: `uuid-ossp`, `pgcrypto`. Todas as PKs são `UUID DEFAULT uuid_genera
 - `ai_credits INTEGER DEFAULT 0`
 - `mission_start_date DATE` (migration 012)
 - `extra_manager_seats INTEGER DEFAULT 0` (migration 023 — assentos de gestor extras comprados; ver `profile_managers` abaixo)
-- `locale TEXT DEFAULT 'pt' CHECK IN ('pt','en','es')` (migration 024 — idioma preferido; ver seção 5.6)
+- `locale TEXT DEFAULT 'pt' CHECK IN ('pt','en','es')` (migration 024 — idioma preferido da **UI**; ver seção 5.6)
+- `bio_locale TEXT DEFAULT 'pt' CHECK IN ('pt','en','es')` e `bio_translations JSONB DEFAULT '{}'` (migration 025 — idioma **original do conteúdo da bio** e suas traduções geradas/editadas; independente de `locale`, que só controla a interface. Ver seção 5.6.1)
 - timestamps + trigger `update_updated_at`
 
 Criado automaticamente por trigger `handle_new_user()` (`SECURITY DEFINER`, `AFTER INSERT ON auth.users`): `username = slug(email) + '_' + 6 chars do UUID`, `display_name` = `raw_user_meta_data->>'full_name'` ou prefixo do e-mail.
@@ -131,7 +132,7 @@ Criado automaticamente por trigger `handle_new_user()` (`SECURITY DEFINER`, `AFT
 - Cobrança: `planLimits()` (`src/lib/utils.ts`) ganhou `managersIncluded` (`free: 0`, `pro: 1`, `mission: 2`); pacotes pagos extras em `MANAGER_ADDONS` (`src/lib/pricing.ts`: +2 por R$15/mês, +4 por R$30/mês) com scaffold de checkout em `POST /api/billing/checkout` (`type: 'manager_addon'`) seguindo o mesmo padrão "sem `STRIPE_PRICE_MANAGERS_*` configurado → 501" do resto do billing. Como o webhook Stripe→`profiles` ainda não existe (mesma pendência já documentada acima para Pro/Missão), `extra_manager_seats` não é incrementado automaticamente após a compra ainda.
 
 #### `posts` (feed / publicações)
-`profile_id FK`, `type CHECK IN ('text','image','video','carousel')`, `content`, `media_urls TEXT[]`, `published_at`, `scheduled_at`, `is_draft BOOLEAN DEFAULT true`, `created_by_user_id FK auth.users ON DELETE SET NULL` (nullable, corrigido na 017), `project_id UUID FK highlights ON DELETE SET NULL` (migration 005 — vincula um post/relatório a um projeto específico).
+`profile_id FK`, `type CHECK IN ('text','image','video','carousel')`, `content`, `media_urls TEXT[]`, `published_at`, `scheduled_at`, `is_draft BOOLEAN DEFAULT true`, `created_by_user_id FK auth.users ON DELETE SET NULL` (nullable, corrigido na 017), `project_id UUID FK highlights ON DELETE SET NULL` (migration 005 — vincula um post/relatório a um projeto específico), `original_locale TEXT DEFAULT 'pt' CHECK IN ('pt','en','es')` e `translations JSONB DEFAULT '{}'` (migration 025 — idioma em que o post foi escrito e traduções para os outros dois; ver seção 5.6.1).
 
 #### `highlights` (= "Projetos" no produto atual)
 - `profile_id FK`, `title`, `description`, `goal_amount NUMERIC(15,2)`, `current_amount NUMERIC(15,2) DEFAULT 0` (mantido por trigger, nunca calculado on-the-fly), `currency TEXT DEFAULT 'BRL'`
@@ -160,7 +161,7 @@ View `project_budget_progress` **`WITH (security_invoker = true)`** (crítico pa
 > **Decisão de design**: `project_members` (quem edita o conteúdo do projeto) e `account_members` (quem mexe no dinheiro) são desacoplados propositalmente. A rota de API `/api/projects/members` sincroniza os dois automaticamente (ver seção 5).
 
 #### `partners` (CRM)
-`profile_id FK`, `user_id FK auth.users ON DELETE SET NULL` (nullable — nem todo parceiro tem conta), `name`, `email`, `phone`, `type CHECK IN ('financial','prayer','both','ambassador')` (migration 007 adiciona `ambassador`), `notes`, `tags TEXT[]`, `joined_at`. Índice único `(profile_id, user_id)` onde `user_id IS NOT NULL` (migration 012).
+`profile_id FK`, `user_id FK auth.users ON DELETE SET NULL` (nullable — nem todo parceiro tem conta), `name`, `email`, `phone` (WhatsApp), `phone_alt` (telefone alternativo opcional, migration 026), `birth_date` (opcional, migration 027 — alimenta os lembretes de aniversário, ver `BirthdayReminders` na seção 7.1), `type CHECK IN ('financial','prayer','both','ambassador')` (migration 007 adiciona `ambassador`), `notes`, `tags TEXT[]`, `joined_at`. Índice único `(profile_id, user_id)` onde `user_id IS NOT NULL` (migration 012).
 
 #### `partner_visibility_grants` (migration 011 — controle granular de visibilidade)
 `profile_id FK`, `partner_id FK`, `section CHECK IN ('full_profile','financial_summary','prayer_requests','sensitive_fields','messages')`, `granted_at`, `UNIQUE(profile_id, partner_id, section)`.
@@ -215,6 +216,7 @@ Blocos estilo Notion para página `/historia`. `profile_id FK`, `type CHECK IN (
 - `is_authorized_partner(p_profile_id)`, `has_partner_grant(p_profile_id, p_section)` `SECURITY DEFINER STABLE` (migration 011) — mesma técnica anti-recursão, aplicadas a `partners`/`partner_visibility_grants`.
 - `notify(p_recipient_user_id, p_type, p_payload)` `SECURITY DEFINER` (migration 014) — helper de inserção em `notifications` (no-op se recipient NULL). **Decisão de design**: notificações disparadas por trigger Postgres, não por código da aplicação, para garantir disparo mesmo de fontes futuras fora do Next.js (app mobile, webhook WhatsApp).
   - `trg_notify_new_pledge`, `trg_notify_pledge_confirmed`, `trg_notify_new_message`, `trg_notify_new_partner`, `trg_notify_highlight_update` (notifica todos os parceiros quando um post vinculado a projeto é publicado), `trg_notify_prayer_reply` (migration 015).
+- `consume_ai_credits(p_profile_id, p_amount, p_reason)` `SECURITY DEFINER` (migration 025) — débito atômico de `profiles.ai_credits` (`FOR UPDATE` + checagem via `is_profile_owner`), levanta `insufficient_ai_credits` se saldo insuficiente; registra a transação em `ai_credit_transactions`. Chamada via `supabase.rpc(...)` com o client **anônimo** (não service-role) para que `auth.uid()` exista dentro da função.
 
 ### 3.3 RLS — padrões e histórico de bugs
 
@@ -286,6 +288,15 @@ Gerencia `project_members` (equipe) e sincroniza acesso financeiro.
 - `POST { highlightId, email, role }`: busca usuário por e-mail (mesmo padrão paginado). Insere em `project_members`. Garante que existe `financial_accounts` vinculada ao `highlight_id` (cria `{ name: 'Equipe — {title}', is_shared: true }` se não existir). Insere o membro também em `account_members`, mapeando `role='lead' → 'owner'`, demais → `'viewer'`.
 - `DELETE { memberId, highlightId, memberUserId }`: remove de `project_members` e, se aplicável, de `account_members` do mesmo par.
 
+#### `POST /api/ai/translate` — tradução de conteúdo via IA (migration 025, `src/lib/ai/`)
+1. `createClient()` anônimo, `auth.getUser()` — 401 se não autenticado.
+2. Recebe `{ profileId, sourceLocale, targetLocales, text }`; valida locales ⊂ `LOCALES` (`pt`/`en`/`es`) e `targetLocales` sem `sourceLocale`.
+3. `supabase.rpc('consume_ai_credits', { p_profile_id, p_amount: AI_ACTION_COSTS.translate_content, p_reason: 'translate_content' })` — client anônimo (não service-role), para `auth.uid()` existir dentro da função `SECURITY DEFINER`. `insufficient_ai_credits` → 402; outro erro → 403.
+4. `translateContent(...)` (`src/lib/ai/translate.ts`) chama `claude-haiku-4-5` via `@anthropic-ai/sdk` com `output_config.format` (structured outputs/JSON Schema) para devolver `{ [locale]: string }` sem parsing frágil de texto livre. Erro do provedor → 502 (crédito já debitado; sem reembolso automático nesta versão).
+5. Retorna `{ translations, remainingCredits }`.
+
+`src/lib/ai/costs.ts` centraliza `AI_ACTION_COSTS` (hoje só `translate_content: 1`) — ponto único para adicionar custos de futuras ações de IA (ex.: melhorar texto, copiloto de criação) sem espalhar números mágicos pelo código.
+
 ### 5.4 `src/lib/financial/projection.ts` — projeção de arrecadação
 
 ```
@@ -306,7 +317,17 @@ Modelo de extrapolação linear simples (não considera sazonalidade), usado só
 
 ### 5.6 Internacionalização (`src/i18n/`, `messages/`) — Fase 1: site público
 
-**Status**: infraestrutura completa + site público 100% traduzido (PT/EN/ES). Onboarding, dashboard inteiro e páginas públicas de perfil (`[username]/*`) **ainda não traduzidos** — ficam em português até uma Fase 2 (decisão explícita para não fazer uma mudança gigante de uma vez).
+**Status**: infraestrutura completa + site público 100% traduzido (PT/EN/ES). Onboarding e dashboard ainda majoritariamente em português; `[username]/*` (perfil público) já usa `getTranslations`/`getLocale` em parte das páginas (`page.tsx`, `profile-header.tsx`) — tradução completa do dashboard fica para uma Fase 2 (decisão explícita para não fazer uma mudança gigante de uma vez).
+
+#### 5.6.1 Tradução de **conteúdo do usuário** (posts, bio) — ortogonal à i18n de UI acima
+
+Migration 025 adiciona um segundo tipo de "idioma" ao sistema, **independente** do `profiles.locale`/`NEXT_LOCALE` acima: o idioma em que o *conteúdo* (post, bio) foi escrito, e suas traduções. Não confundir os dois — `profiles.locale` controla em que idioma a interface aparece para quem está navegando; `original_locale`/`bio_locale` + `translations`/`bio_translations` controlam em que idioma(s) o *texto que o missionário escreveu* existe.
+
+- **Schema**: `posts.original_locale`/`posts.translations` e `profiles.bio_locale`/`profiles.bio_translations` (ambos JSONB no formato `{"en": {"content", "source": "ai"|"human", "translated_at"}, "es": {...}}` — só as línguas que **não** são a original; o texto original continua só em `posts.content`/`profiles.bio`, nunca duplicado no JSONB).
+- **Geração de tradução via IA**: `src/lib/ai/` (`client.ts`, `costs.ts`, `translate.ts`) + rota `POST /api/ai/translate` (seção 5.3) — usa `claude-haiku-4-5`, débito de 1 `ai_credit` via `consume_ai_credits`. **Sempre opcional**: o usuário pode digitar a tradução manualmente nas abas de idioma sem gastar nenhum crédito; a IA é só um atalho.
+- **UI**: `src/components/dashboard/locale-content-tabs.tsx` (`LocaleContentTabs`) — componente compartilhado com abas PT/EN/ES (bandeiras iguais ao `LanguageSwitcher`), usado em `PostEditor` (texto do post) e `ProfileForm` (bio). Cada aba é um textarea sempre editável; o botão "Traduzir com IA" só preenche o textarea, nunca substitui sem revisão.
+- **Gravação de posts migrou para Server Action**: `src/app/dashboard/publicacoes/actions.ts` (`savePost`) substitui o antigo insert/update direto do client em `post-editor.tsx` — mesmo padrão de `projetos/actions.ts` (`saveHighlight`): client anônimo só para `auth.getUser()`, depois client service-role reverificando dono/gestor manualmente antes de gravar. Perfil (bio) **não** ganhou Server Action nova — `profile-form.tsx` continua gravando via client sob RLS `profiles_owner_all`, já que a parte sensível (chamar IA/débito de crédito) já está isolada em `/api/ai/translate`.
+- **Renderização pública**: `src/lib/i18n/resolve-content-locale.ts` (`resolveLocalizedText`) resolve, dado o idioma do visitante (via `getLocale()` do next-intl, já montado em `[username]/*`), qual texto mostrar — tradução se existir, senão o original (nunca string vazia). Usado em `profile-header.tsx` (bio) e `[username]/projetos/[slug]/page.tsx` (seção "Atualizações"). O dashboard (`posts-list.tsx`, etc.) **não** usa esse resolver — o dono sempre vê o conteúdo no idioma original ali.
 
 - **Biblioteca**: `next-intl`, em modo **sem prefixo de URL** (nada de `/en/...`) — plugado via `createNextIntlPlugin` em `next.config.ts`.
 - **Resolução de locale** (`src/i18n/request.ts`, roda a cada request server-side): 1) cookie `NEXT_LOCALE` se presente; 2) senão, se o usuário estiver logado, `profiles.locale` (query via `createClient()` de `@/lib/supabase/server`); 3) senão, `pt` (default em `src/i18n/config.ts`).
@@ -366,6 +387,8 @@ Recursos cifrados no sistema: `conversation` (DMs), `prayer_request` (pedidos/re
 6. **Exclusão de conta**: duas entradas (`/conta/excluir` para quem só é parceiro, exige digitar `EXCLUIR`; `AccountForm` em Configurações para quem tem profile, exige digitar `@username`) → ambas chamam `POST /api/account/delete`.
 7. **Alerta de configuração pendente** (`SetupChecklistBanner`, `src/components/dashboard/setup-checklist-banner.tsx`, renderizado em `dashboard/page.tsx`) — banner no topo do dashboard, computado (não armazenado) a partir de 3 condições: perfil incompleto (sem avatar OU username ainda no padrão auto-gerado `nome_xxxxxx`), nenhum método de recebimento configurado, e zero `highlights`. Mostra só os itens pendentes com link direto para resolver; desaparece sozinho quando os 3 estão OK. Dismissable via `localStorage` (`profile-banner-dismissed`, mesmo padrão do banner anterior que substituiu).
 
+8. **Lembretes de aniversário** (`BirthdayReminders`, `src/components/dashboard/birthday-reminders.tsx`, Server Component renderizado logo abaixo do `SetupChecklistBanner` em `dashboard/page.tsx`) — banner rosa, sem persistência própria: a cada carregamento do dashboard, busca `partners` do perfil com `birth_date IS NOT NULL` e calcula em memória (`src/lib/partners/birthdays.ts`, `getUpcomingBirthdays`) quem faz aniversário nos próximos 14 dias (comparando só mês/dia, com virada de ano). Não usa `pg_cron`/trigger — é só uma consulta computada na visita à página, então só funciona como lembrete se o missionário abrir o dashboard. Cada linha tem um botão de ação: se o parceiro tem `user_id`, linka pro chat interno (`/dashboard/mensagens/[userId]`); senão, se tem `phone`, abre `wa.me` com mensagem de parabéns pré-preenchida (`target="_blank"`); sem nenhum dos dois, a linha aparece sem ação. `birth_date` é preenchido opcionalmente no modal `AddPartnerButton` (admin) e no formulário público `PartnershipForm` (parceiro se cadastra sozinho) — mesma coluna nos dois casos.
+
 ### 7.2 Pledge (registro manual de oferta) → conciliação
 O sistema **não processa pagamentos** — Pix/PayPal/etc. acontecem fora da plataforma.
 1. Parceiro/visitante preenche `PledgeForm`: escolhe `payment_method` dentre os configurados pelo missionário, valor, data, nome/e-mail, comprovante opcional (upload comprimido para bucket `media`).
@@ -414,7 +437,7 @@ Estados: `checking → needs_setup | needs_unlock → showing_recovery_code → 
 Entrar na equipe (`project_members`) concede automaticamente acesso à conta financeira compartilhada do projeto (`account_members`), com nível de acesso derivado do papel: `lead → owner`, demais → `viewer`.
 
 ### 7.9 Publicações (`PostEditor`)
-`postType` derivado automaticamente da mídia selecionada (nenhuma→text, 1 vídeo→video, >1 arquivo→carousel, 1 imagem→image). Compressão de imagem client-side, validação (não compressão) de vídeo por tamanho/duração. Upload sequencial para bucket `media` em `${userId}/${timestamp}-${i}.${ext}`.
+`postType` derivado automaticamente da mídia selecionada (nenhuma→text, 1 vídeo→video, >1 arquivo→carousel, 1 imagem→image). Compressão de imagem client-side, validação (não compressão) de vídeo por tamanho/duração. Upload sequencial para bucket `media` em `${userId}/${timestamp}-${i}.${ext}` (continua direto no client). Texto do post usa `LocaleContentTabs` (abas PT/EN/ES, tradução manual ou via IA — seção 5.6.1); gravação da linha `posts` migrou para a Server Action `savePost` (`src/app/dashboard/publicacoes/actions.ts`), que recebe as `mediaUrls` já resolvidas pelo upload client-side.
 
 ### 7.10 Notificações (`useNotifications` hook)
 Carga inicial: não lidas, `LIMIT 20`. Realtime: canal `'notifications'`, filtro `recipient_user_id=eq.${userId}` no Postgres changes, prepend local a cada INSERT. `markAllRead()` marca `read_at=now()` no banco **e limpa a lista local** — não há histórico de lidas visível no dropdown.
@@ -517,11 +540,13 @@ Todas as páginas de rota (exceto formulários) são **Server Components** assí
 |---|---|
 | `sidebar.tsx` | `DashboardSidebar` (nav desktop, 9 itens), `MobileHeader`, `MobileBottomNav` (tab bar + drawer), `useSignOut()` |
 | `notifications-bell.tsx` | Dropdown com badge de não lidas, usa `useNotifications` |
-| `post-editor.tsx` | Criar/editar posts, upload multi-mídia, compressão, detecção de `postType` |
+| `post-editor.tsx` | Criar/editar posts, upload multi-mídia, compressão, detecção de `postType`; texto via `LocaleContentTabs`, grava por `savePost` (Server Action) |
 | `posts-list.tsx` | Lista com toggle draft/publicado, editar/excluir |
+| `locale-content-tabs.tsx` | `LocaleContentTabs` — abas PT/EN/ES compartilhadas (post + bio), tradução manual sempre livre + botão opcional "Traduzir com IA" (seção 5.6.1) |
 | `setup-checklist-banner.tsx` | `SetupChecklistBanner` — checklist dismissível (localStorage + `CustomEvent`/`useSyncExternalStore`) com até 3 itens pendentes: perfil incompleto, sem método de recebimento, sem projeto criado (ver 7.1) |
+| `birthday-reminders.tsx` | `BirthdayReminders` — Server Component, banner de aniversários de parceiros nos próximos 14 dias, sem persistência própria (ver 7.1 item 8) |
 | `settings/settings-tabs.tsx` | Tabs client-side (Perfil/Pagamentos/Privacidade/Conta) |
-| `settings/profile-form.tsx` | Avatar, checagem de username disponível (debounce 500ms), redes sociais |
+| `settings/profile-form.tsx` | Avatar, checagem de username disponível (debounce 500ms), redes sociais; bio via `LocaleContentTabs` |
 | `settings/payment-form.tsx` | Pix/PayPal/Wise/link externo |
 | `settings/privacy-form.tsx` | 3 modos de privacidade + `SensitiveDataForm` dentro de `E2EEGate` |
 | `settings/sensitive-data-form.tsx` | Dados sensíveis cifrados (blob único JSON) |
@@ -563,7 +588,7 @@ Todas as páginas de rota (exceto formulários) são **Server Components** assí
 ### `partners/`
 | Componente | Papel |
 |---|---|
-| `add-partner-button.tsx` | Adicionar parceiro manual, respeita limite do plano (free=2) |
+| `add-partner-button.tsx` | Adicionar parceiro manual, respeita limite do plano (free=2); WhatsApp/telefone via `PhoneInput` (DDI + máscara), data de nascimento opcional |
 | `partners-list.tsx` | Filtro, badge por tipo, `VisibilityGrantsDialog`, link de mensagem |
 | `partnership-form.tsx` | Form público "quero ser parceiro", grava direto sem login |
 | `partnership-wizard.tsx` | Ver fluxo 7.3 |
@@ -583,7 +608,8 @@ Todas as páginas de rota (exceto formulários) são **Server Components** assí
 | `history-view.tsx` | Renderiza `history_blocks` |
 | `profile-cta.tsx` | Botões de ação do perfil público |
 | `profile-header.tsx` | Avatar/nome/localização/bio/redes — condicionado a `privacy_mode` |
-| `projects-section.tsx` | Cards de projeto no perfil público |
+| `projects-section.tsx` | Projetos do perfil público como "destaques" estilo Instagram: faixa horizontal com scroll (`overflow-x-auto snap-x`), capa circular com anel na `accent_color`, título + barra de progresso/valor arrecadado logo abaixo de cada bolinha |
+| `publications-feed.tsx` | Feed de posts públicos do perfil (`[username]/page.tsx`), mais recente → mais antigo (`published_at desc`), com link para o projeto quando o post tem `project_id` |
 | `trajectory-timeline.tsx` | Timeline vertical de projetos concluídos |
 
 ### `onboarding/`
@@ -607,6 +633,7 @@ Todas as páginas de rota (exceto formulários) são **Server Components** assí
 
 ### `ui/` (shadcn v4 sobre `@base-ui/react`)
 `avatar`, `badge`, `button`, `card`, `dialog`, `dropdown-menu`, `input`, `label`, `progress`, `sonner`, `textarea`.
+- **`phone-input.tsx`** (não é shadcn, componente próprio): `<select>` de DDI (bandeira emoji + código, lista curada de ~20 países) + `<input>` mascarado por país (`mask` com `#` por dígito). Componente não-controlado — inicializa a partir de `defaultValue` (string `"+55 11 99999-9999"`) no mount e só se comunica pra fora via `onChange(value)`; não resincroniza se o `defaultValue` mudar depois (assume que o form pai desmonta o campo para resetar, ex: fechar um `Dialog`). Usado em `AddPartnerButton` para os campos WhatsApp/Telefone.
 
 ---
 
@@ -664,6 +691,11 @@ Todas as páginas de rota (exceto formulários) são **Server Components** assí
 
 > Adicione uma entrada aqui (mais recente no topo) toda vez que este arquivo for atualizado por causa de uma mudança real no sistema. Formato: `AAAA-MM-DD — o que mudou no sistema — o que foi atualizado neste doc`.
 
+- **2026-07-06** — Campo opcional `partners.birth_date` (migration `027_partners_birth_date.sql`), preenchível no modal `AddPartnerButton` e no formulário público `PartnershipForm`. Novo `src/lib/partners/birthdays.ts` (`getUpcomingBirthdays`) calcula em memória quem faz aniversário nos próximos 14 dias e novo `BirthdayReminders` (Server Component, `src/components/dashboard/birthday-reminders.tsx`) mostra um banner no topo do dashboard com atalho para parabenizar (chat interno se o parceiro tem conta, senão `wa.me` se tem WhatsApp). É um cálculo feito a cada carregamento da página — não há job agendado (`pg_cron`), então só "lembra" o missionário se ele abrir o dashboard. Nova namespace i18n `Birthdays` em `messages/{pt,en,es}.json` — seções 4 (`partners`), 7.1 e 10 atualizadas.
+- **2026-07-06** — Modal "Novo parceiro" (`AddPartnerButton`) ganhou seletor de DDI com bandeira + máscara por país: novo componente `src/components/ui/phone-input.tsx` (não-shadcn, lista curada de países), usado em dois campos — WhatsApp (`phone`, já existia) e Telefone opcional (`phone_alt`, coluna nova, migration `026_partners_phone_alt.sql`) — seções 4 (`partners`) e 10 (`ui/`) atualizadas.
+- **2026-07-06** — Perfil público (`[username]/page.tsx`) ganhou feed de publicações: query em `posts` (`is_draft=false`, `order by published_at desc`, join com `highlights(title, slug)` via `project_id`) renderizada pelo novo `publications-feed.tsx`. `projects-section.tsx` foi redesenhado de lista de cards para faixa horizontal de "destaques" estilo Instagram (bolinha com anel na cor de destaque + título/progresso abaixo) — seção 7.9 (componentes de `profile/`) atualizada.
+- **2026-07-06** — Trocado o provedor de e-mail transacional planejado de Resend para Brevo: dependência `resend` removida, `@getbrevo/brevo` instalada; `RESEND_API_KEY`/`RESEND_FROM_EMAIL` renomeadas para `BREVO_API_KEY`/`BREVO_FROM_EMAIL` (`.env.example`, `.env.local`). Nenhum código de envio existia ainda (era só dependência/placeholder, sem uso em `src/`), então é só a troca do scaffold — seções 2 e 5.6/pendências não mudam de status ("planejado, sem integração ainda") — seção 2 atualizada.
+- **2026-07-05** — Conteúdo multi-idioma (PT/EN/ES) em posts e bio, via tradução assistida por IA: migration 025 adiciona `posts.original_locale`/`translations` e `profiles.bio_locale`/`bio_translations` (JSONB, só as traduções — o texto original continua só em `content`/`bio`) + função `consume_ai_credits` (débito atômico de `profiles.ai_credits`); primeira integração real de IA do projeto (`src/lib/ai/`, usa `@anthropic-ai/sdk` com `claude-haiku-4-5`) via `POST /api/ai/translate`; novo componente `LocaleContentTabs` (abas de idioma, tradução manual sempre grátis + botão opcional "Traduzir com IA") em `PostEditor` e `ProfileForm`; gravação de posts migrou de insert/update direto do client para a Server Action `savePost` (`src/app/dashboard/publicacoes/actions.ts`); renderização pública (`profile-header.tsx`, `[username]/projetos/[slug]/page.tsx`) resolve o idioma certo para o visitante via `resolveLocalizedText` — seções 3.1, 3.2, 5.3, 5.6, 7.9 e 10 atualizadas.
 - **2026-07-05** — Internacionalização (i18n): `ProfileCTA`, `ProfileHeader` e `[username]/page.tsx` (metadata + `PrivateProfileScreen`) traduzidos — os CTAs e o cabeçalho do perfil público principal agora respeitam o idioma; motivado pelo usuário testar a bandeira e ver os botões "Seja Parceiro"/"Enviar Oração" etc. ainda em português. Demais subpáginas de `[username]/*` (historia, trajetória, parceria, oração, mensagens, projetos) seguem pendentes.
 - **2026-07-05** — Internacionalização (i18n) Fase 2 (parcial): `OnboardingWizard` + `AccountTypeSelector` (agora com hook `useAccountTypeCopy`) e o "shell" do dashboard (sidebar desktop/mobile, notificações com mensagens interpoladas, `SetupChecklistBanner`, visão geral) traduzidos; novo `src/app/[username]/layout.tsx` adiciona `LanguageSwitcher` flutuante (topo direito) em todas as páginas públicas de perfil, mesmo antes delas serem totalmente traduzidas — parceiros internacionais já conseguem trocar o idioma da navegação. Restante do dashboard (publicações/projetos/parceiros/financeiro/orações/mensagens/configurações) e o conteúdo das páginas `[username]/*` continuam em português.
 - **2026-07-05** — Internacionalização (i18n) Fase 1: `next-intl` instalado (sem prefixo de URL), locale resolvido por cookie `NEXT_LOCALE` → `profiles.locale` (nova coluna, migration 024) → default `pt`; `messages/{pt,en,es}.json` com o site público inteiro traduzido (landing, `/planos`, `SiteNav`/`SiteFooter`, login, cadastro); `LanguageSwitcher` com bandeiras no `SiteNav` e em Configurações → Conta; `src/lib/modules.ts` e `src/lib/pricing.ts` refatorados para guardar só `id`/ícone/cor/preço, texto migrado para os `messages/*.json`. Onboarding e dashboard inteiro ainda em português — Fase 2 planejada, não escondida — seções 2, 3.1, 5.6 e 10 atualizadas.

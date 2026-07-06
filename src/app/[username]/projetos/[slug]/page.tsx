@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getLocale } from 'next-intl/server'
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -7,6 +8,8 @@ import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { buttonVariants } from '@/components/ui/button'
 import { cn, formatCurrency, getInitials } from '@/lib/utils'
+import { resolveLocalizedText } from '@/lib/i18n/resolve-content-locale'
+import type { Locale } from '@/i18n/config'
 import { CheckCircle2, Circle, ArrowLeft, Users } from 'lucide-react'
 import { BudgetBreakdown } from '@/components/highlights/budget-breakdown'
 import { FundingProjectionCard } from '@/components/highlights/funding-projection-card'
@@ -110,9 +113,11 @@ export default async function ProjetoPublicoPage({ params }: Props) {
 
   if (!project) notFound()
 
+  const visitorLocale = (await getLocale()) as Locale
+
   const [{ data: milestones }, { data: updates }, { data: budgetCategories }, { data: pastProjects }, { count: supporterCount }] = await Promise.all([
     supabase.from('milestones').select('*').eq('highlight_id', project.id).order('order_index'),
-    supabase.from('posts').select('id, content, media_urls, published_at, type')
+    supabase.from('posts').select('id, content, media_urls, published_at, type, original_locale, translations')
       .eq('profile_id', profile.id).eq('project_id', project.id).eq('is_draft', false)
       .order('published_at', { ascending: false }).limit(10),
     supabase.from('project_budget_progress').select('*').eq('highlight_id', project.id).order('order_index'),
@@ -320,21 +325,23 @@ export default async function ProjetoPublicoPage({ params }: Props) {
           <div className="space-y-4">
             <h2 className="font-semibold">Atualizações</h2>
             <div className="space-y-4">
-              {updates.map(u => (
+              {updates.map(u => {
+                const updateText = resolveLocalizedText(u.content, u.original_locale, u.translations, visitorLocale).text
+                return (
                 <div key={u.id} className="p-4 rounded-xl border bg-card space-y-2">
                   {u.media_urls?.[0] && (
                     <div className="relative h-40 rounded-lg overflow-hidden">
                       <Image src={u.media_urls[0]} alt="" fill className="object-cover" />
                     </div>
                   )}
-                  {u.content && <p className="text-sm whitespace-pre-wrap">{u.content}</p>}
+                  {updateText && <p className="text-sm whitespace-pre-wrap">{updateText}</p>}
                   {u.published_at && (
                     <p className="text-xs text-muted-foreground">
                       {new Date(u.published_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
                     </p>
                   )}
                 </div>
-              ))}
+              )})}
             </div>
           </div>
         )}

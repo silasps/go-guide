@@ -55,8 +55,16 @@ export interface Profile {
   extra_manager_seats: number
   mission_start_date: string | null
   locale: Locale
+  bio_locale: Locale
+  bio_translations: Partial<Record<Locale, ContentTranslation>>
   created_at: string
   updated_at: string
+}
+
+export interface ContentTranslation {
+  content: string
+  source: 'ai' | 'human'
+  translated_at: string
 }
 
 export interface Post {
@@ -70,6 +78,8 @@ export interface Post {
   is_draft: boolean
   project_id: string | null
   created_by_user_id: string | null
+  original_locale: Locale
+  translations: Partial<Record<Locale, ContentTranslation>>
   created_at: string
   updated_at: string
 }
@@ -182,6 +192,8 @@ export interface Partner {
   name: string
   email: string | null
   phone: string | null
+  phone_alt: string | null
+  birth_date: string | null
   type: PartnerType
   notes: string | null
   tags: string[]

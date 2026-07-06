@@ -15,6 +15,42 @@ import Image from 'next/image'
 
 const CURRENCIES = ['BRL', 'USD', 'EUR', 'GBP', 'CHF', 'CAD', 'AUD']
 
+const CURRENCY_SEPARATORS: Record<string, { decimal: string; thousands: string }> = {
+  BRL: { decimal: ',', thousands: '.' },
+  EUR: { decimal: ',', thousands: '.' },
+  USD: { decimal: '.', thousands: ',' },
+  GBP: { decimal: '.', thousands: ',' },
+  CHF: { decimal: '.', thousands: ',' },
+  CAD: { decimal: '.', thousands: ',' },
+  AUD: { decimal: '.', thousands: ',' },
+}
+
+/** Formats raw digits as cents, like a bank app amount field (digits fill in from the right). */
+function toMasked(raw: string, currency: string) {
+  const digits = raw.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+  if (!digits) return ''
+  const { decimal, thousands } = CURRENCY_SEPARATORS[currency] ?? CURRENCY_SEPARATORS.BRL
+  const cents = digits.padStart(3, '0')
+  const intPart = cents.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, thousands)
+  const decPart = cents.slice(-2)
+  return `${intPart}${decimal}${decPart}`
+}
+
+function fromMasked(masked: string, currency: string) {
+  const { decimal, thousands } = CURRENCY_SEPARATORS[currency] ?? CURRENCY_SEPARATORS.BRL
+  let result = masked.split(thousands).join('')
+  if (decimal !== '.') result = result.split(decimal).join('.')
+  return result
+}
+
+/** Re-renders an already-masked value when the currency (and thus its separators) changes. */
+function reformatMasked(masked: string, oldCurrency: string, newCurrency: string) {
+  if (!masked) return masked
+  const plain = parseFloat(fromMasked(masked, oldCurrency))
+  if (isNaN(plain)) return masked
+  return toMasked(String(Math.round(plain * 100)), newCurrency)
+}
+
 const BUDGET_CATEGORY_LABELS: Record<BudgetCategoryType, string> = {
   airfare: 'Passagem aérea',
   bus: 'Ônibus',
@@ -62,22 +98,14 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
   const [goalTypes, setGoalTypes] = useState<string[]>(
     Array.isArray(highlight?.goal_type) ? highlight.goal_type : ['financial']
   )
-  function toMasked(raw: string) {
-    const digits = raw.replace(/\D/g, '')
-    if (!digits) return ''
-    return Number(digits).toLocaleString('pt-BR')
-  }
-  function fromMasked(masked: string) {
-    return masked.replace(/\./g, '').replace(',', '.')
-  }
-
+  const initialCurrency = highlight?.currency ?? 'BRL'
   const [goalAmount, setGoalAmount] = useState(
-    highlight?.goal_amount ? toMasked(String(Math.round(highlight.goal_amount))) : ''
+    highlight?.goal_amount ? toMasked(String(Math.round(highlight.goal_amount * 100)), initialCurrency) : ''
   )
   const [currentAmount, setCurrentAmount] = useState(
-    highlight?.current_amount ? toMasked(String(Math.round(highlight.current_amount))) : '0'
+    toMasked(String(Math.round((highlight?.current_amount ?? 0) * 100)), initialCurrency)
   )
-  const [currency, setCurrency] = useState(highlight?.currency ?? 'BRL')
+  const [currency, setCurrency] = useState(initialCurrency)
   const [coverPreview, setCoverPreview] = useState<string>(highlight?.cover_url ?? '')
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [position, setPosition] = useState<{ x: number; y: number }>(
@@ -102,7 +130,7 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
     (highlight?.budgetCategories ?? []).map(b => ({
       category_type: b.category_type,
       custom_label: b.custom_label ?? '',
-      target_amount: toMasked(String(Math.round(b.target_amount))),
+      target_amount: toMasked(String(Math.round(b.target_amount * 100)), initialCurrency),
     }))
   )
   const [newBudgetCategoryType, setNewBudgetCategoryType] = useState<BudgetCategoryType>('airfare')
@@ -116,7 +144,7 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
   function updateBudgetCategory(idx: number, patch: Partial<{ category_type: BudgetCategoryType; custom_label: string; target_amount: string }>) {
     setBudgetCategories(prev => prev.map((b, i) => i === idx ? { ...b, ...patch } : b))
   }
-  const budgetTotal = budgetCategories.reduce((sum, b) => sum + (parseFloat(fromMasked(b.target_amount)) || 0), 0)
+  const budgetTotal = budgetCategories.reduce((sum, b) => sum + (parseFloat(fromMasked(b.target_amount, currency)) || 0), 0)
 
   // Drag state (refs to avoid re-renders during drag)
   const dragging = useRef(false)
@@ -214,8 +242,8 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
           title: title.trim(),
           description: description.trim(),
           goalTypes,
-          goalAmount: isDetailedBudget ? budgetTotal : (hasFinancial && goalAmount ? parseFloat(fromMasked(goalAmount)) : null),
-          currentAmount: hasFinancial ? (parseFloat(fromMasked(currentAmount)) || 0) : 0,
+          goalAmount: isDetailedBudget ? budgetTotal : (hasFinancial && goalAmount ? parseFloat(fromMasked(goalAmount, currency)) : null),
+          currentAmount: hasFinancial ? (parseFloat(fromMasked(currentAmount, currency)) || 0) : 0,
           currency,
           coverUrl: cover_url,
           coverPosition: cover_position,
@@ -227,11 +255,11 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
           milestones,
           budgetCategories: isDetailedBudget
             ? budgetCategories
-                .filter(b => parseFloat(fromMasked(b.target_amount)) > 0)
+                .filter(b => parseFloat(fromMasked(b.target_amount, currency)) > 0)
                 .map(b => ({
                   category_type: b.category_type,
                   custom_label: b.category_type === 'other' ? (b.custom_label.trim() || 'Outros') : null,
-                  target_amount: parseFloat(fromMasked(b.target_amount)),
+                  target_amount: parseFloat(fromMasked(b.target_amount, currency)),
                 }))
             : [],
         }),
@@ -386,7 +414,13 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
                   <select
                     id="currency"
                     value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
+                    onChange={(e) => {
+                      const newCurrency = e.target.value
+                      setGoalAmount(prev => reformatMasked(prev, currency, newCurrency))
+                      setCurrentAmount(prev => reformatMasked(prev, currency, newCurrency))
+                      setBudgetCategories(prev => prev.map(b => ({ ...b, target_amount: reformatMasked(b.target_amount, currency, newCurrency) })))
+                      setCurrency(newCurrency)
+                    }}
                     className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                   >
                     {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -399,8 +433,8 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
                       id="goal"
                       inputMode="numeric"
                       value={goalAmount}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGoalAmount(toMasked(e.target.value))}
-                      placeholder="0"
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGoalAmount(toMasked(e.target.value, currency))}
+                      placeholder="0,00"
                     />
                   </div>
                 )}
@@ -411,8 +445,8 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
                       id="current"
                       inputMode="numeric"
                       value={currentAmount}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCurrentAmount(toMasked(e.target.value))}
-                      placeholder="0"
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCurrentAmount(toMasked(e.target.value, currency))}
+                      placeholder="0,00"
                     />
                   </div>
                 )}
@@ -454,7 +488,7 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
                         <Input
                           inputMode="numeric"
                           value={b.target_amount}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateBudgetCategory(i, { target_amount: toMasked(e.target.value) })}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateBudgetCategory(i, { target_amount: toMasked(e.target.value, currency) })}
                           placeholder="Valor"
                           className="h-8 text-xs w-24 shrink-0"
                         />

@@ -18,6 +18,7 @@ export function PartnershipForm({ profileId, missionaryName, defaultType }: Prop
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [birthDate, setBirthDate] = useState('')
   const [notes, setNotes] = useState('')
   const [type, setType] = useState<'financial' | 'prayer' | 'both' | 'ambassador'>(defaultType ?? 'both')
 
@@ -35,6 +36,7 @@ export function PartnershipForm({ profileId, missionaryName, defaultType }: Prop
       name: name.trim(),
       email: email.trim(),
       phone: phone.trim() || null,
+      birth_date: birthDate || null,
       notes: notes.trim() || null,
       type,
     })
@@ -98,6 +100,10 @@ export function PartnershipForm({ profileId, missionaryName, defaultType }: Prop
           <div className="space-y-2">
             <Label>WhatsApp</Label>
             <Input value={phone} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)} placeholder="+55 11 99999-9999" />
+          </div>
+          <div className="space-y-2">
+            <Label>Data de nascimento (opcional)</Label>
+            <Input type="date" value={birthDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBirthDate(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label>Mensagem (opcional)</Label>

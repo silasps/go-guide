@@ -5,19 +5,22 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage, validateVideo, validateVideoDuration, getMediaType, formatFileSize, VIDEO_MAX_SIZE_MB } from '@/lib/media/compress'
+import { savePost } from '@/app/dashboard/publicacoes/actions'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { LocaleContentTabs } from '@/components/dashboard/locale-content-tabs'
 import { toast } from 'sonner'
 import { ImagePlus, Video, X, Loader2, AlertCircle } from 'lucide-react'
 import { Post, PostType } from '@/types/database'
+import type { Locale } from '@/i18n/config'
 
 interface Props {
   post?: Post
   profileId: string
   userId: string
+  originalLocale: Locale
 }
 
 type MediaFile = {
@@ -26,11 +29,22 @@ type MediaFile = {
   type: 'image' | 'video'
 }
 
-export function PostEditor({ post, profileId, userId }: Props) {
+export function PostEditor({ post, profileId, userId, originalLocale }: Props) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const effectiveOriginalLocale: Locale = post?.original_locale ?? originalLocale
   const [content, setContent] = useState(post?.content ?? '')
+  const [translations, setTranslations] = useState<Partial<Record<Locale, string>>>(() => {
+    const t: Partial<Record<Locale, string>> = {}
+    for (const [locale, v] of Object.entries(post?.translations ?? {})) t[locale as Locale] = v.content
+    return t
+  })
+  const [translationSources, setTranslationSources] = useState<Partial<Record<Locale, 'ai' | 'human'>>>(() => {
+    const s: Partial<Record<Locale, 'ai' | 'human'>> = {}
+    for (const [locale, v] of Object.entries(post?.translations ?? {})) s[locale as Locale] = v.source
+    return s
+  })
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
   const [existingUrls] = useState<string[]>(post?.media_urls ?? [])
   const [uploading, setUploading] = useState(false)
@@ -115,6 +129,40 @@ export function PostEditor({ post, profileId, userId }: Props) {
     return [...existingUrls, ...urls]
   }
 
+  async function handleTranslateWithAi(locale: Locale) {
+    if (!content.trim()) return
+    try {
+      const res = await fetch('/api/ai/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profileId,
+          sourceLocale: effectiveOriginalLocale,
+          targetLocales: [locale],
+          text: content,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        if (data.error === 'insufficient_ai_credits') {
+          toast.error('Créditos de IA insuficientes.', {
+            action: { label: 'Ver planos', onClick: () => router.push('/planos') },
+          })
+        } else {
+          toast.error('Erro ao traduzir. Tente novamente.')
+        }
+        return
+      }
+      const translated = data.translations?.[locale]
+      if (translated) {
+        setTranslations((prev) => ({ ...prev, [locale]: translated }))
+        setTranslationSources((prev) => ({ ...prev, [locale]: 'ai' }))
+      }
+    } catch {
+      toast.error('Erro ao traduzir. Tente novamente.')
+    }
+  }
+
   async function handleSave(isDraft: boolean) {
     if (!content.trim() && !mediaFiles.length && !existingUrls.length) {
       toast.error('Adicione texto ou mídia antes de salvar.')
@@ -125,25 +173,24 @@ export function PostEditor({ post, profileId, userId }: Props) {
     setUploading(mediaFiles.length > 0)
 
     try {
-      const supabase = createClient()
       const mediaUrls = await uploadMedia()
       setUploading(false)
 
-      const payload = {
-        profile_id: profileId,
-        created_by_user_id: userId,
+      await savePost({
+        postId: post?.id,
+        profileId,
+        originalLocale: effectiveOriginalLocale,
         type: postType,
-        content: content.trim() || null,
-        media_urls: mediaUrls,
-        is_draft: isDraft,
-        published_at: isDraft ? null : new Date().toISOString(),
-      }
-
-      if (post) {
-        await supabase.from('posts').update(payload).eq('id', post.id)
-      } else {
-        await supabase.from('posts').insert(payload)
-      }
+        content,
+        mediaUrls,
+        isDraft,
+        translations: Object.fromEntries(
+          Object.entries(translations).map(([locale, text]) => [
+            locale,
+            { content: text ?? '', source: translationSources[locale as Locale] ?? 'human' },
+          ])
+        ),
+      })
 
       toast.success(isDraft ? 'Rascunho salvo.' : 'Publicado!')
       router.push('/dashboard/publicacoes')
@@ -162,12 +209,17 @@ export function PostEditor({ post, profileId, userId }: Props) {
       {/* Content */}
       <div className="space-y-2">
         <Label>Texto</Label>
-        <Textarea
-          placeholder="Compartilhe o que Deus está fazendo..."
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          rows={5}
-          className="resize-none"
+        <LocaleContentTabs
+          originalLocale={effectiveOriginalLocale}
+          originalText={content}
+          onOriginalChange={setContent}
+          translations={translations}
+          onTranslationChange={(locale, value) => {
+            setTranslations((prev) => ({ ...prev, [locale]: value }))
+            setTranslationSources((prev) => ({ ...prev, [locale]: 'human' }))
+          }}
+          onTranslateWithAi={handleTranslateWithAi}
+          originalPlaceholder="Compartilhe o que Deus está fazendo..."
         />
       </div>
 

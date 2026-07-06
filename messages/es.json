@@ -301,5 +301,13 @@
     "errorSavingProfile": "Error al guardar el perfil.",
     "errorSavingPayment": "Error al guardar los datos de recepción.",
     "errorCreatingProject": "Error al crear el proyecto."
+  },
+  "Birthdays": {
+    "title": "Próximos cumpleaños",
+    "today": "¡cumple {age} años hoy! 🎂",
+    "tomorrow": "cumple {age} años mañana",
+    "inDays": "cumple {age} años en {days} días",
+    "sendWishes": "Enviar felicitación",
+    "waMessage": "¡Feliz cumpleaños, {name}! 🎉 ¡Que Dios bendiga mucho tu vida!"
   }
 }

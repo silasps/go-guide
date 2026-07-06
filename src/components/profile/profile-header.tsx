@@ -1,8 +1,10 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { getTranslations } from 'next-intl/server'
+import { getTranslations, getLocale } from 'next-intl/server'
 import { Profile } from '@/types/database'
 import { getInitials } from '@/lib/utils'
+import { resolveLocalizedText } from '@/lib/i18n/resolve-content-locale'
+import type { Locale } from '@/i18n/config'
 import { MapPin, Link2 } from 'lucide-react'
 
 interface Props {
@@ -19,8 +21,11 @@ function extractDomain(url: string) {
 
 export async function ProfileHeader({ profile }: Props) {
   const t = await getTranslations('PublicProfile')
+  const locale = (await getLocale()) as Locale
   const isPublic = profile.privacy_mode === 'public'
   const displayName = profile.privacy_mode === 'stealth' ? t('missionaryFallbackName') : profile.display_name
+
+  const bio = resolveLocalizedText(profile.bio, profile.bio_locale, profile.bio_translations, locale).text
 
   const donationLink = profile.external_donation_url || profile.paypal_url || profile.wise_url
 
@@ -60,8 +65,8 @@ export async function ProfileHeader({ profile }: Props) {
       </div>
 
       {/* Bio */}
-      {profile.bio && (
-        <p className="text-sm leading-relaxed whitespace-pre-line text-foreground/80">{profile.bio}</p>
+      {bio && (
+        <p className="text-sm leading-relaxed whitespace-pre-line text-foreground/80">{bio}</p>
       )}
 
       {/* Links + redes sociais */}

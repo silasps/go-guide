@@ -301,5 +301,13 @@
     "errorSavingProfile": "Error saving profile.",
     "errorSavingPayment": "Error saving payment details.",
     "errorCreatingProject": "Error creating project."
+  },
+  "Birthdays": {
+    "title": "Upcoming birthdays",
+    "today": "turns {age} today! 🎂",
+    "tomorrow": "turns {age} tomorrow",
+    "inDays": "turns {age} in {days} days",
+    "sendWishes": "Send wishes",
+    "waMessage": "Happy birthday, {name}! 🎉 God bless you richly!"
   }
 }

@@ -21,7 +21,7 @@ export default async function NovaPublicacaoPage() {
         <h1 className="text-xl font-semibold">Nova publicação</h1>
         <p className="text-muted-foreground text-sm mt-1">Compartilhe uma atualização com seus parceiros</p>
       </div>
-      <PostEditor profileId={profile.id} userId={user.id} />
+      <PostEditor profileId={profile.id} userId={user.id} originalLocale={profile.locale} />
     </div>
   )
 }
