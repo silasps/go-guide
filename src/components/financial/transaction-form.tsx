@@ -34,6 +34,14 @@ function fromMasked(masked: string) {
   return masked.replace(/\./g, '').replace(',', '.')
 }
 
+// Compra até o dia de fechamento entra na fatura do mês corrente; depois disso, na do mês seguinte.
+function defaultFaturaDate(purchaseDate: string, closingDay: number | null) {
+  const d = new Date(`${purchaseDate}T00:00:00`)
+  const offset = d.getDate() >= (closingDay ?? 1) ? 1 : 0
+  const fd = new Date(d.getFullYear(), d.getMonth() + offset, 1)
+  return `${fd.getFullYear()}-${String(fd.getMonth() + 1).padStart(2, '0')}-01`
+}
+
 export function TransactionForm({ open, onOpenChange, transaction, accounts, categories = [], partners = [], highlights = [], defaultHighlightId, trigger }: Props) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
@@ -47,6 +55,16 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
   const [date, setDate] = useState(transaction?.date ?? new Date().toISOString().slice(0, 10))
 
   const topCategories = categories.filter(c => !c.parent_id)
+  const selectedAccount = accounts.find(a => a.id === accountId)
+  const isCreditAccount = selectedAccount?.account_type === 'credit'
+  const [faturaDate, setFaturaDate] = useState(transaction?.fatura_date ?? defaultFaturaDate(date, selectedAccount?.closing_day ?? null))
+
+  const faturaOptions = Array.from({ length: 6 }, (_, i) => {
+    const base = new Date(); base.setDate(1); base.setMonth(base.getMonth() + i - 1)
+    const value = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}-01`
+    const label = base.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+    return { value, label: label.charAt(0).toUpperCase() + label.slice(1) }
+  })
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -71,6 +89,8 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
       partner_id: partnerId || null,
       highlight_id: highlightId || null,
       date,
+      is_credit_purchase: isCreditAccount,
+      fatura_date: isCreditAccount ? faturaDate : null,
     }
 
     const { error } = transaction
@@ -112,7 +132,7 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Conta</Label>
-              <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
+              <select value={accountId} onChange={(e) => { setAccountId(e.target.value); const acc = accounts.find(a => a.id === e.target.value); setFaturaDate(defaultFaturaDate(date, acc?.closing_day ?? null)) }} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
                 {accounts.map(a => <option key={a.id} value={a.id}>{a.name} ({a.currency_code})</option>)}
               </select>
             </div>
@@ -137,9 +157,18 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
             </div>
             <div className="space-y-2">
               <Label>Data</Label>
-              <Input type="date" value={date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDate(e.target.value)} />
+              <Input type="date" value={date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setDate(e.target.value); setFaturaDate(defaultFaturaDate(e.target.value, selectedAccount?.closing_day ?? null)) }} />
             </div>
           </div>
+
+          {isCreditAccount && (
+            <div className="space-y-2">
+              <Label>Fatura</Label>
+              <select value={faturaDate} onChange={(e) => setFaturaDate(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
+                {faturaOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+          )}
 
           {partners.length > 0 && (
             <div className="space-y-2">

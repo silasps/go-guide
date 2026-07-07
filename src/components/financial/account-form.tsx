@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { Loader2, Plus } from 'lucide-react'
 
 const CURRENCIES = ['BRL', 'USD', 'EUR', 'GBP', 'CHF', 'CAD', 'AUD']
+const CARD_BRANDS = ['Visa', 'Mastercard', 'Elo', 'American Express', 'Hipercard', 'Outra']
 
 interface Props {
   profileId: string
@@ -27,6 +28,11 @@ export function AccountForm({ profileId, account }: Props) {
   const [accountType, setAccountType] = useState<AccountType>(account?.account_type ?? 'checking')
   const [isShared, setIsShared] = useState(account?.is_shared ?? false)
   const [openingBalance, setOpeningBalance] = useState(account ? '' : '0')
+  const [creditLimit, setCreditLimit] = useState(account?.credit_limit != null ? String(account.credit_limit) : '')
+  const [closingDay, setClosingDay] = useState(account?.closing_day != null ? String(account.closing_day) : '')
+  const [dueDay, setDueDay] = useState(account?.due_day != null ? String(account.due_day) : '')
+  const [cardBrand, setCardBrand] = useState(account?.card_brand ?? '')
+  const isCredit = accountType === 'credit'
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -35,11 +41,19 @@ export function AccountForm({ profileId, account }: Props) {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
+    const creditFields = isCredit ? {
+      credit_limit: creditLimit ? parseFloat(creditLimit) : null,
+      closing_day: closingDay ? parseInt(closingDay, 10) : null,
+      due_day: dueDay ? parseInt(dueDay, 10) : null,
+      card_brand: cardBrand || null,
+    } : { credit_limit: null, closing_day: null, due_day: null, card_brand: null }
+
     if (account) {
       const { error } = await supabase.from('financial_accounts').update({
         name: name.trim(),
         account_type: accountType,
         is_shared: isShared,
+        ...creditFields,
       }).eq('id', account.id)
       setSaving(false)
       if (error) { toast.error('Erro ao salvar conta.'); return }
@@ -53,6 +67,7 @@ export function AccountForm({ profileId, account }: Props) {
         is_shared: isShared,
         balance: parseFloat(openingBalance) || 0,
         created_by_user_id: user!.id,
+        ...creditFields,
       })
       setSaving(false)
       if (error) { toast.error('Erro ao criar conta.'); return }
@@ -101,6 +116,33 @@ export function AccountForm({ profileId, account }: Props) {
               <option value="credit">Cartão de crédito</option>
             </select>
           </div>
+          {isCredit && (
+            <div className="space-y-3 rounded-lg border border-input p-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Limite total</Label>
+                  <Input inputMode="decimal" value={creditLimit} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreditLimit(e.target.value)} placeholder="0" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Bandeira</Label>
+                  <select value={cardBrand} onChange={(e) => setCardBrand(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
+                    <option value="">Selecione</option>
+                    {CARD_BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Dia de fechamento</Label>
+                  <Input type="number" min={1} max={31} value={closingDay} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setClosingDay(e.target.value)} placeholder="Ex: 15" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Dia de vencimento</Label>
+                  <Input type="number" min={1} max={31} value={dueDay} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDueDay(e.target.value)} placeholder="Ex: 22" />
+                </div>
+              </div>
+            </div>
+          )}
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={isShared} onChange={(e) => setIsShared(e.target.checked)} className="rounded border-input" />
             Conta compartilhada (equipe/família)

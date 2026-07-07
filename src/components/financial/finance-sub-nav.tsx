@@ -10,6 +10,7 @@ const items = [
   { href: '/dashboard/financeiro/contas', label: 'Contas' },
   { href: '/dashboard/financeiro/categorias', label: 'Categorias' },
   { href: '/dashboard/financeiro/conciliacao', label: 'Conciliação' },
+  { href: '/dashboard/financeiro/cambio', label: 'Câmbio' },
 ]
 
 export function FinanceSubNav() {

@@ -13,6 +13,15 @@ export default async function ContasPage() {
     ? await supabase.from('account_members').select('*').in('account_id', accountIds)
     : { data: [] }
 
+  const creditAccountIds = (accounts ?? []).filter(a => a.account_type === 'credit').map(a => a.id)
+  const { data: openBills } = creditAccountIds.length > 0
+    ? await supabase.from('transactions').select('account_id, amount, type').in('account_id', creditAccountIds).eq('fatura_paid', false)
+    : { data: [] }
+  const currentBills: Record<string, number> = {}
+  for (const t of openBills ?? []) {
+    currentBills[t.account_id] = (currentBills[t.account_id] ?? 0) + (t.type === 'income' ? -t.amount : t.amount)
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -26,6 +35,7 @@ export default async function ContasPage() {
             account={a}
             profileId={profile!.id}
             members={(members ?? []).filter(m => m.account_id === a.id)}
+            currentBill={currentBills[a.id] ?? 0}
           />
         ))}
       </div>

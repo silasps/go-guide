@@ -269,6 +269,10 @@ export interface FinancialAccount {
   is_shared: boolean
   created_by_user_id: string | null
   highlight_id: string | null
+  closing_day: number | null
+  due_day: number | null
+  card_brand: string | null
+  archived: boolean
   created_at: string
   updated_at: string
 }
@@ -306,6 +310,8 @@ export interface Transaction {
   source: TransactionSource
   is_credit_purchase: boolean
   due_date: string | null
+  fatura_date: string | null
+  fatura_paid: boolean
   date: string
   highlight_id: string | null
   budget_category_id: string | null
