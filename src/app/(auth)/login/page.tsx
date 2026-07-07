@@ -91,7 +91,7 @@ function LoginForm() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password">{t('password')}</Label>
-              <Link href="/recuperar-senha" className="text-xs text-muted-foreground hover:underline">
+              <Link href="/recuperar-senha" tabIndex={-1} className="text-xs text-muted-foreground hover:underline">
                 {t('forgotPassword')}
               </Link>
             </div>

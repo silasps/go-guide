@@ -3,7 +3,6 @@
 import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { LOCALE_COOKIE, LOCALES, type Locale } from '@/i18n/config'
 
@@ -27,13 +26,11 @@ export function LanguageSwitcher({ className }: Props) {
     if (next === locale || switching) return
     setSwitching(true)
 
+    // Só afeta a navegação deste visitante nas páginas públicas (cookie).
+    // Não grava em profiles.locale — mesmo se o visitante for o próprio
+    // dono do perfil logado, isso não deve mudar o idioma da conta/dashboard
+    // (essa preferência só é trocada em Configurações → Conta).
     document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000`
-
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      await supabase.from('profiles').update({ locale: next }).eq('user_id', user.id)
-    }
 
     router.refresh()
     setSwitching(false)
