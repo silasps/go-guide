@@ -5,6 +5,7 @@ import { getLocale, getMessages, getTranslations } from 'next-intl/server'
 import './globals.css'
 import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from '@/components/theme-provider'
+import { NavigationProgress } from '@/components/navigation-progress'
 
 const inter = Inter({
   variable: '--font-sans',
@@ -36,6 +37,7 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <NavigationProgress />
             {children}
             <Toaster richColors position="top-right" />
           </ThemeProvider>
