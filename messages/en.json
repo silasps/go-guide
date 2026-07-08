@@ -429,6 +429,26 @@
     "paymentItem": "Set up how you receive contributions (Pix, PayPal, Wise...)",
     "projectItem": "Create your first project to share with partners"
   },
+  "AICopilot": {
+    "title": "AI Copilot",
+    "subtitle": "AI-powered credits and features.",
+    "balanceLabel": "Available credits",
+    "balancePlanFree": "The Free plan doesn't include monthly AI credits.",
+    "balancePlanPaid": "Your plan includes {credits} credits per month.",
+    "upgradeTitle": "Want more credits?",
+    "upgradeDesc": "Pro and Mission plans include AI credits renewed every month.",
+    "upgradeCta": "See plans",
+    "featuresTitle": "What AI already does for you",
+    "translateTitle": "Content translation",
+    "translateDesc": "Automatically translate your posts and bio into English and Spanish, with manual editing always available.",
+    "translateCost": "1 credit per translation",
+    "translateCtaPosts": "Translate a post",
+    "translateCtaProfile": "Translate your bio",
+    "moreComingSoon": "More AI features are coming soon.",
+    "historyTitle": "Usage history",
+    "historyEmpty": "No AI activity yet.",
+    "reasonTranslateContent": "Content translation"
+  },
   "Notifications": {
     "ariaOpen": "Open notifications",
     "title": "Notifications",

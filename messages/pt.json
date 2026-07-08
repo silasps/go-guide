@@ -429,6 +429,26 @@
     "paymentItem": "Configure o recebimento de contribuições (Pix, PayPal, Wise...)",
     "projectItem": "Crie seu primeiro projeto para compartilhar com parceiros"
   },
+  "AICopilot": {
+    "title": "Copiloto IA",
+    "subtitle": "Créditos e recursos com inteligência artificial.",
+    "balanceLabel": "Créditos disponíveis",
+    "balancePlanFree": "Plano Free não inclui créditos de IA todo mês.",
+    "balancePlanPaid": "Seu plano inclui {credits} créditos por mês.",
+    "upgradeTitle": "Quer mais créditos?",
+    "upgradeDesc": "Planos Pro e Missão incluem créditos de IA renovados mensalmente.",
+    "upgradeCta": "Ver planos",
+    "featuresTitle": "O que a IA já faz por você",
+    "translateTitle": "Tradução de conteúdo",
+    "translateDesc": "Traduza automaticamente suas publicações e sua bio para inglês e espanhol, com edição manual sempre disponível.",
+    "translateCost": "1 crédito por tradução",
+    "translateCtaPosts": "Traduzir uma publicação",
+    "translateCtaProfile": "Traduzir sua bio",
+    "moreComingSoon": "Mais recursos de IA chegam em breve.",
+    "historyTitle": "Histórico de uso",
+    "historyEmpty": "Nenhuma atividade de IA ainda.",
+    "reasonTranslateContent": "Tradução de conteúdo"
+  },
   "Notifications": {
     "ariaOpen": "Abrir notificações",
     "title": "Notificações",
