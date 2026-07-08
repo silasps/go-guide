@@ -14,12 +14,14 @@ export default async function ConversaPage({ params }: Props) {
   if (!profile) notFound()
 
   const { data: partner } = await supabase.from('partners').select('name').eq('profile_id', profile.id).eq('user_id', userId).maybeSingle()
+  const { data: senderProfile } = await supabase.from('profiles').select('display_name').eq('user_id', userId).maybeSingle()
+  const otherName = partner?.name ?? senderProfile?.display_name ?? 'Conversa'
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">{partner?.name ?? 'Conversa'}</h1>
+      <h1 className="text-xl font-semibold">{otherName}</h1>
       <E2EEGate userId={user!.id}>
-        <MessageThread profileId={profile.id} myUserId={user!.id} otherUserId={userId} otherName={partner?.name ?? 'Parceiro'} />
+        <MessageThread profileId={profile.id} myUserId={user!.id} otherUserId={userId} otherName={otherName} />
       </E2EEGate>
     </div>
   )

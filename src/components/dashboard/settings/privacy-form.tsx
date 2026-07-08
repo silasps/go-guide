@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
+import { usePendingAction } from '@/hooks/use-pending-action'
 import { Profile, PrivacyMode } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
@@ -26,19 +27,20 @@ export function PrivacyForm({ profile }: Props) {
     { value: 'stealth', label: t('stealthLabel'), description: t('stealthDescription'), icon: EyeOff, warn: true },
   ]
   const [mode, setMode] = useState<PrivacyMode>(profile.privacy_mode)
-  const [saving, setSaving] = useState(false)
+  const { isPending: saving, run } = usePendingAction()
 
-  async function handleSave() {
-    setSaving(true)
-    const supabase = createClient()
-    const { error } = await supabase
-      .from('profiles')
-      .update({ privacy_mode: mode })
-      .eq('id', profile.id)
+  function handleSave() {
+    run(true, async () => {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('profiles')
+        .update({ privacy_mode: mode })
+        .eq('id', profile.id)
 
-    if (error) toast.error(t('errorSave'))
-    else { toast.success(t('updated')); router.refresh() }
-    setSaving(false)
+      if (error) { toast.error(t('errorSave')); return }
+      toast.success(t('updated'))
+      router.refresh()
+    })
   }
 
   return (

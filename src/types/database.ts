@@ -47,10 +47,6 @@ export interface Profile {
   youtube_url: string | null
   facebook_url: string | null
   tiktok_url: string | null
-  pix_key: string | null
-  paypal_url: string | null
-  wise_url: string | null
-  external_donation_url: string | null
   ai_credits: number
   extra_manager_seats: number
   mission_start_date: string | null
@@ -211,7 +207,24 @@ export interface PartnerVisibilityGrant {
   granted_at: string
 }
 
-export type PledgePaymentMethod = 'pix' | 'paypal' | 'wise' | 'bank_transfer' | 'other'
+export type PaymentMethodType =
+  | 'pix' | 'mercadopago' | 'paypal' | 'wise' | 'bank_transfer' | 'revolut'
+  | 'zelle' | 'venmo' | 'cashapp' | 'alipay' | 'wechatpay' | 'mpesa' | 'crypto' | 'other'
+
+export interface PaymentMethod {
+  id: string
+  profile_id: string
+  type: PaymentMethodType
+  label: string | null
+  value: string
+  details: string | null
+  is_active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export type PledgePaymentMethod = PaymentMethodType
 export type PledgeStatus = 'pending' | 'confirmed' | 'rejected'
 
 export interface Pledge {

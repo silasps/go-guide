@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
+import { usePendingAction } from '@/hooks/use-pending-action'
 import { compressImage } from '@/lib/media/compress'
 import { Profile } from '@/types/database'
 import { AccountTypeSelector, useAccountTypeCopy } from '@/components/profile/account-type-selector'
@@ -82,7 +83,7 @@ export function ProfileForm({ profile }: Props) {
 
   const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>('idle')
   const [usernameTimer, setUsernameTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
-  const [saving, setSaving] = useState(false)
+  const { isPending: saving, run } = usePendingAction()
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -121,63 +122,62 @@ export function ProfileForm({ profile }: Props) {
     setUsernameStatus(data ? 'taken' : 'available')
   }
 
-  async function handleSave() {
+  function handleSave() {
     if (usernameStatus === 'taken' || usernameStatus === 'invalid') return
-    setSaving(true)
-    const supabase = createClient()
+    run(true, async () => {
+      const supabase = createClient()
 
-    let avatar_url = profile.avatar_url
-    if (avatarFile) {
-      const ext = 'webp'
-      const path = `${profile.user_id}/avatar.${ext}`
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(path, avatarFile, { upsert: true, contentType: 'image/webp' })
-      if (uploadError) {
-        toast.error(t('errorUploadPhoto'))
-        setSaving(false)
+      let avatar_url = profile.avatar_url
+      if (avatarFile) {
+        const ext = 'webp'
+        const path = `${profile.user_id}/avatar.${ext}`
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(path, avatarFile, { upsert: true, contentType: 'image/webp' })
+        if (uploadError) {
+          toast.error(t('errorUploadPhoto'))
+          return
+        }
+        const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
+        avatar_url = `${urlData.publicUrl}?t=${Date.now()}`
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          display_name: displayName,
+          account_type: accountType,
+          username,
+          bio: bio || null,
+          bio_locale: bioLocale,
+          bio_translations: Object.fromEntries(
+            Object.entries(bioTranslations)
+              .filter(([, text]) => text?.trim())
+              .map(([locale, text]) => [
+                locale,
+                { content: text!.trim(), source: bioTranslationSources[locale as Locale] ?? 'human', translated_at: new Date().toISOString() },
+              ])
+          ),
+          location: location || null,
+          show_location: showLocation,
+          mission_start_date: missionStartDate || null,
+          avatar_url,
+          website_url: websiteUrl || null,
+          instagram_url: instagramUrl || null,
+          youtube_url: youtubeUrl || null,
+          facebook_url: facebookUrl || null,
+          tiktok_url: tiktokUrl || null,
+        })
+        .eq('id', profile.id)
+
+      if (error) {
+        toast.error(t('errorSaveProfile'))
         return
       }
-      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
-      avatar_url = `${urlData.publicUrl}?t=${Date.now()}`
-    }
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        display_name: displayName,
-        account_type: accountType,
-        username,
-        bio: bio || null,
-        bio_locale: bioLocale,
-        bio_translations: Object.fromEntries(
-          Object.entries(bioTranslations)
-            .filter(([, text]) => text?.trim())
-            .map(([locale, text]) => [
-              locale,
-              { content: text!.trim(), source: bioTranslationSources[locale as Locale] ?? 'human', translated_at: new Date().toISOString() },
-            ])
-        ),
-        location: location || null,
-        show_location: showLocation,
-        mission_start_date: missionStartDate || null,
-        avatar_url,
-        website_url: websiteUrl || null,
-        instagram_url: instagramUrl || null,
-        youtube_url: youtubeUrl || null,
-        facebook_url: facebookUrl || null,
-        tiktok_url: tiktokUrl || null,
-      })
-      .eq('id', profile.id)
-
-    if (error) {
-      toast.error(t('errorSaveProfile'))
-    } else {
       toast.success(t('profileUpdated'))
       localStorage.removeItem('profile-banner-dismissed')
       router.refresh()
-    }
-    setSaving(false)
+    })
   }
 
   const usernameIcon = useCallback(() => {

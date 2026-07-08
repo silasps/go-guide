@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
+import { Loader2, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
@@ -11,6 +12,12 @@ const LOCALE_FLAGS: Record<Locale, string> = {
   pt: '🇧🇷',
   en: '🇺🇸',
   es: '🇪🇸',
+}
+
+const LOCALE_NAME_KEYS: Record<Locale, 'localePt' | 'localeEn' | 'localeEs'> = {
+  pt: 'localePt',
+  en: 'localeEn',
+  es: 'localeEs',
 }
 
 interface Props {
@@ -41,8 +48,11 @@ export function LocaleContentTabs({
   originalPlaceholder,
   preferredLocale,
 }: Props) {
+  const t = useTranslations('LocaleContentTabs')
   const [activeTab, setActiveTab] = useState<Locale>(preferredLocale ?? originalLocale)
   const [translating, setTranslating] = useState<Locale | null>(null)
+
+  const missingLocales = LOCALES.filter((l) => l !== originalLocale && !translations[l]?.trim())
 
   async function handleTranslate(locale: Locale) {
     setTranslating(locale)
@@ -89,7 +99,7 @@ export function LocaleContentTabs({
                 onClick={() => handleTranslate(locale)}
               >
                 {translating === locale ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Traduzir com IA
+                {t('translateWithAi')}
               </Button>
             )}
             <Textarea
@@ -97,11 +107,18 @@ export function LocaleContentTabs({
               maxLength={maxLength}
               value={isOriginal ? originalText : translations[locale] ?? ''}
               onChange={(e) => (isOriginal ? onOriginalChange(e.target.value) : onTranslationChange(locale, e.target.value))}
-              placeholder={isOriginal ? originalPlaceholder : 'Digite a tradução manualmente, ou use o botão acima'}
+              placeholder={isOriginal ? originalPlaceholder : t('manualPlaceholder')}
             />
           </div>
         )
       })}
+
+      {missingLocales.length > 0 && (
+        <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+          <TriangleAlert className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          {t('missingTranslations', { locales: missingLocales.map((l) => t(LOCALE_NAME_KEYS[l])).join(', ') })}
+        </p>
+      )}
     </div>
   )
 }

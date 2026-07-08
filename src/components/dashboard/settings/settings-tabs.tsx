@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
-import { Profile, ProfileManager } from '@/types/database'
+import { Profile, ProfileManager, PaymentMethod } from '@/types/database'
 import { ProfileForm } from './profile-form'
-import { PaymentForm } from './payment-form'
+import { PaymentMethodsList } from './payment-methods-list'
 import { PrivacyForm } from './privacy-form'
 import { AccountForm } from './account-form'
 import { AccessManagersForm } from './access-managers-form'
@@ -14,9 +14,10 @@ import { User, CreditCard, Lock, Settings, Users } from 'lucide-react'
 interface Props {
   profile: Profile
   managers: ProfileManager[]
+  paymentMethods: PaymentMethod[]
 }
 
-export function SettingsTabs({ profile, managers }: Props) {
+export function SettingsTabs({ profile, managers, paymentMethods }: Props) {
   const t = useTranslations('SettingsPage')
   const [activeTab, setActiveTab] = useState('perfil')
 
@@ -53,7 +54,7 @@ export function SettingsTabs({ profile, managers }: Props) {
       {/* Tab content — instant switch, no navigation */}
       <div className="pt-6">
         {activeTab === 'perfil' && <ProfileForm profile={profile} />}
-        {activeTab === 'pagamentos' && <PaymentForm profile={profile} />}
+        {activeTab === 'pagamentos' && <PaymentMethodsList profileId={profile.id} methods={paymentMethods} />}
         {activeTab === 'privacidade' && <PrivacyForm profile={profile} />}
         {activeTab === 'acesso' && <AccessManagersForm profile={profile} managers={managers} />}
         {activeTab === 'conta' && <AccountForm profile={profile} />}

@@ -13,6 +13,7 @@ import type { Locale } from '@/i18n/config'
 import { CheckCircle2, Circle, ArrowLeft, Users } from 'lucide-react'
 import { BudgetBreakdown } from '@/components/highlights/budget-breakdown'
 import { FundingProjectionCard } from '@/components/highlights/funding-projection-card'
+import type { PaymentMethodType } from '@/types/database'
 
 interface Props {
   params: Promise<{ username: string; slug: string }>
@@ -97,12 +98,24 @@ export default async function ProjetoPublicoPage({ params }: Props) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, display_name, avatar_url, privacy_mode, pix_key, paypal_url, wise_url, external_donation_url')
+    .select('id, display_name, avatar_url, privacy_mode')
     .eq('username', username)
     .single()
 
   if (!profile) notFound()
   if (profile.privacy_mode === 'stealth') notFound()
+
+  const { data: paymentMethods } = await supabase
+    .from('payment_methods')
+    .select('*')
+    .eq('profile_id', profile.id)
+    .eq('is_active', true)
+    .order('sort_order')
+  const pixMethod = (paymentMethods ?? []).find(m => m.type === 'pix')
+  const linkPriority: PaymentMethodType[] = ['other', 'paypal', 'wise', 'bank_transfer']
+  const linkMethod = linkPriority
+    .map(type => (paymentMethods ?? []).find(m => m.type === type))
+    .find(Boolean)
 
   const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)
   const projectQuery = supabase.from('highlights').select('*').eq('profile_id', profile.id).eq('status', 'active')
@@ -133,14 +146,14 @@ export default async function ProjetoPublicoPage({ params }: Props) {
     ? Math.min(100, (project.current_amount / project.goal_amount) * 100)
     : null
 
-  const donationLink = profile.external_donation_url || profile.paypal_url || profile.wise_url || null
+  const donationLink = linkMethod?.value || null
   const hasFinancial = types.includes('financial')
   const completedCount = milestones?.filter(m => m.is_completed).length ?? 0
   const totalMilestones = milestones?.length ?? 0
 
   const activeSupportTypes = SUPPORT_TYPES.filter(t => {
     if (!types.includes(t.key)) return false
-    if (t.key === 'financial' && !donationLink && !profile.pix_key) return false
+    if (t.key === 'financial' && !donationLink && !pixMethod) return false
     return true
   })
 
@@ -211,10 +224,10 @@ export default async function ProjetoPublicoPage({ params }: Props) {
             <Link href={`/${username}/parceria?highlight_id=${project.id}`} className={cn(buttonVariants({ size: 'lg' }), 'w-full text-base')}>
               💰 Faça parte deste projeto
             </Link>
-            {profile.pix_key && (
+            {pixMethod && (
               <div className="text-center space-y-1">
                 <p className="text-xs text-muted-foreground">Chave PIX para transferência direta</p>
-                <p className="font-mono text-sm font-medium select-all">{profile.pix_key}</p>
+                <p className="font-mono text-sm font-medium select-all">{pixMethod.value}</p>
               </div>
             )}
           </div>

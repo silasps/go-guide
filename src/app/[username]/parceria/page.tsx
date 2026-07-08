@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import { PartnershipWizard } from '@/components/partners/partnership-wizard'
 import { PledgePaymentMethod } from '@/types/database'
@@ -16,11 +17,19 @@ export default async function ParceriaPage({ params, searchParams }: Props) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, display_name, privacy_mode, pix_key, paypal_url, wise_url, mission_start_date')
+    .select('id, display_name, privacy_mode, mission_start_date')
     .eq('username', username)
     .single()
 
   if (!profile || profile.privacy_mode === 'stealth') notFound()
+
+  const t = await getTranslations('PaymentMethods')
+  const { data: methods } = await supabase
+    .from('payment_methods')
+    .select('*')
+    .eq('profile_id', profile.id)
+    .eq('is_active', true)
+    .order('sort_order')
 
   let highlight: { id: string; title: string; currency: string } | null = null
   if (highlight_id) {
@@ -33,12 +42,14 @@ export default async function ParceriaPage({ params, searchParams }: Props) {
     highlight = data
   }
 
-  const paymentOptions: { method: PledgePaymentMethod; label: string; value: string }[] = []
-  if (profile.pix_key) paymentOptions.push({ method: 'pix', label: '🔑 Pix', value: profile.pix_key })
-  if (profile.paypal_url) paymentOptions.push({ method: 'paypal', label: '💳 PayPal', value: profile.paypal_url })
-  if (profile.wise_url) paymentOptions.push({ method: 'wise', label: '🌍 Wise', value: profile.wise_url })
-  paymentOptions.push({ method: 'bank_transfer', label: '🏦 Transferência bancária', value: '' })
-  paymentOptions.push({ method: 'other', label: 'Outro', value: '' })
+  const paymentOptions: { method: PledgePaymentMethod; label: string; value: string }[] =
+    (methods ?? []).map(m => ({ method: m.type, label: m.label || t(`type_${m.type}`), value: m.value }))
+  if (!paymentOptions.some(o => o.method === 'bank_transfer')) {
+    paymentOptions.push({ method: 'bank_transfer', label: t('type_bank_transfer'), value: '' })
+  }
+  if (!paymentOptions.some(o => o.method === 'other')) {
+    paymentOptions.push({ method: 'other', label: t('type_other'), value: '' })
+  }
 
   const missionStartYear = profile.mission_start_date ? new Date(profile.mission_start_date).getFullYear() : null
 

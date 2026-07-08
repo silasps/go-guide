@@ -2,7 +2,7 @@
 
 import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { usePendingAction } from '@/hooks/use-pending-action'
 import { cn } from '@/lib/utils'
 import { LOCALE_COOKIE, LOCALES, type Locale } from '@/i18n/config'
 
@@ -20,20 +20,18 @@ export function LanguageSwitcher({ className }: Props) {
   const locale = useLocale() as Locale
   const t = useTranslations('Nav')
   const router = useRouter()
-  const [switching, setSwitching] = useState(false)
+  const { isPending: switching, run } = usePendingAction()
 
-  async function handleSwitch(next: Locale) {
+  function handleSwitch(next: Locale) {
     if (next === locale || switching) return
-    setSwitching(true)
-
-    // Só afeta a navegação deste visitante nas páginas públicas (cookie).
-    // Não grava em profiles.locale — mesmo se o visitante for o próprio
-    // dono do perfil logado, isso não deve mudar o idioma da conta/dashboard
-    // (essa preferência só é trocada em Configurações → Conta).
-    document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000`
-
-    router.refresh()
-    setSwitching(false)
+    run(true, () => {
+      // Só afeta a navegação deste visitante nas páginas públicas (cookie).
+      // Não grava em profiles.locale — mesmo se o visitante for o próprio
+      // dono do perfil logado, isso não deve mudar o idioma da conta/dashboard
+      // (essa preferência só é trocada em Configurações → Conta).
+      document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000`
+      router.refresh()
+    })
   }
 
   return (

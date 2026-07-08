@@ -19,6 +19,16 @@ export function useNotifications(userId: string) {
     setUnread(0)
   }
 
+  async function markRead(id: string) {
+    setNotifications(prev => prev.filter(n => n.id !== id))
+    setUnread(prev => Math.max(0, prev - 1))
+    const supabase = createClient()
+    await supabase
+      .from('notifications')
+      .update({ read_at: new Date().toISOString() })
+      .eq('id', id)
+  }
+
   useEffect(() => {
     let cancelled = false
     const supabase = createClient()
@@ -56,5 +66,5 @@ export function useNotifications(userId: string) {
     }
   }, [userId])
 
-  return { notifications, unread, markAllRead }
+  return { notifications, unread, markAllRead, markRead }
 }

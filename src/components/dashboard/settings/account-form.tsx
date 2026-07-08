@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
+import { usePendingAction } from '@/hooks/use-pending-action'
 import { Profile } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,7 +25,7 @@ export function AccountForm({ profile }: Props) {
   const t = useTranslations('AccountForm')
   const router = useRouter()
   const [locale, setLocale] = useState<Locale>(profile.locale)
-  const [pendingLocale, setPendingLocale] = useState<Locale | null>(null)
+  const { pendingValue: pendingLocale, run: runLocaleChange } = usePendingAction<Locale>()
 
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -33,21 +34,17 @@ export function AccountForm({ profile }: Props) {
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [deleting, setDeleting] = useState(false)
 
-  async function handleLocaleChange(next: Locale) {
+  function handleLocaleChange(next: Locale) {
     if (next === locale || pendingLocale) return
-    setPendingLocale(next)
-    document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000`
-    const supabase = createClient()
-    const { error } = await supabase.from('profiles').update({ locale: next }).eq('id', profile.id)
-    if (error) {
-      toast.error(t('errorSaveLocale'))
-      setPendingLocale(null)
-      return
-    }
-    setLocale(next)
-    toast.success(t('languageChanged'))
-    router.refresh()
-    setPendingLocale(null)
+    runLocaleChange(next, async () => {
+      document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000`
+      const supabase = createClient()
+      const { error } = await supabase.from('profiles').update({ locale: next }).eq('id', profile.id)
+      if (error) { toast.error(t('errorSaveLocale')); return }
+      setLocale(next)
+      toast.success(t('languageChanged'))
+      router.refresh()
+    })
   }
 
   async function handleChangePassword() {

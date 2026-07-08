@@ -22,9 +22,15 @@ export default async function MensagensPage() {
     if (!seen.has(otherId)) seen.set(otherId, m.created_at)
   }
 
+  const otherUserIds = [...seen.keys()]
+  const { data: senderProfiles } = otherUserIds.length
+    ? await supabase.from('profiles').select('user_id, display_name').in('user_id', otherUserIds)
+    : { data: [] }
+  const displayNameByUserId = new Map((senderProfiles ?? []).map(p => [p.user_id as string, p.display_name]))
+
   const conversations = [...seen.entries()].map(([otherUserId, lastMessageAt]) => ({
     otherUserId,
-    name: nameByUserId.get(otherUserId) ?? 'Parceiro',
+    name: nameByUserId.get(otherUserId) ?? displayNameByUserId.get(otherUserId) ?? 'Parceiro',
     lastMessageAt,
   }))
 

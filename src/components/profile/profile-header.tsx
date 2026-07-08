@@ -1,7 +1,8 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { getTranslations, getLocale } from 'next-intl/server'
-import { Profile } from '@/types/database'
+import { createClient } from '@/lib/supabase/server'
+import { Profile, PaymentMethodType } from '@/types/database'
 import { getInitials } from '@/lib/utils'
 import { resolveLocalizedText } from '@/lib/i18n/resolve-content-locale'
 import type { Locale } from '@/i18n/config'
@@ -27,7 +28,17 @@ export async function ProfileHeader({ profile }: Props) {
 
   const bio = resolveLocalizedText(profile.bio, profile.bio_locale, profile.bio_translations, locale).text
 
-  const donationLink = profile.external_donation_url || profile.paypal_url || profile.wise_url
+  const supabase = await createClient()
+  const { data: methods } = await supabase
+    .from('payment_methods')
+    .select('type, value')
+    .eq('profile_id', profile.id)
+    .eq('is_active', true)
+  const linkPriority: PaymentMethodType[] = ['other', 'paypal', 'wise']
+  const donationLink = linkPriority
+    .map(type => (methods ?? []).find(m => m.type === type)?.value)
+    .find(Boolean)
+  const hasPix = (methods ?? []).some(m => m.type === 'pix')
 
   return (
     <div className="space-y-4">
@@ -97,7 +108,7 @@ export async function ProfileHeader({ profile }: Props) {
       )}
 
       {/* Pix badge */}
-      {profile.pix_key && !donationLink && (
+      {hasPix && !donationLink && (
         <span className="inline-block text-xs bg-muted px-2.5 py-1 rounded-full text-muted-foreground">
           {t('pixAvailable')}
         </span>

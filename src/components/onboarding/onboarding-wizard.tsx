@@ -19,9 +19,10 @@ const CURRENCIES = ['BRL', 'USD', 'EUR', 'GBP', 'CHF', 'CAD', 'AUD']
 
 interface Props {
   profile: Profile
+  hasPaymentMethod: boolean
 }
 
-export function OnboardingWizard({ profile }: Props) {
+export function OnboardingWizard({ profile, hasPaymentMethod }: Props) {
   const t = useTranslations('Onboarding')
   const router = useRouter()
   const [step, setStep] = useState(1)
@@ -39,13 +40,10 @@ export function OnboardingWizard({ profile }: Props) {
   const [usernameTimer, setUsernameTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
 
   // Passo 2 — recebimento
-  const [pixKey, setPixKey] = useState(profile.pix_key ?? '')
-  const [paypalUrl, setPaypalUrl] = useState(profile.paypal_url ?? '')
-  const [wiseUrl, setWiseUrl] = useState(profile.wise_url ?? '')
-  const [donationUrl, setDonationUrl] = useState(profile.external_donation_url ?? '')
-  const [paymentConfigured, setPaymentConfigured] = useState(
-    Boolean(profile.pix_key || profile.paypal_url || profile.wise_url || profile.external_donation_url)
-  )
+  const [pixKey, setPixKey] = useState('')
+  const [paypalUrl, setPaypalUrl] = useState('')
+  const [wiseUrl, setWiseUrl] = useState('')
+  const [paymentConfigured, setPaymentConfigured] = useState(hasPaymentMethod)
 
   // Passo 3 — primeiro projeto
   const [projectTitle, setProjectTitle] = useState('')
@@ -105,17 +103,20 @@ export function OnboardingWizard({ profile }: Props) {
   }
 
   async function handlePaymentContinue() {
-    setSaving(true)
-    const supabase = createClient()
-    const { error } = await supabase.from('profiles').update({
-      pix_key: pixKey.trim() || null,
-      paypal_url: paypalUrl.trim() || null,
-      wise_url: wiseUrl.trim() || null,
-      external_donation_url: donationUrl.trim() || null,
-    }).eq('id', profile.id)
-    setSaving(false)
-    if (error) { toast.error(t('errorSavingPayment')); return }
-    setPaymentConfigured(Boolean(pixKey || paypalUrl || wiseUrl || donationUrl))
+    const rows = [
+      pixKey.trim() && { profile_id: profile.id, type: 'pix' as const, value: pixKey.trim(), sort_order: 0 },
+      paypalUrl.trim() && { profile_id: profile.id, type: 'paypal' as const, value: paypalUrl.trim(), sort_order: 1 },
+      wiseUrl.trim() && { profile_id: profile.id, type: 'wise' as const, value: wiseUrl.trim(), sort_order: 2 },
+    ].filter(Boolean)
+
+    if (rows.length > 0) {
+      setSaving(true)
+      const supabase = createClient()
+      const { error } = await supabase.from('payment_methods').insert(rows)
+      setSaving(false)
+      if (error) { toast.error(t('errorSavingPayment')); return }
+      setPaymentConfigured(true)
+    }
     setStep(3)
   }
 
@@ -244,13 +245,13 @@ export function OnboardingWizard({ profile }: Props) {
                 { id: 'pix', label: t('pixLabel'), value: pixKey, set: setPixKey, placeholder: t('pixPlaceholder') },
                 { id: 'paypal', label: 'PayPal', value: paypalUrl, set: setPaypalUrl, placeholder: t('paypalPlaceholder') },
                 { id: 'wise', label: 'Wise', value: wiseUrl, set: setWiseUrl, placeholder: t('wisePlaceholder') },
-                { id: 'donation', label: t('donationLabel'), value: donationUrl, set: setDonationUrl, placeholder: t('donationPlaceholder') },
               ].map(({ id, label, value, set, placeholder }) => (
                 <div key={id} className="space-y-2">
                   <Label htmlFor={id}>{label}</Label>
                   <Input id={id} value={value} onChange={(e: React.ChangeEvent<HTMLInputElement>) => set(e.target.value)} placeholder={placeholder} />
                 </div>
               ))}
+              <p className="text-xs text-muted-foreground">{t('step2MoreOptionsHint')}</p>
               <div className="flex gap-2">
                 <Button variant="ghost" className="flex-1" disabled={saving} onClick={() => setStep(3)}>
                   {t('skipForNow')}

@@ -14,13 +14,19 @@ export default async function ConfiguracoesPage() {
     .eq('profile_id', profile!.id)
     .order('created_at')
 
+  const { data: paymentMethods } = await supabase
+    .from('payment_methods')
+    .select('*')
+    .eq('profile_id', profile!.id)
+    .order('sort_order')
+
   return (
     <div className="max-w-2xl">
       <div className="mb-6">
         <h1 className="text-xl font-semibold">{t('title')}</h1>
         <p className="text-muted-foreground text-sm mt-0.5">{t('subtitle')}</p>
       </div>
-      <SettingsTabs profile={profile!} managers={managers ?? []} />
+      <SettingsTabs profile={profile!} managers={managers ?? []} paymentMethods={paymentMethods ?? []} />
     </div>
   )
 }

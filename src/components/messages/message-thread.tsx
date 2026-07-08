@@ -76,24 +76,35 @@ export function MessageThread({ profileId, myUserId, otherUserId, otherName }: P
         <p className="text-xs text-muted-foreground flex items-center gap-1">🔒 Conversa cifrada ponta-a-ponta</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+      <div className="flex-1 overflow-y-auto p-4 space-y-0.5">
         {loading && <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>}
         {!loading && messages.length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-8">Nenhuma mensagem ainda. Diga olá!</p>
         )}
-        {messages.map(m => (
-          <div key={m.id} className={cn('flex', m.sender_id === myUserId ? 'justify-end' : 'justify-start')}>
-            <div className={cn(
-              'max-w-[75%] rounded-2xl px-3.5 py-2 text-sm',
-              m.sender_id === myUserId ? 'bg-primary text-primary-foreground' : 'bg-muted'
-            )}>
-              <p className="whitespace-pre-wrap break-words">{m.plaintext}</p>
-              <p className={cn('text-[10px] mt-1', m.sender_id === myUserId ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
-                {formatRelativeTime(m.created_at)}
-              </p>
+        {messages.map((m, i) => {
+          const isMine = m.sender_id === myUserId
+          const groupedWithPrev = i > 0 && messages[i - 1].sender_id === m.sender_id
+          const groupedWithNext = i < messages.length - 1 && messages[i + 1].sender_id === m.sender_id
+          return (
+            <div key={m.id} className={cn('flex', groupedWithPrev ? 'mt-0.5' : 'mt-2.5', isMine ? 'justify-end' : 'justify-start')}>
+              <div className={cn(
+                'max-w-[75%] rounded-2xl px-3.5 py-2 text-sm',
+                isMine ? 'bg-primary text-primary-foreground' : 'bg-muted',
+                isMine && groupedWithNext && 'rounded-br-md',
+                isMine && groupedWithPrev && 'rounded-tr-md',
+                !isMine && groupedWithNext && 'rounded-bl-md',
+                !isMine && groupedWithPrev && 'rounded-tl-md'
+              )}>
+                <p className="whitespace-pre-wrap break-words">{m.plaintext}</p>
+                {!groupedWithNext && (
+                  <p className={cn('text-[10px] mt-1', isMine ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
+                    {formatRelativeTime(m.created_at)}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
         <div ref={bottomRef} />
       </div>
 

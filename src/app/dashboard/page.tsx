@@ -20,12 +20,14 @@ export default async function DashboardPage() {
     { count: prayerCount },
     { count: highlightsCount },
     { data: birthdayPartners },
+    { count: paymentMethodsCount },
   ] = await Promise.all([
     supabase.from('partners').select('*', { count: 'exact', head: true }).eq('profile_id', profile!.id),
     supabase.from('posts').select('*', { count: 'exact', head: true }).eq('profile_id', profile!.id).eq('is_draft', false),
     supabase.from('prayer_requests').select('*', { count: 'exact', head: true }).eq('profile_id', profile!.id).eq('is_answered', false),
     supabase.from('highlights').select('*', { count: 'exact', head: true }).eq('profile_id', profile!.id),
     supabase.from('partners').select('id, name, phone, user_id, birth_date').eq('profile_id', profile!.id).not('birth_date', 'is', null),
+    supabase.from('payment_methods').select('*', { count: 'exact', head: true }).eq('profile_id', profile!.id).eq('is_active', true),
   ])
 
   const stats = [
@@ -47,7 +49,7 @@ export default async function DashboardPage() {
       <SetupChecklistBanner
         avatarUrl={profile?.avatar_url ?? null}
         username={profile?.username ?? ''}
-        hasPaymentMethod={Boolean(profile?.pix_key || profile?.paypal_url || profile?.wise_url || profile?.external_donation_url)}
+        hasPaymentMethod={(paymentMethodsCount ?? 0) > 0}
         hasProject={(highlightsCount ?? 0) > 0}
       />
 

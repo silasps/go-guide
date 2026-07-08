@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useNotifications } from '@/hooks/use-notifications'
 import { cn, formatCurrency, formatRelativeTime } from '@/lib/utils'
@@ -27,6 +28,28 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   highlight_update: FileText,
 }
 
+function getNotificationHref(type: string, payload: Record<string, unknown>): string {
+  switch (type) {
+    case 'new_message':
+      return payload.sender_id ? `/dashboard/mensagens/${payload.sender_id}` : '/dashboard/mensagens'
+    case 'highlight_update':
+      return payload.highlight_id ? `/dashboard/destaques/${payload.highlight_id}` : '/dashboard/publicacoes'
+    case 'new_partner':
+      return '/dashboard/parceiros'
+    case 'prayer_reply':
+    case 'new_prayer_request':
+    case 'prayer_answered':
+      return '/dashboard/oracoes'
+    case 'new_pledge':
+    case 'pledge_confirmed':
+      return '/dashboard/financeiro/lancamentos'
+    case 'new_post':
+      return '/dashboard/publicacoes'
+    default:
+      return '/dashboard'
+  }
+}
+
 function formatMessage(t: ReturnType<typeof useTranslations<'Notifications'>>, type: string, payload: Record<string, unknown>): string {
   switch (type) {
     case 'new_pledge':
@@ -50,7 +73,7 @@ function formatMessage(t: ReturnType<typeof useTranslations<'Notifications'>>, t
 
 export function NotificationsBell({ userId }: { userId: string }) {
   const t = useTranslations('Notifications')
-  const { notifications, unread, markAllRead } = useNotifications(userId)
+  const { notifications, unread, markAllRead, markRead } = useNotifications(userId)
 
   return (
     <DropdownMenu>
@@ -82,7 +105,12 @@ export function NotificationsBell({ userId }: { userId: string }) {
           const Icon = ICONS[n.type] ?? Bell
           const payload = n.payload as Record<string, unknown>
           return (
-            <DropdownMenuItem key={n.id} className="flex items-start gap-2.5 py-3 cursor-default">
+            <DropdownMenuItem
+              key={n.id}
+              onClick={() => markRead(n.id)}
+              className="py-0"
+              render={<Link href={getNotificationHref(n.type, payload)} className="flex items-start gap-2.5 py-3" />}
+            >
               <Icon className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm leading-snug">{formatMessage(t, n.type, payload)}</p>

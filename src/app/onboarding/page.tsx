@@ -16,6 +16,11 @@ export default async function OnboardingPage() {
 
   if (!profile) redirect('/login')
 
+  const { count: paymentMethodsCount } = await supabase
+    .from('payment_methods')
+    .select('*', { count: 'exact', head: true })
+    .eq('profile_id', profile.id)
+
   const t = await getTranslations('Onboarding')
 
   return (
@@ -24,7 +29,7 @@ export default async function OnboardingPage() {
         <h1 className="text-3xl font-bold">{t('welcomeTitle')}</h1>
         <p className="text-muted-foreground mt-2">{t('welcomeSubtitle')}</p>
       </div>
-      <OnboardingWizard profile={profile} />
+      <OnboardingWizard profile={profile} hasPaymentMethod={(paymentMethodsCount ?? 0) > 0} />
     </div>
   )
 }
