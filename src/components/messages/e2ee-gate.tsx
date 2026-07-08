@@ -13,13 +13,13 @@ interface Props {
   children: React.ReactNode
 }
 
-type State = 'checking' | 'needs_unlock' | 'ready'
+type State = 'checking' | 'needs_password' | 'ready'
 
 export function E2EEGate({ userId, children }: Props) {
   const [state, setState] = useState<State>('checking')
   const [recoveryCode, setRecoveryCode] = useState('')
   const [showRecoveryNotice, setShowRecoveryNotice] = useState(false)
-  const [inputCode, setInputCode] = useState('')
+  const [password, setPassword] = useState('')
   const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -31,32 +31,32 @@ export function E2EEGate({ userId, children }: Props) {
       }
       const has = await keyManager.hasKeysConfigured(userId)
       if (!has) {
-        // Primeiro acesso: gera as chaves automaticamente em segundo plano, sem
-        // pedir nada ao usuário — como no WhatsApp, a criptografia é transparente.
+        // Não passou pelo fluxo de senha no login (ex.: conta Google) — só aqui
+        // usamos o código aleatório como alternativa, já que não há senha.
         try {
-          const { recoveryCode } = await keyManager.setupKeys(userId)
+          const { recoveryCode } = await keyManager.setupKeysWithRandomRecoveryCode(userId)
           setRecoveryCode(recoveryCode)
           setShowRecoveryNotice(true)
           setState('ready')
         } catch (err) {
-          console.error('setupKeys failed:', err)
+          console.error('setupKeysWithRandomRecoveryCode failed:', err)
           toast.error('Erro ao configurar criptografia.')
         }
         return
       }
-      // Já existem chaves no servidor mas não neste navegador (dispositivo novo
-      // ou dados locais limpos) — só aqui é preciso pedir o código de recuperação.
-      setState('needs_unlock')
+      // Chaves já existem no servidor mas não neste navegador (dispositivo novo
+      // ou sessão de login que não passou pela derivação, ex. sessão antiga).
+      setState('needs_password')
     })
   }, [userId])
 
   async function handleUnlock() {
     setLoading(true)
     try {
-      await keyManager.unlockWithRecoveryCode(userId, inputCode.trim())
+      await keyManager.unlockWithPassword(userId, password)
       setState('ready')
     } catch {
-      toast.error('Código de recuperação incorreto.')
+      toast.error('Senha incorreta.')
     }
     setLoading(false)
   }
@@ -71,21 +71,23 @@ export function E2EEGate({ userId, children }: Props) {
     return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
   }
 
-  if (state === 'needs_unlock') {
+  if (state === 'needs_password') {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> Desbloquear conteúdo cifrado</CardTitle>
-          <CardDescription>Digite seu código de recuperação para acessar mensagens e orações privadas neste dispositivo.</CardDescription>
+          <CardTitle className="text-base flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> Confirme sua senha</CardTitle>
+          <CardDescription>Suas mensagens são cifradas ponta-a-ponta. Digite sua senha de login para acessá-las neste dispositivo.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <Input
-            value={inputCode}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputCode(e.target.value)}
-            placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX"
-            className="font-mono"
+            type="password"
+            value={password}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+            placeholder="Sua senha"
+            autoComplete="current-password"
+            onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
           />
-          <Button className="w-full" onClick={handleUnlock} disabled={loading || !inputCode.trim()}>
+          <Button className="w-full" onClick={handleUnlock} disabled={loading || !password}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Desbloquear
           </Button>

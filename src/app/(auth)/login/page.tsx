@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
+import * as keyManager from '@/lib/crypto/key-manager'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -27,12 +28,16 @@ function LoginForm() {
     setLoading(true)
 
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
       toast.error(t('loginError'))
       setLoading(false)
       return
+    }
+
+    if (data.user) {
+      await keyManager.setupOrUnlockWithPassword(data.user.id, password).catch(() => {})
     }
 
     router.push(redirect)

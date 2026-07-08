@@ -50,13 +50,14 @@ export async function generateSalt(): Promise<string> {
   return sodium.to_base64(sodium.randombytes_buf(sodium.crypto_pwhash_SALTBYTES))
 }
 
-/** Deriva uma chave simétrica a partir do código de recuperação (Argon2id). */
-export async function deriveKeyFromRecoveryCode(recoveryCode: string, saltB64: string): Promise<Uint8Array> {
+/** Deriva uma chave simétrica a partir de um segredo (a senha de login, ou o código de
+ *  recuperação de fallback) via Argon2id. */
+export async function deriveKeyFromSecret(secret: string, saltB64: string): Promise<Uint8Array> {
   await ready()
   const salt = sodium.from_base64(saltB64)
   return sodium.crypto_pwhash(
     sodium.crypto_secretbox_KEYBYTES,
-    recoveryCode.replace(/-/g, ''),
+    secret,
     salt,
     sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
     sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,

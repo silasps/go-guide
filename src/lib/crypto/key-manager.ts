@@ -58,14 +58,11 @@ export async function hasKeysConfigured(userId: string): Promise<boolean> {
   return !!data
 }
 
-/** Gera o par de chaves pela primeira vez. Retorna o código de recuperação — deve
- *  ser mostrado ao usuário UMA vez e nunca mais recuperável pelo servidor. */
-export async function setupKeys(userId: string): Promise<{ recoveryCode: string }> {
+async function setupKeysWithSecret(userId: string, secret: string): Promise<void> {
   const supabase = createClient()
   const keyPair = await e2ee.generateKeyPair()
-  const recoveryCode = e2ee.generateRecoveryCode()
   const salt = await e2ee.generateSalt()
-  const derivedKey = await e2ee.deriveKeyFromRecoveryCode(recoveryCode, salt)
+  const derivedKey = await e2ee.deriveKeyFromSecret(secret, salt)
   const { ciphertext, nonce } = await e2ee.encryptPrivateKey(keyPair.privateKey, derivedKey)
 
   const publicKeyB64 = e2ee.toBase64(keyPair.publicKey)
@@ -81,23 +78,46 @@ export async function setupKeys(userId: string): Promise<{ recoveryCode: string 
   cachedPrivateKeyB64 = e2ee.toBase64(keyPair.privateKey)
   cachedPublicKeyB64 = publicKeyB64
   saveLocalKeys(userId, cachedPrivateKeyB64, cachedPublicKeyB64)
-
-  return { recoveryCode }
 }
 
-/** Desbloqueia a chave privada a partir do código de recuperação (ex.: em um novo dispositivo/navegador). */
-export async function unlockWithRecoveryCode(userId: string, recoveryCode: string): Promise<void> {
+async function unlockWithSecret(userId: string, secret: string): Promise<void> {
   const supabase = createClient()
   const { data, error } = await supabase.from('user_encryption_keys').select('*').eq('user_id', userId).single()
   if (error || !data) throw new Error('Nenhuma chave configurada para este usuário.')
 
-  const derivedKey = await e2ee.deriveKeyFromRecoveryCode(recoveryCode, data.kdf_salt)
+  const derivedKey = await e2ee.deriveKeyFromSecret(secret, data.kdf_salt)
   const [ciphertext, nonce] = String(data.encrypted_private_key).split(':')
   const privateKey = await e2ee.decryptPrivateKey(ciphertext, nonce, derivedKey)
 
   cachedPrivateKeyB64 = e2ee.toBase64(privateKey)
   cachedPublicKeyB64 = data.public_key
   if (cachedPublicKeyB64) saveLocalKeys(userId, cachedPrivateKeyB64, cachedPublicKeyB64)
+}
+
+/** Chamado logo após login/cadastro por senha: configura (1ª vez) ou desbloqueia
+ *  (dispositivo novo) a criptografia automaticamente, usando a própria senha de
+ *  login como segredo — nenhum código extra para o usuário guardar, funciona em
+ *  qualquer dispositivo só de fazer login normalmente. Falha silenciosa: se der
+ *  erro aqui, o E2EEGate ainda cobre o caso ao acessar Mensagens depois. */
+export async function setupOrUnlockWithPassword(userId: string, password: string): Promise<void> {
+  const has = await hasKeysConfigured(userId)
+  if (has) await unlockWithSecret(userId, password)
+  else await setupKeysWithSecret(userId, password)
+}
+
+/** Tenta desbloquear digitando a senha de login novamente (dispositivo novo/cache limpo). */
+export async function unlockWithPassword(userId: string, password: string): Promise<void> {
+  return unlockWithSecret(userId, password)
+}
+
+/** Fallback para contas sem senha (login via Google): gera um código de recuperação
+ *  aleatório, já que não há senha para derivar a chave. Deve ser usado só quando
+ *  não há como usar a senha (ex.: hasKeysConfigured() ainda false ao chegar no
+ *  E2EEGate, sinal de que o login não passou pelo fluxo de senha). */
+export async function setupKeysWithRandomRecoveryCode(userId: string): Promise<{ recoveryCode: string }> {
+  const recoveryCode = e2ee.generateRecoveryCode()
+  await setupKeysWithSecret(userId, recoveryCode.replace(/-/g, ''))
+  return { recoveryCode }
 }
 
 async function getPublicKeyOf(userId: string): Promise<string | null> {

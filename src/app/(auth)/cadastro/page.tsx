@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
+import * as keyManager from '@/lib/crypto/key-manager'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -29,7 +30,7 @@ export default function CadastroPage() {
     setLoading(true)
 
     const supabase = createClient()
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { full_name: name } },
@@ -39,6 +40,10 @@ export default function CadastroPage() {
       toast.error(error.message)
       setLoading(false)
       return
+    }
+
+    if (data.user) {
+      await keyManager.setupOrUnlockWithPassword(data.user.id, password).catch(() => {})
     }
 
     toast.success(t('signupSuccess'))
