@@ -7,10 +7,13 @@ export default async function MensagensPage() {
   const { data: { user } } = await supabase.auth.getUser()
   const profile = await getActiveProfile()
 
+  // Nem toda mensagem tem profile_id = meu perfil: se eu mandei mensagem pra outro
+  // missionário como parceiro, a conversa pertence ao profile_id DELE. Por isso aqui
+  // busca por participação (sender/recipient), não por dono do perfil.
   const { data: messages } = await supabase
     .from('messages')
     .select('sender_id, recipient_id, created_at')
-    .eq('profile_id', profile!.id)
+    .or(`sender_id.eq.${user!.id},recipient_id.eq.${user!.id}`)
     .order('created_at', { ascending: false })
 
   const { data: partners } = await supabase.from('partners').select('user_id, name').eq('profile_id', profile!.id).not('user_id', 'is', null)
