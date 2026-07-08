@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import * as keyManager from '@/lib/crypto/key-manager'
 import { Button } from '@/components/ui/button'
@@ -25,6 +26,7 @@ interface SensitiveFields {
 const EMPTY: SensitiveFields = { realLocation: '', itinerary: '', realName: '', privateNotes: '' }
 
 export function SensitiveDataForm({ profileId, userId }: Props) {
+  const t = useTranslations('SensitiveDataForm')
   const [fields, setFields] = useState<SensitiveFields>(EMPTY)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -38,7 +40,7 @@ export function SensitiveDataForm({ profileId, userId }: Props) {
           const plaintext = await keyManager.decryptResource('profile_sensitive_fields', profileId, data.ciphertext, data.nonce)
           setFields({ ...EMPTY, ...JSON.parse(plaintext) })
         } catch {
-          toast.error('Não foi possível decifrar seus dados sensíveis salvos anteriormente.')
+          toast.error(t('errorDecrypt'))
         }
       }
       setLoading(false)
@@ -53,9 +55,9 @@ export function SensitiveDataForm({ profileId, userId }: Props) {
       const { ciphertext, nonce } = await keyManager.encryptForResource('profile_sensitive_fields', profileId, [userId], JSON.stringify(fields))
       const { error } = await supabase.from('profile_sensitive_data').upsert({ profile_id: profileId, ciphertext, nonce })
       if (error) throw error
-      toast.success('Dados sensíveis salvos e cifrados.')
+      toast.success(t('savedEncrypted'))
     } catch {
-      toast.error('Erro ao salvar.')
+      toast.error(t('errorSave'))
     }
     setSaving(false)
   }
@@ -66,27 +68,27 @@ export function SensitiveDataForm({ profileId, userId }: Props) {
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground flex items-start gap-1.5">
         <ShieldAlert className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-        Estes campos são cifrados ponta-a-ponta — nem o go_guide consegue lê-los. Só ficam visíveis para você e para parceiros aos quais você conceder acesso explícito em &quot;Acesso&quot; no CRM de parceiros.
+        {t('encryptionNotice')}
       </p>
       <div className="space-y-2">
-        <Label>Localização real</Label>
-        <Input value={fields.realLocation} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFields(f => ({ ...f, realLocation: e.target.value }))} placeholder="Cidade/país real, se diferente do exibido publicamente" />
+        <Label>{t('realLocation')}</Label>
+        <Input value={fields.realLocation} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFields(f => ({ ...f, realLocation: e.target.value }))} placeholder={t('realLocationPlaceholder')} />
       </div>
       <div className="space-y-2">
-        <Label>Itinerário</Label>
-        <Textarea value={fields.itinerary} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFields(f => ({ ...f, itinerary: e.target.value }))} placeholder="Datas e rotas de viagem" rows={3} />
+        <Label>{t('itinerary')}</Label>
+        <Textarea value={fields.itinerary} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFields(f => ({ ...f, itinerary: e.target.value }))} placeholder={t('itineraryPlaceholder')} rows={3} />
       </div>
       <div className="space-y-2">
-        <Label>Nome real</Label>
-        <Input value={fields.realName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFields(f => ({ ...f, realName: e.target.value }))} placeholder="Se diferente do nome/alias público" />
+        <Label>{t('realName')}</Label>
+        <Input value={fields.realName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFields(f => ({ ...f, realName: e.target.value }))} placeholder={t('realNamePlaceholder')} />
       </div>
       <div className="space-y-2">
-        <Label>Notas privadas</Label>
+        <Label>{t('privateNotes')}</Label>
         <Textarea value={fields.privateNotes} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFields(f => ({ ...f, privateNotes: e.target.value }))} rows={3} />
       </div>
       <Button onClick={handleSave} disabled={saving}>
         {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Salvar (cifrado)
+        {t('saveEncrypted')}
       </Button>
     </div>
   )

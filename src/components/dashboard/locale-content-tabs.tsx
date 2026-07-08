@@ -23,6 +23,10 @@ interface Props {
   rows?: number
   maxLength?: number
   originalPlaceholder?: string
+  /** Idioma da conta (Configurações → Conta). A aba aberta por padrão prioriza esse
+   *  idioma em vez do idioma original do conteúdo — quem navega o painel em EN espera
+   *  abrir a aba EN primeiro, mesmo que o texto original tenha sido escrito em outro idioma. */
+  preferredLocale?: Locale
 }
 
 export function LocaleContentTabs({
@@ -35,8 +39,9 @@ export function LocaleContentTabs({
   rows = 5,
   maxLength,
   originalPlaceholder,
+  preferredLocale,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<Locale>(originalLocale)
+  const [activeTab, setActiveTab] = useState<Locale>(preferredLocale ?? originalLocale)
   const [translating, setTranslating] = useState<Locale | null>(null)
 
   async function handleTranslate(locale: Locale) {

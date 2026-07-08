@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Profile, PrivacyMode } from '@/types/database'
 import { Button } from '@/components/ui/button'
@@ -15,30 +16,15 @@ interface Props {
   profile: Profile
 }
 
-const modes: { value: PrivacyMode; label: string; description: string; icon: React.ElementType; warn?: boolean }[] = [
-  {
-    value: 'public',
-    label: 'Público',
-    description: 'Seu perfil aparece no Google, URL amigável com @username. Parceiros e qualquer pessoa podem acessar.',
-    icon: Globe,
-  },
-  {
-    value: 'private',
-    label: 'Privado',
-    description: 'Acessível apenas com link direto + login de parceiro aprovado. Não indexado por buscadores.',
-    icon: Lock,
-  },
-  {
-    value: 'stealth',
-    label: 'Stealth',
-    description: 'Sem indexação (noindex), URL com hash aleatório, nome ocultado em meta tags, localização escondida. Máxima privacidade.',
-    icon: EyeOff,
-    warn: true,
-  },
-]
-
 export function PrivacyForm({ profile }: Props) {
+  const t = useTranslations('PrivacyForm')
   const router = useRouter()
+
+  const modes: { value: PrivacyMode; label: string; description: string; icon: React.ElementType; warn?: boolean }[] = [
+    { value: 'public', label: t('publicLabel'), description: t('publicDescription'), icon: Globe },
+    { value: 'private', label: t('privateLabel'), description: t('privateDescription'), icon: Lock },
+    { value: 'stealth', label: t('stealthLabel'), description: t('stealthDescription'), icon: EyeOff, warn: true },
+  ]
   const [mode, setMode] = useState<PrivacyMode>(profile.privacy_mode)
   const [saving, setSaving] = useState(false)
 
@@ -50,8 +36,8 @@ export function PrivacyForm({ profile }: Props) {
       .update({ privacy_mode: mode })
       .eq('id', profile.id)
 
-    if (error) toast.error('Erro ao salvar.')
-    else { toast.success('Privacidade atualizada!'); router.refresh() }
+    if (error) toast.error(t('errorSave'))
+    else { toast.success(t('updated')); router.refresh() }
     setSaving(false)
   }
 
@@ -79,7 +65,7 @@ export function PrivacyForm({ profile }: Props) {
               <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
               {warn && mode === value && (
                 <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 font-medium">
-                  Atenção: em modo Stealth, seu perfil fica inacessível para novos parceiros que não tenham o link.
+                  {t('stealthWarning')}
                 </p>
               )}
             </div>
@@ -92,11 +78,11 @@ export function PrivacyForm({ profile }: Props) {
 
       <Button onClick={handleSave} disabled={saving}>
         {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Salvar
+        {t('save')}
       </Button>
 
       <div className="pt-4 border-t space-y-3">
-        <h3 className="text-sm font-medium">Dados sensíveis (cifrados)</h3>
+        <h3 className="text-sm font-medium">{t('sensitiveDataTitle')}</h3>
         <E2EEGate userId={profile.user_id}>
           <SensitiveDataForm profileId={profile.id} userId={profile.user_id} />
         </E2EEGate>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/media/compress'
 import { Profile } from '@/types/database'
@@ -23,6 +24,7 @@ interface Props {
 type UsernameStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid'
 
 export function ProfileForm({ profile }: Props) {
+  const t = useTranslations('ProfileForm')
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -55,11 +57,11 @@ export function ProfileForm({ profile }: Props) {
     const data = await res.json()
     if (!res.ok) {
       if (data.error === 'insufficient_ai_credits') {
-        toast.error('Créditos de IA insuficientes.', {
-          action: { label: 'Ver planos', onClick: () => router.push('/planos') },
+        toast.error(t('aiCreditsInsufficient'), {
+          action: { label: t('viewPlans'), onClick: () => router.push('/planos') },
         })
       } else {
-        toast.error('Erro ao traduzir. Tente novamente.')
+        toast.error(t('translateError'))
       }
       return
     }
@@ -132,7 +134,7 @@ export function ProfileForm({ profile }: Props) {
         .from('avatars')
         .upload(path, avatarFile, { upsert: true, contentType: 'image/webp' })
       if (uploadError) {
-        toast.error('Erro ao enviar foto.')
+        toast.error(t('errorUploadPhoto'))
         setSaving(false)
         return
       }
@@ -169,9 +171,9 @@ export function ProfileForm({ profile }: Props) {
       .eq('id', profile.id)
 
     if (error) {
-      toast.error('Erro ao salvar perfil.')
+      toast.error(t('errorSaveProfile'))
     } else {
-      toast.success('Perfil atualizado!')
+      toast.success(t('profileUpdated'))
       localStorage.removeItem('profile-banner-dismissed')
       router.refresh()
     }
@@ -213,21 +215,21 @@ export function ProfileForm({ profile }: Props) {
           onClick={() => fileInputRef.current?.click()}
           className="text-sm font-medium text-primary hover:opacity-80 transition-opacity"
         >
-          Editar foto de perfil
+          {t('editPhoto')}
         </button>
-        <p className="text-xs text-muted-foreground">JPG, PNG ou WebP · máx 5MB</p>
+        <p className="text-xs text-muted-foreground">{t('photoHint')}</p>
       </div>
 
       {/* Tipo de conta */}
       <div className="space-y-2">
-        <Label>Este perfil representa</Label>
+        <Label>{t('accountTypeLabel')}</Label>
         <AccountTypeSelector value={accountType} onChange={setAccountType} />
       </div>
 
       {/* Nome e username */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="display_name">Nome de exibição</Label>
+          <Label htmlFor="display_name">{t('displayName')}</Label>
           <Input
             id="display_name"
             value={displayName}
@@ -236,7 +238,7 @@ export function ProfileForm({ profile }: Props) {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="username">Username</Label>
+          <Label htmlFor="username">{t('username')}</Label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">@</span>
             <Input
@@ -244,25 +246,26 @@ export function ProfileForm({ profile }: Props) {
               value={username}
               onChange={handleUsernameChange}
               className="pl-7 pr-7"
-              placeholder="seunome"
+              placeholder={t('usernamePlaceholder')}
               maxLength={30}
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2">
               {usernameIcon()}
             </span>
           </div>
-          {usernameStatus === 'taken' && <p className="text-xs text-destructive">Username indisponível.</p>}
-          {usernameStatus === 'invalid' && <p className="text-xs text-destructive">Apenas letras minúsculas, números e _. Mínimo 3 chars.</p>}
-          {usernameStatus === 'available' && <p className="text-xs text-green-600">@{username} disponível!</p>}
+          {usernameStatus === 'taken' && <p className="text-xs text-destructive">{t('usernameTaken')}</p>}
+          {usernameStatus === 'invalid' && <p className="text-xs text-destructive">{t('usernameInvalid')}</p>}
+          {usernameStatus === 'available' && <p className="text-xs text-green-600">{t('usernameAvailable', { username })}</p>}
         </div>
       </div>
 
       {/* Bio */}
       <div className="space-y-2">
-        <Label htmlFor="bio">Bio</Label>
+        <Label htmlFor="bio">{t('bio')}</Label>
         <p className="text-xs text-muted-foreground">{bioHint}</p>
         <LocaleContentTabs
           originalLocale={bioLocale}
+          preferredLocale={profile.locale}
           originalText={bio}
           onOriginalChange={setBio}
           translations={bioTranslations}
@@ -280,12 +283,12 @@ export function ProfileForm({ profile }: Props) {
 
       {/* Localização */}
       <div className="space-y-2">
-        <Label htmlFor="location">Localização</Label>
+        <Label htmlFor="location">{t('location')}</Label>
         <Input
           id="location"
           value={location}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLocation(e.target.value)}
-          placeholder="Nairóbi, Quênia"
+          placeholder={t('locationPlaceholder')}
         />
         <label className="flex items-start gap-2 text-sm cursor-pointer pt-1">
           <input
@@ -295,29 +298,29 @@ export function ProfileForm({ profile }: Props) {
             className="mt-0.5 h-4 w-4 rounded border-input"
           />
           <span>
-            Mostrar minha localização no perfil público
-            <span className="block text-xs text-muted-foreground">Dado protegido: só aparece publicamente se esta opção estiver marcada.</span>
+            {t('showLocation')}
+            <span className="block text-xs text-muted-foreground">{t('showLocationHint')}</span>
           </span>
         </label>
       </div>
 
       {/* Início da missão */}
       <div className="space-y-2">
-        <Label htmlFor="mission_start_date">Em campo desde</Label>
+        <Label htmlFor="mission_start_date">{t('missionStartDate')}</Label>
         <Input
           id="mission_start_date"
           type="date"
           value={missionStartDate}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMissionStartDate(e.target.value)}
         />
-        <p className="text-xs text-muted-foreground">Usado na chamada &quot;faça parte do que o Senhor está fazendo desde {'{ano}'}&quot; na tela de parceria.</p>
+        <p className="text-xs text-muted-foreground">{t('missionStartDateHint')}</p>
       </div>
 
       {/* Redes sociais */}
       <div className="space-y-3">
-        <Label className="text-base font-medium">Redes sociais</Label>
+        <Label className="text-base font-medium">{t('socialMedia')}</Label>
         {[
-          { id: 'website', label: 'Site', value: websiteUrl, set: setWebsiteUrl, placeholder: 'https://seusite.com' },
+          { id: 'website', label: t('socialWebsite'), value: websiteUrl, set: setWebsiteUrl, placeholder: 'https://seusite.com' },
           { id: 'instagram', label: 'Instagram', value: instagramUrl, set: setInstagramUrl, placeholder: 'https://instagram.com/seuperfil' },
           { id: 'youtube', label: 'YouTube', value: youtubeUrl, set: setYoutubeUrl, placeholder: 'https://youtube.com/@seucanal' },
           { id: 'facebook', label: 'Facebook', value: facebookUrl, set: setFacebookUrl, placeholder: 'https://facebook.com/seuperfil' },
@@ -337,7 +340,7 @@ export function ProfileForm({ profile }: Props) {
 
       <Button onClick={handleSave} disabled={saving || usernameStatus === 'taken' || usernameStatus === 'invalid'}>
         {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Salvar alterações
+        {t('saveChanges')}
       </Button>
     </div>
   )

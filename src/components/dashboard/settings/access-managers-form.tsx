@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Profile, ProfileManager, ProfileManagerRole } from '@/types/database'
 import { planLimits } from '@/lib/utils'
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function AccessManagersForm({ profile, managers: initialManagers }: Props) {
+  const t = useTranslations('AccessManagersForm')
   const [managers, setManagers] = useState(initialManagers)
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<ProfileManagerRole>('manager')
@@ -32,7 +34,7 @@ export function AccessManagersForm({ profile, managers: initialManagers }: Props
         body: JSON.stringify({ type: 'manager_addon', seats }),
       })
       if (!res.ok) {
-        toast.info('Pagamentos ainda não configurados — chegando em breve.')
+        toast.info(t('paymentsNotConfigured'))
         return
       }
       const { url } = await res.json()
@@ -59,11 +61,11 @@ export function AccessManagersForm({ profile, managers: initialManagers }: Props
 
     if (error) {
       if (error.message.includes('seat_limit_reached')) {
-        toast.error('Limite de gestores do seu plano atingido. Compre mais assentos ou faça upgrade.')
+        toast.error(t('seatLimitReached'))
       } else if (error.message.includes('user_not_found')) {
-        toast.error('Nenhuma conta encontrada com esse e-mail.')
+        toast.error(t('userNotFound'))
       } else {
-        toast.error('Erro ao convidar gestor.')
+        toast.error(t('errorInvite'))
       }
       setInviting(false)
       return
@@ -73,28 +75,28 @@ export function AccessManagersForm({ profile, managers: initialManagers }: Props
     setManagers(data ?? [])
     setEmail('')
     setInviting(false)
-    toast.success('Gestor adicionado!')
+    toast.success(t('managerAdded'))
   }
 
   async function handleRemove(id: string) {
     const supabase = createClient()
     const { error } = await supabase.from('profile_managers').delete().eq('id', id)
     if (error) {
-      toast.error('Erro ao remover.')
+      toast.error(t('errorRemove'))
       return
     }
     setManagers(managers.filter((m) => m.id !== id))
-    toast.success('Removido.')
+    toast.success(t('removed'))
   }
 
   return (
     <div className="space-y-6">
       <div>
         <p className="text-sm font-medium">
-          {used} de {total === Infinity ? '∞' : total} gestores usados
+          {t('usedCount', { used, total: total === Infinity ? '∞' : total })}
         </p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Gestores têm o mesmo acesso do dono da conta (exceto excluir a conta). Visualizadores só podem ver relatórios.
+          {t('accessDescription')}
         </p>
       </div>
 
@@ -102,19 +104,19 @@ export function AccessManagersForm({ profile, managers: initialManagers }: Props
         {managers.map((m) => (
           <div key={m.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
             <div>
-              <p className="text-sm font-medium">Usuário {m.user_id.slice(0, 8)}</p>
-              <p className="text-xs text-muted-foreground">{m.role === 'manager' ? 'Gestor' : 'Visualizador'}</p>
+              <p className="text-sm font-medium">{t('userLabel', { id: m.user_id.slice(0, 8) })}</p>
+              <p className="text-xs text-muted-foreground">{m.role === 'manager' ? t('manager') : t('viewer')}</p>
             </div>
             <Button variant="ghost" size="icon-sm" onClick={() => handleRemove(m.id)}>
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
           </div>
         ))}
-        {managers.length === 0 && <p className="text-sm text-muted-foreground">Nenhum gestor adicionado ainda.</p>}
+        {managers.length === 0 && <p className="text-sm text-muted-foreground">{t('noManagers')}</p>}
       </div>
 
       <div className="space-y-3 border-t pt-4">
-        <Label htmlFor="manager_email">Convidar por e-mail</Label>
+        <Label htmlFor="manager_email">{t('inviteByEmail')}</Label>
         <div className="flex flex-col sm:flex-row gap-2">
           <Input
             id="manager_email"
@@ -128,23 +130,23 @@ export function AccessManagersForm({ profile, managers: initialManagers }: Props
             onChange={(e) => setRole(e.target.value as ProfileManagerRole)}
             className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           >
-            <option value="manager">Gestor</option>
-            <option value="viewer">Visualizador</option>
+            <option value="manager">{t('manager')}</option>
+            <option value="viewer">{t('viewer')}</option>
           </select>
           <Button onClick={handleInvite} disabled={inviting || atLimit}>
             {inviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Convidar
+            {t('invite')}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground">A pessoa já precisa ter uma conta no go→guide com esse e-mail.</p>
+        <p className="text-xs text-muted-foreground">{t('inviteHint')}</p>
       </div>
 
       {atLimit && (
         <div className="space-y-2 border-t pt-4">
-          <Label>Comprar mais assentos</Label>
+          <Label>{t('buyMoreSeats')}</Label>
           {MANAGER_ADDONS.map((addon) => (
             <div key={addon.seats} className="flex items-center justify-between rounded-lg border p-3">
-              <p className="text-sm">+{addon.seats} gestores — R$ {addon.priceMonthly}/mês</p>
+              <p className="text-sm">{t('addonLine', { seats: addon.seats, price: addon.priceMonthly })}</p>
               <Button
                 variant="outline"
                 size="sm"
@@ -152,7 +154,7 @@ export function AccessManagersForm({ profile, managers: initialManagers }: Props
                 onClick={() => handleBuyAddon(addon.seats)}
               >
                 {buyingSeats === addon.seats && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Comprar
+                {t('buy')}
               </Button>
             </div>
           ))}

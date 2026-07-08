@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { Profile, ProfileManager } from '@/types/database'
 import { ProfileForm } from './profile-form'
@@ -10,21 +11,22 @@ import { AccountForm } from './account-form'
 import { AccessManagersForm } from './access-managers-form'
 import { User, CreditCard, Lock, Settings, Users } from 'lucide-react'
 
-const tabs = [
-  { id: 'perfil', label: 'Perfil', icon: User },
-  { id: 'pagamentos', label: 'Pagamentos', icon: CreditCard },
-  { id: 'privacidade', label: 'Privacidade', icon: Lock },
-  { id: 'acesso', label: 'Acesso', icon: Users },
-  { id: 'conta', label: 'Conta', icon: Settings },
-]
-
 interface Props {
   profile: Profile
   managers: ProfileManager[]
 }
 
 export function SettingsTabs({ profile, managers }: Props) {
+  const t = useTranslations('SettingsPage')
   const [activeTab, setActiveTab] = useState('perfil')
+
+  const tabs = [
+    { id: 'perfil', label: t('tabProfile'), icon: User },
+    { id: 'pagamentos', label: t('tabPayments'), icon: CreditCard },
+    { id: 'privacidade', label: t('tabPrivacy'), icon: Lock },
+    { id: 'acesso', label: t('tabAccess'), icon: Users },
+    { id: 'conta', label: t('tabAccount'), icon: Settings },
+  ]
 
   return (
     <div className="space-y-0">

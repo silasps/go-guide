@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Profile } from '@/types/database'
 import { Button } from '@/components/ui/button'
@@ -20,9 +21,10 @@ interface Props {
 }
 
 export function AccountForm({ profile }: Props) {
+  const t = useTranslations('AccountForm')
   const router = useRouter()
   const [locale, setLocale] = useState<Locale>(profile.locale)
-  const [savingLocale, setSavingLocale] = useState(false)
+  const [pendingLocale, setPendingLocale] = useState<Locale | null>(null)
 
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -32,26 +34,31 @@ export function AccountForm({ profile }: Props) {
   const [deleting, setDeleting] = useState(false)
 
   async function handleLocaleChange(next: Locale) {
-    if (next === locale || savingLocale) return
-    setSavingLocale(true)
+    if (next === locale || pendingLocale) return
+    setPendingLocale(next)
     document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000`
     const supabase = createClient()
     const { error } = await supabase.from('profiles').update({ locale: next }).eq('id', profile.id)
-    setSavingLocale(false)
-    if (error) { toast.error('Erro ao salvar idioma.'); return }
+    if (error) {
+      toast.error(t('errorSaveLocale'))
+      setPendingLocale(null)
+      return
+    }
     setLocale(next)
+    toast.success(t('languageChanged'))
     router.refresh()
+    setPendingLocale(null)
   }
 
   async function handleChangePassword() {
-    if (newPassword.length < 8) { toast.error('Mínimo 8 caracteres.'); return }
-    if (newPassword !== confirmPassword) { toast.error('Senhas não coincidem.'); return }
+    if (newPassword.length < 8) { toast.error(t('passwordTooShort')); return }
+    if (newPassword !== confirmPassword) { toast.error(t('passwordsDontMatch')); return }
     setSavingPw(true)
     const supabase = createClient()
     const { error } = await supabase.auth.updateUser({ password: newPassword })
     if (error) toast.error(error.message)
     else {
-      toast.success('Senha alterada com sucesso!')
+      toast.success(t('passwordChanged'))
       setNewPassword('')
       setConfirmPassword('')
     }
@@ -59,7 +66,7 @@ export function AccountForm({ profile }: Props) {
   }
 
   async function handleDeleteAccount() {
-    if (deleteConfirm !== profile.username) { toast.error('Username incorreto.'); return }
+    if (deleteConfirm !== profile.username) { toast.error(t('usernameIncorrect')); return }
     setDeleting(true)
 
     const res = await fetch('/api/account/delete', {
@@ -70,7 +77,7 @@ export function AccountForm({ profile }: Props) {
 
     if (!res.ok) {
       const data = await res.json()
-      toast.error(data.error ?? 'Erro ao excluir conta.')
+      toast.error(data.error ?? t('errorDeleteAccount'))
       setDeleting(false)
       return
     }
@@ -82,23 +89,24 @@ export function AccountForm({ profile }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Idioma — o resto do painel ainda está só em português (tradução completa é a próxima fase) */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Idioma</CardTitle>
-          <CardDescription>Escolha o idioma do site público e desta preferência de conta.</CardDescription>
+          <CardTitle className="text-base">{t('languageTitle')}</CardTitle>
+          <CardDescription>{t('languageDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="flex gap-2">
           {LOCALES.map((l) => (
             <button
               key={l}
               onClick={() => handleLocaleChange(l)}
-              disabled={savingLocale}
+              disabled={pendingLocale !== null}
               className={cn(
                 'flex-1 flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
-                l === locale ? 'border-primary bg-primary/5 text-foreground' : 'border-border text-muted-foreground hover:bg-muted'
+                l === locale ? 'border-primary bg-primary/5 text-foreground' : 'border-border text-muted-foreground hover:bg-muted',
+                pendingLocale !== null && 'opacity-60'
               )}
             >
+              {pendingLocale === l && <Loader2 className="h-4 w-4 animate-spin" />}
               {LOCALE_LABELS[l]}
             </button>
           ))}
@@ -108,35 +116,35 @@ export function AccountForm({ profile }: Props) {
       {/* Change password */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Alterar senha</CardTitle>
-          <CardDescription>Escolha uma senha forte com pelo menos 8 caracteres.</CardDescription>
+          <CardTitle className="text-base">{t('changePasswordTitle')}</CardTitle>
+          <CardDescription>{t('changePasswordDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="new_password">Nova senha</Label>
+            <Label htmlFor="new_password">{t('newPassword')}</Label>
             <Input
               id="new_password"
               type="password"
               value={newPassword}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewPassword(e.target.value)}
-              placeholder="Mínimo 8 caracteres"
+              placeholder={t('newPasswordPlaceholder')}
               autoComplete="new-password"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="confirm_password">Confirmar nova senha</Label>
+            <Label htmlFor="confirm_password">{t('confirmNewPassword')}</Label>
             <Input
               id="confirm_password"
               type="password"
               value={confirmPassword}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
-              placeholder="Repita a nova senha"
+              placeholder={t('confirmNewPasswordPlaceholder')}
               autoComplete="new-password"
             />
           </div>
           <Button onClick={handleChangePassword} disabled={savingPw || !newPassword}>
             {savingPw && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Alterar senha
+            {t('changePassword')}
           </Button>
         </CardContent>
       </Card>
@@ -144,15 +152,15 @@ export function AccountForm({ profile }: Props) {
       {/* Delete account */}
       <Card className="border-destructive/50">
         <CardHeader>
-          <CardTitle className="text-base text-destructive">Zona de perigo</CardTitle>
+          <CardTitle className="text-base text-destructive">{t('dangerZone')}</CardTitle>
           <CardDescription>
-            Excluir a conta remove permanentemente todos os seus dados. Esta ação não pode ser desfeita.
+            {t('dangerZoneDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="delete_confirm">
-              Digite <span className="font-mono font-medium">@{profile.username}</span> para confirmar
+              {t.rich('typeToConfirm', { username: profile.username, strong: (chunks) => <span className="font-mono font-medium">@{chunks}</span> })}
             </Label>
             <Input
               id="delete_confirm"
@@ -167,7 +175,7 @@ export function AccountForm({ profile }: Props) {
             disabled={deleting || deleteConfirm !== profile.username}
           >
             {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Excluir conta permanentemente
+            {t('deletePermanently')}
           </Button>
         </CardContent>
       </Card>

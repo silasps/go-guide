@@ -211,6 +211,7 @@ export function PostEditor({ post, profileId, userId, originalLocale }: Props) {
         <Label>Texto</Label>
         <LocaleContentTabs
           originalLocale={effectiveOriginalLocale}
+          preferredLocale={originalLocale}
           originalText={content}
           onOriginalChange={setContent}
           translations={translations}

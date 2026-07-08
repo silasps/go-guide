@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Profile } from '@/types/database'
 import { Button } from '@/components/ui/button'
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export function PaymentForm({ profile }: Props) {
+  const t = useTranslations('PaymentForm')
   const router = useRouter()
   const [pixKey, setPixKey] = useState(profile.pix_key ?? '')
   const [paypalUrl, setPaypalUrl] = useState(profile.paypal_url ?? '')
@@ -35,24 +37,21 @@ export function PaymentForm({ profile }: Props) {
       })
       .eq('id', profile.id)
 
-    if (error) toast.error('Erro ao salvar.')
-    else { toast.success('Dados de pagamento atualizados!'); router.refresh() }
+    if (error) toast.error(t('errorSave'))
+    else { toast.success(t('updated')); router.refresh() }
     setSaving(false)
   }
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-muted-foreground">
-        Essas informações são exibidas no seu perfil público para que parceiros possam apoiar sua missão.
-        O dinheiro vai diretamente a você — a plataforma não intermedia.
-      </p>
+      <p className="text-sm text-muted-foreground">{t('intro')}</p>
 
       <div className="space-y-4">
         {[
-          { id: 'pix', label: 'Chave Pix', value: pixKey, set: setPixKey, placeholder: 'CPF, e-mail, telefone ou aleatória' },
-          { id: 'paypal', label: 'PayPal', value: paypalUrl, set: setPaypalUrl, placeholder: 'https://paypal.me/seunome' },
-          { id: 'wise', label: 'Wise', value: wiseUrl, set: setWiseUrl, placeholder: 'https://wise.com/pay/...' },
-          { id: 'donation', label: 'Link de doação externo', value: donationUrl, set: setDonationUrl, placeholder: 'https://...' },
+          { id: 'pix', label: t('pixLabel'), value: pixKey, set: setPixKey, placeholder: t('pixPlaceholder') },
+          { id: 'paypal', label: 'PayPal', value: paypalUrl, set: setPaypalUrl, placeholder: t('paypalPlaceholder') },
+          { id: 'wise', label: 'Wise', value: wiseUrl, set: setWiseUrl, placeholder: t('wisePlaceholder') },
+          { id: 'donation', label: t('donationLabel'), value: donationUrl, set: setDonationUrl, placeholder: 'https://...' },
         ].map(({ id, label, value, set, placeholder }) => (
           <div key={id} className="space-y-2">
             <Label htmlFor={id}>{label}</Label>
@@ -68,7 +67,7 @@ export function PaymentForm({ profile }: Props) {
 
       <Button onClick={handleSave} disabled={saving}>
         {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Salvar
+        {t('save')}
       </Button>
     </div>
   )
