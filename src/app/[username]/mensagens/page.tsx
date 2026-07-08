@@ -3,8 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { E2EEGate } from '@/components/messages/e2ee-gate'
 import { MessageThread } from '@/components/messages/message-thread'
 import Link from 'next/link'
-import { buttonVariants } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 
 interface Props { params: Promise<{ username: string }> }
 
@@ -20,24 +18,6 @@ export default async function PartnerMensagensPage({ params }: Props) {
     .eq('username', username)
     .single()
   if (!profile || profile.privacy_mode === 'stealth') notFound()
-
-  const { data: partner } = await supabase
-    .from('partners')
-    .select('id')
-    .eq('profile_id', profile.id)
-    .eq('user_id', user.id)
-    .maybeSingle()
-
-  if (!partner) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="text-center space-y-3">
-          <p className="text-muted-foreground">Você precisa ser parceiro de {profile.display_name} para enviar mensagens.</p>
-          <Link href={`/${username}/parceria`} className={cn(buttonVariants())}>Faça parte</Link>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-screen bg-background px-4 py-8">
