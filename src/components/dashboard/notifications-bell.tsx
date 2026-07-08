@@ -3,9 +3,9 @@
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useNotifications } from '@/hooks/use-notifications'
-import { cn, formatCurrency, formatRelativeTime } from '@/lib/utils'
+import { cn, formatRelativeTime } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
-import { Bell, FileText, Heart, Users, MessageSquare, Wallet, HandCoins } from 'lucide-react'
+import { Bell, FileText, Heart, Users, MessageSquare, Wallet } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,64 +16,73 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  new_post: FileText,
-  new_prayer_request: Heart,
-  new_partner: Users,
-  new_message: MessageSquare,
-  prayer_answered: Heart,
-  prayer_reply: Heart,
-  new_pledge: HandCoins,
-  pledge_confirmed: Wallet,
-  highlight_update: FileText,
+type NotificationArea = 'messages' | 'prayers' | 'partners' | 'financial' | 'content'
+
+const AREA_ORDER: NotificationArea[] = ['messages', 'prayers', 'partners', 'financial', 'content']
+
+const AREA_BY_TYPE: Record<string, NotificationArea> = {
+  new_message: 'messages',
+  new_prayer_request: 'prayers',
+  prayer_reply: 'prayers',
+  prayer_answered: 'prayers',
+  new_partner: 'partners',
+  new_pledge: 'financial',
+  pledge_confirmed: 'financial',
+  new_post: 'content',
+  highlight_update: 'content',
 }
 
-function getNotificationHref(type: string, payload: Record<string, unknown>): string {
-  switch (type) {
-    case 'new_message':
-      return payload.sender_id ? `/dashboard/mensagens/${payload.sender_id}` : '/dashboard/mensagens'
-    case 'highlight_update':
-      return payload.highlight_id ? `/dashboard/destaques/${payload.highlight_id}` : '/dashboard/publicacoes'
-    case 'new_partner':
-      return '/dashboard/parceiros'
-    case 'prayer_reply':
-    case 'new_prayer_request':
-    case 'prayer_answered':
-      return '/dashboard/oracoes'
-    case 'new_pledge':
-    case 'pledge_confirmed':
-      return '/dashboard/financeiro/lancamentos'
-    case 'new_post':
-      return '/dashboard/publicacoes'
-    default:
-      return '/dashboard'
-  }
+const AREA_HREF: Record<NotificationArea, string> = {
+  messages: '/dashboard/mensagens',
+  prayers: '/dashboard/oracoes',
+  partners: '/dashboard/parceiros',
+  financial: '/dashboard/financeiro/lancamentos',
+  content: '/dashboard/publicacoes',
 }
 
-function formatMessage(t: ReturnType<typeof useTranslations<'Notifications'>>, type: string, payload: Record<string, unknown>): string {
-  switch (type) {
-    case 'new_pledge':
-      return t('newPledge', { name: (payload.reporter_name as string) ?? t('someone'), amount: formatCurrency(Number(payload.amount ?? 0), 'BRL') })
-    case 'pledge_confirmed':
-      return payload.highlight_title
-        ? t('pledgeConfirmedWithTitle', { amount: formatCurrency(Number(payload.amount ?? 0), 'BRL'), title: payload.highlight_title as string })
-        : t('pledgeConfirmed', { amount: formatCurrency(Number(payload.amount ?? 0), 'BRL') })
-    case 'new_partner':
-      return t('newPartner', { name: (payload.name as string) ?? t('someone') })
-    case 'new_message':
-      return t('newMessage')
-    case 'prayer_reply':
-      return t('prayerReply')
-    case 'highlight_update':
-      return t('highlightUpdate')
-    default:
-      return (payload.message as string) ?? type
+const AREA_ICON: Record<NotificationArea, React.ComponentType<{ className?: string }>> = {
+  messages: MessageSquare,
+  prayers: Heart,
+  partners: Users,
+  financial: Wallet,
+  content: FileText,
+}
+
+const AREA_LABEL_KEY: Record<NotificationArea, 'areaMessages' | 'areaPrayers' | 'areaPartners' | 'areaFinancial' | 'areaContent'> = {
+  messages: 'areaMessages',
+  prayers: 'areaPrayers',
+  partners: 'areaPartners',
+  financial: 'areaFinancial',
+  content: 'areaContent',
+}
+
+interface AreaGroup {
+  area: NotificationArea
+  ids: string[]
+  count: number
+  latest: string
+}
+
+function groupByArea(notifications: { id: string; type: string; created_at: string }[]): AreaGroup[] {
+  const groups = new Map<NotificationArea, AreaGroup>()
+  for (const n of notifications) {
+    const area = AREA_BY_TYPE[n.type] ?? 'content'
+    const g = groups.get(area)
+    if (g) {
+      g.ids.push(n.id)
+      g.count += 1
+      if (n.created_at > g.latest) g.latest = n.created_at
+    } else {
+      groups.set(area, { area, ids: [n.id], count: 1, latest: n.created_at })
+    }
   }
+  return AREA_ORDER.filter(area => groups.has(area)).map(area => groups.get(area)!)
 }
 
 export function NotificationsBell({ userId }: { userId: string }) {
   const t = useTranslations('Notifications')
-  const { notifications, unread, markAllRead, markRead } = useNotifications(userId)
+  const { notifications, unread, markAllRead, markManyRead } = useNotifications(userId)
+  const groups = groupByArea(notifications)
 
   return (
     <DropdownMenu>
@@ -98,23 +107,22 @@ export function NotificationsBell({ userId }: { userId: string }) {
           )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        {notifications.length === 0 && (
+        {groups.length === 0 && (
           <div className="py-6 text-center text-sm text-muted-foreground">{t('empty')}</div>
         )}
-        {notifications.map(n => {
-          const Icon = ICONS[n.type] ?? Bell
-          const payload = n.payload as Record<string, unknown>
+        {groups.map(g => {
+          const Icon = AREA_ICON[g.area]
           return (
             <DropdownMenuItem
-              key={n.id}
-              onClick={() => markRead(n.id)}
+              key={g.area}
+              onClick={() => markManyRead(g.ids)}
               className="py-0"
-              render={<Link href={getNotificationHref(n.type, payload)} className="flex items-start gap-2.5 py-3" />}
+              render={<Link href={AREA_HREF[g.area]} className="flex items-start gap-2.5 py-3" />}
             >
               <Icon className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm leading-snug">{formatMessage(t, n.type, payload)}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{formatRelativeTime(n.created_at)}</p>
+                <p className="text-sm leading-snug">{t(AREA_LABEL_KEY[g.area], { count: g.count })}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{formatRelativeTime(g.latest)}</p>
               </div>
             </DropdownMenuItem>
           )

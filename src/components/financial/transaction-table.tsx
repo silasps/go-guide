@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { usePendingAction } from '@/hooks/use-pending-action'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { FinancialAccount, TransactionCategory, TransactionWithCategory, Partner } from '@/types/database'
 import { Button } from '@/components/ui/button'
@@ -28,17 +29,17 @@ const TYPE_ICON = {
 export function TransactionTable({ transactions, accounts, categories = [], partners = [], highlights = [], readOnly = false }: Props) {
   const router = useRouter()
   const [editing, setEditing] = useState<TransactionWithCategory | null>(null)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const { pendingValue: deletingId, run } = usePendingAction<string>()
 
-  async function handleDelete(id: string) {
+  function handleDelete(id: string) {
     if (!confirm('Excluir este lançamento? O saldo da conta será ajustado.')) return
-    setDeletingId(id)
-    const supabase = createClient()
-    const { error } = await supabase.from('transactions').delete().eq('id', id)
-    setDeletingId(null)
-    if (error) { toast.error('Erro ao excluir lançamento.'); return }
-    toast.success('Lançamento excluído.')
-    router.refresh()
+    run(id, async () => {
+      const supabase = createClient()
+      const { error } = await supabase.from('transactions').delete().eq('id', id)
+      if (error) { toast.error('Erro ao excluir lançamento.'); return }
+      toast.success('Lançamento excluído.')
+      router.refresh()
+    })
   }
 
   if (transactions.length === 0) {

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { usePendingAction } from '@/hooks/use-pending-action'
 import { FinancialAccount, TransactionCategory, TransactionType, Partner, Transaction } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,7 +45,7 @@ function defaultFaturaDate(purchaseDate: string, closingDay: number | null) {
 
 export function TransactionForm({ open, onOpenChange, transaction, accounts, categories = [], partners = [], highlights = [], defaultHighlightId, trigger }: Props) {
   const router = useRouter()
-  const [saving, setSaving] = useState(false)
+  const { isPending: saving, run } = usePendingAction()
   const [type, setType] = useState<TransactionType>(transaction?.type ?? 'income')
   const [amount, setAmount] = useState(transaction ? toMasked(String(Math.round(transaction.amount * 100))) : '')
   const [description, setDescription] = useState(transaction?.description ?? '')
@@ -66,7 +67,7 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
     return { value, label: label.charAt(0).toUpperCase() + label.slice(1) }
   })
 
-  async function handleSave(e: React.FormEvent<HTMLFormElement>) {
+  function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const parsedAmount = parseFloat(fromMasked(amount))
     if (!parsedAmount || parsedAmount <= 0) { toast.error('Informe um valor válido.'); return }
@@ -74,34 +75,34 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
     const account = accounts.find(a => a.id === accountId)
     if (!account) { toast.error('Selecione uma conta.'); return }
 
-    setSaving(true)
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    run(true, async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
 
-    const payload = {
-      account_id: accountId,
-      profile_id: account.profile_id,
-      type,
-      amount: parsedAmount,
-      currency: account.currency_code,
-      description: description.trim(),
-      category_id: categoryId || null,
-      partner_id: partnerId || null,
-      highlight_id: highlightId || null,
-      date,
-      is_credit_purchase: isCreditAccount,
-      fatura_date: isCreditAccount ? faturaDate : null,
-    }
+      const payload = {
+        account_id: accountId,
+        profile_id: account.profile_id,
+        type,
+        amount: parsedAmount,
+        currency: account.currency_code,
+        description: description.trim(),
+        category_id: categoryId || null,
+        partner_id: partnerId || null,
+        highlight_id: highlightId || null,
+        date,
+        is_credit_purchase: isCreditAccount,
+        fatura_date: isCreditAccount ? faturaDate : null,
+      }
 
-    const { error } = transaction
-      ? await supabase.from('transactions').update(payload).eq('id', transaction.id)
-      : await supabase.from('transactions').insert({ ...payload, created_by_user_id: user!.id })
+      const { error } = transaction
+        ? await supabase.from('transactions').update(payload).eq('id', transaction.id)
+        : await supabase.from('transactions').insert({ ...payload, created_by_user_id: user!.id })
 
-    setSaving(false)
-    if (error) { toast.error('Erro ao salvar lançamento.'); return }
-    toast.success(transaction ? 'Lançamento atualizado.' : 'Lançamento criado.')
-    onOpenChange(false)
-    router.refresh()
+      if (error) { toast.error('Erro ao salvar lançamento.'); return }
+      toast.success(transaction ? 'Lançamento atualizado.' : 'Lançamento criado.')
+      onOpenChange(false)
+      router.refresh()
+    })
   }
 
   return (

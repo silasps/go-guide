@@ -454,14 +454,11 @@
     "title": "Notifications",
     "markAllRead": "Mark all as read",
     "empty": "No new notifications.",
-    "someone": "Someone",
-    "newPledge": "{name} logged a gift of {amount}",
-    "pledgeConfirmed": "Your gift of {amount} was confirmed",
-    "pledgeConfirmedWithTitle": "Your gift of {amount} was confirmed for {title}",
-    "newPartner": "{name} is now your partner",
-    "newMessage": "You received a new message",
-    "prayerReply": "You received a reply to your prayer request",
-    "highlightUpdate": "A project you follow posted an update"
+    "areaMessages": "{count, plural, one {# new message} other {# new messages}}",
+    "areaPrayers": "{count, plural, one {# prayer update} other {# prayer updates}}",
+    "areaPartners": "{count, plural, one {# new partner} other {# new partners}}",
+    "areaFinancial": "{count, plural, one {# financial update} other {# financial updates}}",
+    "areaContent": "{count, plural, one {# content update} other {# content updates}}"
   },
   "Onboarding": {
     "welcomeTitle": "Welcome to go→guide",

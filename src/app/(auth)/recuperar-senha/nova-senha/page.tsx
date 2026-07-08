@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
+import { usePendingAction } from '@/hooks/use-pending-action'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,7 +21,7 @@ export default function NovaSenhaPage() {
   const [validSession, setValidSession] = useState(false)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [loading, setLoading] = useState(false)
+  const { isPending: loading, run } = usePendingAction()
 
   useEffect(() => {
     const supabase = createClient()
@@ -30,7 +31,7 @@ export default function NovaSenhaPage() {
     })
   }, [])
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (password.length < 8) {
       toast.error(t('passwordTooShort'))
@@ -40,20 +41,20 @@ export default function NovaSenhaPage() {
       toast.error(t('passwordsDontMatch'))
       return
     }
-    setLoading(true)
 
-    const supabase = createClient()
-    const { error } = await supabase.auth.updateUser({ password })
+    run(true, async () => {
+      const supabase = createClient()
+      const { error } = await supabase.auth.updateUser({ password })
 
-    setLoading(false)
-    if (error) {
-      toast.error(error.message)
-      return
-    }
+      if (error) {
+        toast.error(error.message)
+        return
+      }
 
-    toast.success(t('passwordUpdated'))
-    router.push('/dashboard')
-    router.refresh()
+      toast.success(t('passwordUpdated'))
+      router.push('/dashboard')
+      router.refresh()
+    })
   }
 
   if (checking) {

@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage, validateVideo, validateVideoDuration, getMediaType, formatFileSize, VIDEO_MAX_SIZE_MB } from '@/lib/media/compress'
 import { savePost } from '@/app/dashboard/publicacoes/actions'
+import { usePendingAction } from '@/hooks/use-pending-action'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
@@ -50,7 +51,7 @@ export function PostEditor({ post, profileId, userId, originalLocale }: Props) {
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [mediaError, setMediaError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
+  const { isPending: saving, run } = usePendingAction()
 
   const postType: PostType = mediaFiles.length === 0 && existingUrls.length === 0
     ? 'text'
@@ -163,45 +164,45 @@ export function PostEditor({ post, profileId, userId, originalLocale }: Props) {
     }
   }
 
-  async function handleSave(isDraft: boolean) {
+  function handleSave(isDraft: boolean) {
     if (!content.trim() && !mediaFiles.length && !existingUrls.length) {
       toast.error('Adicione texto ou mídia antes de salvar.')
       return
     }
 
-    setSaving(true)
-    setUploading(mediaFiles.length > 0)
+    run(true, async () => {
+      setUploading(mediaFiles.length > 0)
 
-    try {
-      const mediaUrls = await uploadMedia()
-      setUploading(false)
+      try {
+        const mediaUrls = await uploadMedia()
+        setUploading(false)
 
-      await savePost({
-        postId: post?.id,
-        profileId,
-        originalLocale: effectiveOriginalLocale,
-        type: postType,
-        content,
-        mediaUrls,
-        isDraft,
-        translations: Object.fromEntries(
-          Object.entries(translations).map(([locale, text]) => [
-            locale,
-            { content: text ?? '', source: translationSources[locale as Locale] ?? 'human' },
-          ])
-        ),
-      })
+        await savePost({
+          postId: post?.id,
+          profileId,
+          originalLocale: effectiveOriginalLocale,
+          type: postType,
+          content,
+          mediaUrls,
+          isDraft,
+          translations: Object.fromEntries(
+            Object.entries(translations).map(([locale, text]) => [
+              locale,
+              { content: text ?? '', source: translationSources[locale as Locale] ?? 'human' },
+            ])
+          ),
+        })
 
-      toast.success(isDraft ? 'Rascunho salvo.' : 'Publicado!')
-      router.push('/dashboard/publicacoes')
-      router.refresh()
-    } catch (err) {
-      toast.error('Erro ao salvar. Tente novamente.')
-      console.error(err)
-    } finally {
-      setSaving(false)
-      setUploading(false)
-    }
+        toast.success(isDraft ? 'Rascunho salvo.' : 'Publicado!')
+        router.push('/dashboard/publicacoes')
+        router.refresh()
+      } catch (err) {
+        toast.error('Erro ao salvar. Tente novamente.')
+        console.error(err)
+      } finally {
+        setUploading(false)
+      }
+    })
   }
 
   return (

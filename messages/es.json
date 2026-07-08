@@ -454,14 +454,11 @@
     "title": "Notificaciones",
     "markAllRead": "Marcar todas como leídas",
     "empty": "No hay notificaciones nuevas.",
-    "someone": "Alguien",
-    "newPledge": "{name} registró una ofrenda de {amount}",
-    "pledgeConfirmed": "Tu ofrenda de {amount} fue confirmada",
-    "pledgeConfirmedWithTitle": "Tu ofrenda de {amount} fue confirmada para {title}",
-    "newPartner": "{name} ahora es tu socio",
-    "newMessage": "Recibiste un mensaje nuevo",
-    "prayerReply": "Recibiste una respuesta a tu petición de oración",
-    "highlightUpdate": "Un proyecto que sigues publicó una actualización"
+    "areaMessages": "{count, plural, one {# mensaje nuevo} other {# mensajes nuevos}}",
+    "areaPrayers": "{count, plural, one {# actualización de oración} other {# actualizaciones de oración}}",
+    "areaPartners": "{count, plural, one {# socio nuevo} other {# socios nuevos}}",
+    "areaFinancial": "{count, plural, one {# actualización financiera} other {# actualizaciones financieras}}",
+    "areaContent": "{count, plural, one {# actualización de contenido} other {# actualizaciones de contenido}}"
   },
   "Onboarding": {
     "welcomeTitle": "Bienvenido a go→guide",

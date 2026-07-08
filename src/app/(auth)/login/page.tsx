@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import * as keyManager from '@/lib/crypto/key-manager'
+import { usePendingAction } from '@/hooks/use-pending-action'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -21,27 +22,26 @@ function LoginForm() {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
+  const { isPending: loading, run } = usePendingAction()
 
-  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
+  function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setLoading(true)
+    run(true, async () => {
+      const supabase = createClient()
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
-    const supabase = createClient()
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) {
+        toast.error(t('loginError'))
+        return
+      }
 
-    if (error) {
-      toast.error(t('loginError'))
-      setLoading(false)
-      return
-    }
+      if (data.user) {
+        await keyManager.setupOrUnlockWithPassword(data.user.id, password).catch(() => {})
+      }
 
-    if (data.user) {
-      await keyManager.setupOrUnlockWithPassword(data.user.id, password).catch(() => {})
-    }
-
-    router.push(redirect)
-    router.refresh()
+      router.push(redirect)
+      router.refresh()
+    })
   }
 
   async function handleGoogle() {

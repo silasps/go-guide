@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { usePendingAction } from '@/hooks/use-pending-action'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,40 +21,40 @@ export function ManageMembersDialog({ accountId, members }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [email, setEmail] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [removingId, setRemovingId] = useState<string | null>(null)
+  const { isPending: saving, run: runAdd } = usePendingAction()
+  const { pendingValue: removingId, run: runRemove } = usePendingAction<string>()
 
-  async function handleAdd(e: React.FormEvent<HTMLFormElement>) {
+  function handleAdd(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!email.trim()) return
-    setSaving(true)
-    const res = await fetch('/api/accounts/members', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ accountId, email: email.trim(), role: 'viewer' }),
+    runAdd(true, async () => {
+      const res = await fetch('/api/accounts/members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId, email: email.trim(), role: 'viewer' }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        toast.error(data.error ?? 'Erro ao adicionar membro.')
+        return
+      }
+      toast.success('Membro adicionado.')
+      setEmail('')
+      router.refresh()
     })
-    setSaving(false)
-    if (!res.ok) {
-      const data = await res.json()
-      toast.error(data.error ?? 'Erro ao adicionar membro.')
-      return
-    }
-    toast.success('Membro adicionado.')
-    setEmail('')
-    router.refresh()
   }
 
-  async function handleRemove(memberId: string) {
-    setRemovingId(memberId)
-    const res = await fetch('/api/accounts/members', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ memberId, accountId }),
+  function handleRemove(memberId: string) {
+    runRemove(memberId, async () => {
+      const res = await fetch('/api/accounts/members', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberId, accountId }),
+      })
+      if (!res.ok) { toast.error('Erro ao remover membro.'); return }
+      toast.success('Membro removido.')
+      router.refresh()
     })
-    setRemovingId(null)
-    if (!res.ok) { toast.error('Erro ao remover membro.'); return }
-    toast.success('Membro removido.')
-    router.refresh()
   }
 
   return (

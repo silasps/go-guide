@@ -18,7 +18,7 @@ import {
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu'
 import {
-  LayoutDashboard,
+  Home,
   FileText,
   FolderOpen,
   Users,
@@ -62,7 +62,7 @@ function AccountSwitcher({ profile, accessibleProfiles }: { profile: Profile; ac
 function useNav() {
   const t = useTranslations('DashboardNav')
   return [
-    { href: '/dashboard', label: t('overview'), icon: LayoutDashboard, exact: true },
+    { href: '/dashboard', label: t('overview'), icon: Home, exact: true },
     { href: '/dashboard/publicacoes', label: t('posts'), icon: FileText },
     { href: '/dashboard/projetos', label: t('projects'), icon: FolderOpen },
     { href: '/dashboard/parceiros', label: t('partners'), icon: Users },
@@ -77,7 +77,7 @@ function useNav() {
 function useBottomNavItems() {
   const t = useTranslations('DashboardNav')
   return [
-    { href: '/dashboard', label: t('home'), icon: LayoutDashboard, exact: true },
+    { href: '/dashboard', label: t('home'), icon: Home, exact: true },
     { href: '/dashboard/projetos', label: t('projects'), icon: FolderOpen },
     { href: '/dashboard/parceiros', label: t('partners'), icon: Users },
     { href: '/dashboard/publicacoes', label: t('postsShort'), icon: FileText },

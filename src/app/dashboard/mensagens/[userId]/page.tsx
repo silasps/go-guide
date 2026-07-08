@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveProfile } from '@/lib/profile/active-profile'
+import { markMessageNotificationsRead } from '@/lib/notifications/mark-read'
 import { E2EEGate } from '@/components/messages/e2ee-gate'
 import { MessageThread } from '@/components/messages/message-thread'
 
@@ -23,6 +24,8 @@ export default async function ConversaPage({ params }: Props) {
     .limit(1)
     .maybeSingle()
   const profileId = anyMessage?.profile_id ?? profile.id
+
+  await markMessageNotificationsRead(supabase, user!.id, userId)
 
   const { data: partner } = await supabase.from('partners').select('name').eq('profile_id', profile.id).eq('user_id', userId).maybeSingle()
   const { data: senderProfile } = await supabase.from('profiles').select('display_name').eq('user_id', userId).maybeSingle()

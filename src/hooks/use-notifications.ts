@@ -6,27 +6,27 @@ import { Notification } from '@/types/database'
 
 export function useNotifications(userId: string) {
   const [notifications, setNotifications] = useState<Notification[]>([])
-  const [unread, setUnread] = useState(0)
+  const unread = notifications.length
 
   async function markAllRead() {
+    setNotifications([])
     const supabase = createClient()
     await supabase
       .from('notifications')
       .update({ read_at: new Date().toISOString() })
       .eq('recipient_user_id', userId)
       .is('read_at', null)
-    setNotifications([])
-    setUnread(0)
   }
 
-  async function markRead(id: string) {
-    setNotifications(prev => prev.filter(n => n.id !== id))
-    setUnread(prev => Math.max(0, prev - 1))
+  async function markManyRead(ids: string[]) {
+    if (ids.length === 0) return
+    const idSet = new Set(ids)
+    setNotifications(prev => prev.filter(n => !idSet.has(n.id)))
     const supabase = createClient()
     await supabase
       .from('notifications')
       .update({ read_at: new Date().toISOString() })
-      .eq('id', id)
+      .in('id', ids)
   }
 
   useEffect(() => {
@@ -44,7 +44,6 @@ export function useNotifications(userId: string) {
 
       if (!cancelled && data) {
         setNotifications(data)
-        setUnread(data.length)
       }
     })
 
@@ -55,7 +54,16 @@ export function useNotifications(userId: string) {
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `recipient_user_id=eq.${userId}` },
         (payload) => {
           setNotifications(prev => [payload.new as Notification, ...prev])
-          setUnread(prev => prev + 1)
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `recipient_user_id=eq.${userId}` },
+        (payload) => {
+          const updated = payload.new as Notification
+          if (updated.read_at) {
+            setNotifications(prev => prev.filter(n => n.id !== updated.id))
+          }
         }
       )
       .subscribe()
@@ -66,5 +74,5 @@ export function useNotifications(userId: string) {
     }
   }, [userId])
 
-  return { notifications, unread, markAllRead, markRead }
+  return { notifications, unread, markAllRead, markManyRead }
 }

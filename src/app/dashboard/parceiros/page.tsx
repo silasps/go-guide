@@ -1,11 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { getActiveProfile } from '@/lib/profile/active-profile'
+import { markNotificationTypesRead } from '@/lib/notifications/mark-read'
 import { PartnersList } from '@/components/partners/partners-list'
 import { AddPartnerButton } from '@/components/partners/add-partner-button'
 
 export default async function ParceirosPage() {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   const profile = await getActiveProfile()
+
+  await markNotificationTypesRead(supabase, user!.id, ['new_partner'])
 
   const { data: partners } = await supabase
     .from('partners')

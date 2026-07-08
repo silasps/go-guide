@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getActiveProfile } from '@/lib/profile/active-profile'
+import { markNotificationTypesRead } from '@/lib/notifications/mark-read'
 import { PrayerInbox } from '@/components/prayer/prayer-inbox'
 import { NewPrayerButton } from '@/components/prayer/new-prayer-button'
 import { E2EEGate } from '@/components/messages/e2ee-gate'
@@ -8,6 +9,8 @@ export default async function OracoesPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const profile = await getActiveProfile()
+
+  await markNotificationTypesRead(supabase, user!.id, ['new_prayer_request', 'prayer_reply', 'prayer_answered'])
 
   const { data: requests } = await supabase
     .from('prayer_requests')

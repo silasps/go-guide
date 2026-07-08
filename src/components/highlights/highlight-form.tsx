@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { usePendingAction } from '@/hooks/use-pending-action'
 import { compressImage } from '@/lib/media/compress'
 import { Highlight, Milestone, ProjectBudgetCategory, BudgetCategoryType } from '@/types/database'
 import { Button } from '@/components/ui/button'
@@ -92,7 +93,7 @@ interface Props {
 
 export function HighlightForm({ highlight, profileId, backPath = '/dashboard/projetos' }: Props) {
   const router = useRouter()
-  const [saving, setSaving] = useState(false)
+  const { isPending: saving, run } = usePendingAction()
   const [title, setTitle] = useState(highlight?.title ?? '')
   const [description, setDescription] = useState(highlight?.description ?? '')
   const [goalTypes, setGoalTypes] = useState<string[]>(
@@ -211,73 +212,72 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
     return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
   }
 
-  async function handleSave(e: React.FormEvent<HTMLFormElement>) {
+  function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!title.trim()) { toast.error('Título obrigatório.'); return }
-    setSaving(true)
 
-    try {
-      const supabase = createClient()
-      const { data: { user: currentUser } } = await supabase.auth.getUser()
-      let cover_url = highlight?.cover_url ?? null
+    run(true, async () => {
+      try {
+        const supabase = createClient()
+        const { data: { user: currentUser } } = await supabase.auth.getUser()
+        let cover_url = highlight?.cover_url ?? null
 
-      if (coverFile) {
-        const path = `${currentUser!.id}/highlights/${uniqueFileName('webp')}`
-        const { error } = await supabase.storage.from('media').upload(path, coverFile, { upsert: true })
-        if (error) throw error
-        cover_url = supabase.storage.from('media').getPublicUrl(path).data.publicUrl
+        if (coverFile) {
+          const path = `${currentUser!.id}/highlights/${uniqueFileName('webp')}`
+          const { error } = await supabase.storage.from('media').upload(path, coverFile, { upsert: true })
+          if (error) throw error
+          cover_url = supabase.storage.from('media').getPublicUrl(path).data.publicUrl
+        }
+
+        const cover_position = `${Math.round(position.x)}% ${Math.round(position.y)}%`
+        const types = goalTypes.length > 0 ? goalTypes : ['ongoing']
+        const hasFinancial = types.includes('financial')
+        const isDetailedBudget = hasFinancial && budgetMode === 'detailed'
+
+        const res = await fetch('/api/highlights', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            highlightId: highlight?.id,
+            profileId,
+            title: title.trim(),
+            description: description.trim(),
+            goalTypes,
+            goalAmount: isDetailedBudget ? budgetTotal : (hasFinancial && goalAmount ? parseFloat(fromMasked(goalAmount, currency)) : null),
+            currentAmount: hasFinancial ? (parseFloat(fromMasked(currentAmount, currency)) || 0) : 0,
+            currency,
+            coverUrl: cover_url,
+            coverPosition: cover_position,
+            tripStartDate: tripStartDate || null,
+            fundingDeadline: fundingDeadline || null,
+            scripture: scripture.trim(),
+            letter: letter.trim(),
+            status,
+            milestones,
+            budgetCategories: isDetailedBudget
+              ? budgetCategories
+                  .filter(b => parseFloat(fromMasked(b.target_amount, currency)) > 0)
+                  .map(b => ({
+                    category_type: b.category_type,
+                    custom_label: b.category_type === 'other' ? (b.custom_label.trim() || 'Outros') : null,
+                    target_amount: parseFloat(fromMasked(b.target_amount, currency)),
+                  }))
+              : [],
+          }),
+        })
+        if (!res.ok) {
+          const data = await res.json()
+          throw new Error(data.error ?? 'Erro ao salvar')
+        }
+
+        toast.success(highlight ? 'Projeto atualizado.' : 'Projeto criado.')
+        router.push(backPath)
+        router.refresh()
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Erro ao salvar'
+        toast.error(msg)
       }
-
-      const cover_position = `${Math.round(position.x)}% ${Math.round(position.y)}%`
-      const types = goalTypes.length > 0 ? goalTypes : ['ongoing']
-      const hasFinancial = types.includes('financial')
-      const isDetailedBudget = hasFinancial && budgetMode === 'detailed'
-
-      const res = await fetch('/api/highlights', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          highlightId: highlight?.id,
-          profileId,
-          title: title.trim(),
-          description: description.trim(),
-          goalTypes,
-          goalAmount: isDetailedBudget ? budgetTotal : (hasFinancial && goalAmount ? parseFloat(fromMasked(goalAmount, currency)) : null),
-          currentAmount: hasFinancial ? (parseFloat(fromMasked(currentAmount, currency)) || 0) : 0,
-          currency,
-          coverUrl: cover_url,
-          coverPosition: cover_position,
-          tripStartDate: tripStartDate || null,
-          fundingDeadline: fundingDeadline || null,
-          scripture: scripture.trim(),
-          letter: letter.trim(),
-          status,
-          milestones,
-          budgetCategories: isDetailedBudget
-            ? budgetCategories
-                .filter(b => parseFloat(fromMasked(b.target_amount, currency)) > 0)
-                .map(b => ({
-                  category_type: b.category_type,
-                  custom_label: b.category_type === 'other' ? (b.custom_label.trim() || 'Outros') : null,
-                  target_amount: parseFloat(fromMasked(b.target_amount, currency)),
-                }))
-            : [],
-        }),
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error ?? 'Erro ao salvar')
-      }
-
-      toast.success(highlight ? 'Projeto atualizado.' : 'Projeto criado.')
-      router.push(backPath)
-      router.refresh()
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao salvar'
-      toast.error(msg)
-    } finally {
-      setSaving(false)
-    }
+    })
   }
 
   return (

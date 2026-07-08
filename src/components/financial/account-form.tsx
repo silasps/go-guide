@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { usePendingAction } from '@/hooks/use-pending-action'
 import { FinancialAccount, AccountType } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,7 +23,7 @@ interface Props {
 export function AccountForm({ profileId, account }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const { isPending: saving, run } = usePendingAction()
   const [name, setName] = useState(account?.name ?? '')
   const [currencyCode, setCurrencyCode] = useState(account?.currency_code ?? 'BRL')
   const [accountType, setAccountType] = useState<AccountType>(account?.account_type ?? 'checking')
@@ -34,47 +35,47 @@ export function AccountForm({ profileId, account }: Props) {
   const [cardBrand, setCardBrand] = useState(account?.card_brand ?? '')
   const isCredit = accountType === 'credit'
 
-  async function handleSave(e: React.FormEvent<HTMLFormElement>) {
+  function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!name.trim()) { toast.error('Nome obrigatório.'); return }
-    setSaving(true)
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
 
-    const creditFields = isCredit ? {
-      credit_limit: creditLimit ? parseFloat(creditLimit) : null,
-      closing_day: closingDay ? parseInt(closingDay, 10) : null,
-      due_day: dueDay ? parseInt(dueDay, 10) : null,
-      card_brand: cardBrand || null,
-    } : { credit_limit: null, closing_day: null, due_day: null, card_brand: null }
+    run(true, async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
 
-    if (account) {
-      const { error } = await supabase.from('financial_accounts').update({
-        name: name.trim(),
-        account_type: accountType,
-        is_shared: isShared,
-        ...creditFields,
-      }).eq('id', account.id)
-      setSaving(false)
-      if (error) { toast.error('Erro ao salvar conta.'); return }
-      toast.success('Conta atualizada.')
-    } else {
-      const { error } = await supabase.from('financial_accounts').insert({
-        profile_id: profileId,
-        name: name.trim(),
-        currency_code: currencyCode,
-        account_type: accountType,
-        is_shared: isShared,
-        balance: parseFloat(openingBalance) || 0,
-        created_by_user_id: user!.id,
-        ...creditFields,
-      })
-      setSaving(false)
-      if (error) { toast.error('Erro ao criar conta.'); return }
-      toast.success('Conta criada.')
-    }
-    setOpen(false)
-    router.refresh()
+      const creditFields = isCredit ? {
+        credit_limit: creditLimit ? parseFloat(creditLimit) : null,
+        closing_day: closingDay ? parseInt(closingDay, 10) : null,
+        due_day: dueDay ? parseInt(dueDay, 10) : null,
+        card_brand: cardBrand || null,
+      } : { credit_limit: null, closing_day: null, due_day: null, card_brand: null }
+
+      if (account) {
+        const { error } = await supabase.from('financial_accounts').update({
+          name: name.trim(),
+          account_type: accountType,
+          is_shared: isShared,
+          ...creditFields,
+        }).eq('id', account.id)
+        if (error) { toast.error('Erro ao salvar conta.'); return }
+        toast.success('Conta atualizada.')
+      } else {
+        const { error } = await supabase.from('financial_accounts').insert({
+          profile_id: profileId,
+          name: name.trim(),
+          currency_code: currencyCode,
+          account_type: accountType,
+          is_shared: isShared,
+          balance: parseFloat(openingBalance) || 0,
+          created_by_user_id: user!.id,
+          ...creditFields,
+        })
+        if (error) { toast.error('Erro ao criar conta.'); return }
+        toast.success('Conta criada.')
+      }
+      setOpen(false)
+      router.refresh()
+    })
   }
 
   return (

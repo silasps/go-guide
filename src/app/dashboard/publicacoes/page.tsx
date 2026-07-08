@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getActiveProfile } from '@/lib/profile/active-profile'
+import { markNotificationTypesRead } from '@/lib/notifications/mark-read'
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -8,7 +9,10 @@ import { PostsList } from '@/components/dashboard/posts-list'
 
 export default async function PublicacoesPage() {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   const profile = await getActiveProfile()
+
+  await markNotificationTypesRead(supabase, user!.id, ['new_post', 'highlight_update'])
 
   const { data: posts } = await supabase
     .from('posts')

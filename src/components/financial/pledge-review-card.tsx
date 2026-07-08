@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { usePendingAction } from '@/hooks/use-pending-action'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { Pledge, FinancialAccount } from '@/types/database'
 import { Button } from '@/components/ui/button'
@@ -22,82 +23,82 @@ export function PledgeReviewCard({ pledge, accounts, profileId }: Props) {
   const router = useRouter()
   const [amount, setAmount] = useState(String(pledge.reported_amount))
   const [accountId, setAccountId] = useState(accounts.find(a => a.currency_code === pledge.currency)?.id ?? accounts[0]?.id ?? '')
-  const [saving, setSaving] = useState<'confirm' | 'reject' | null>(null)
+  const { pendingValue: saving, run } = usePendingAction<'confirm' | 'reject'>()
   const [rejectReason, setRejectReason] = useState('')
   const [showReject, setShowReject] = useState(false)
 
-  async function handleConfirm() {
+  function handleConfirm() {
     const parsed = parseFloat(amount)
     if (!parsed || parsed <= 0) { toast.error('Valor inválido.'); return }
     if (!accountId) { toast.error('Selecione uma conta para depositar.'); return }
-    setSaving('confirm')
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    run('confirm', async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
 
-    // 1. Encontra ou promove o parceiro
-    let partnerId: string | null = pledge.partner_id
-    if (!partnerId && pledge.reporter_user_id) {
-      const { data: existing } = await supabase.from('partners').select('id').eq('profile_id', profileId).eq('user_id', pledge.reporter_user_id).maybeSingle()
-      if (existing) partnerId = existing.id
-      else {
-        const { data: created } = await supabase.from('partners').insert({
-          profile_id: profileId,
-          user_id: pledge.reporter_user_id,
-          name: pledge.reporter_name,
-          email: pledge.reporter_email,
-          type: 'financial',
-        }).select('id').single()
-        partnerId = created?.id ?? null
+      // 1. Encontra ou promove o parceiro
+      let partnerId: string | null = pledge.partner_id
+      if (!partnerId && pledge.reporter_user_id) {
+        const { data: existing } = await supabase.from('partners').select('id').eq('profile_id', profileId).eq('user_id', pledge.reporter_user_id).maybeSingle()
+        if (existing) partnerId = existing.id
+        else {
+          const { data: created } = await supabase.from('partners').insert({
+            profile_id: profileId,
+            user_id: pledge.reporter_user_id,
+            name: pledge.reporter_name,
+            email: pledge.reporter_email,
+            type: 'financial',
+          }).select('id').single()
+          partnerId = created?.id ?? null
+        }
       }
-    }
 
-    // 2. Cria a transação real
-    const { data: transaction, error: txError } = await supabase.from('transactions').insert({
-      account_id: accountId,
-      profile_id: profileId,
-      created_by_user_id: user!.id,
-      type: 'income',
-      amount: parsed,
-      currency: pledge.currency,
-      description: `Oferta de ${pledge.reporter_name}`,
-      partner_id: partnerId,
-      highlight_id: pledge.highlight_id,
-      source: 'manual',
-      date: pledge.reported_at.slice(0, 10),
-    }).select('id').single()
+      // 2. Cria a transação real
+      const { data: transaction, error: txError } = await supabase.from('transactions').insert({
+        account_id: accountId,
+        profile_id: profileId,
+        created_by_user_id: user!.id,
+        type: 'income',
+        amount: parsed,
+        currency: pledge.currency,
+        description: `Oferta de ${pledge.reporter_name}`,
+        partner_id: partnerId,
+        highlight_id: pledge.highlight_id,
+        source: 'manual',
+        date: pledge.reported_at.slice(0, 10),
+      }).select('id').single()
 
-    if (txError || !transaction) { toast.error('Erro ao criar lançamento.'); setSaving(null); return }
+      if (txError || !transaction) { toast.error('Erro ao criar lançamento.'); return }
 
-    // 3. Marca o pledge como confirmado
-    const { error: pledgeError } = await supabase.from('pledges').update({
-      status: 'confirmed',
-      reported_amount: parsed,
-      partner_id: partnerId,
-      confirmed_transaction_id: transaction.id,
-      reviewed_by_user_id: user!.id,
-      reviewed_at: new Date().toISOString(),
-    }).eq('id', pledge.id)
+      // 3. Marca o pledge como confirmado
+      const { error: pledgeError } = await supabase.from('pledges').update({
+        status: 'confirmed',
+        reported_amount: parsed,
+        partner_id: partnerId,
+        confirmed_transaction_id: transaction.id,
+        reviewed_by_user_id: user!.id,
+        reviewed_at: new Date().toISOString(),
+      }).eq('id', pledge.id)
 
-    setSaving(null)
-    if (pledgeError) { toast.error('Erro ao confirmar oferta.'); return }
-    toast.success('Oferta confirmada!')
-    router.refresh()
+      if (pledgeError) { toast.error('Erro ao confirmar oferta.'); return }
+      toast.success('Oferta confirmada!')
+      router.refresh()
+    })
   }
 
-  async function handleReject() {
-    setSaving('reject')
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    const { error } = await supabase.from('pledges').update({
-      status: 'rejected',
-      rejection_reason: rejectReason.trim() || null,
-      reviewed_by_user_id: user!.id,
-      reviewed_at: new Date().toISOString(),
-    }).eq('id', pledge.id)
-    setSaving(null)
-    if (error) { toast.error('Erro ao rejeitar.'); return }
-    toast.success('Oferta rejeitada.')
-    router.refresh()
+  function handleReject() {
+    run('reject', async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      const { error } = await supabase.from('pledges').update({
+        status: 'rejected',
+        rejection_reason: rejectReason.trim() || null,
+        reviewed_by_user_id: user!.id,
+        reviewed_at: new Date().toISOString(),
+      }).eq('id', pledge.id)
+      if (error) { toast.error('Erro ao rejeitar.'); return }
+      toast.success('Oferta rejeitada.')
+      router.refresh()
+    })
   }
 
   return (

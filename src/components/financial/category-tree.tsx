@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { usePendingAction } from '@/hooks/use-pending-action'
 import { TransactionCategory } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,32 +19,32 @@ export function CategoryTree({ profileId, categories }: Props) {
   const router = useRouter()
   const [newName, setNewName] = useState('')
   const [newSubName, setNewSubName] = useState<Record<string, string>>({})
-  const [saving, setSaving] = useState(false)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const { isPending: saving, run: runAdd } = usePendingAction()
+  const { pendingValue: deletingId, run: runDelete } = usePendingAction<string>()
 
   const top = categories.filter(c => !c.parent_id)
   const childrenOf = (id: string) => categories.filter(c => c.parent_id === id)
 
-  async function addCategory(name: string, parentId: string | null) {
+  function addCategory(name: string, parentId: string | null) {
     if (!name.trim()) return
-    setSaving(true)
-    const supabase = createClient()
-    const { error } = await supabase.from('transaction_categories').insert({ profile_id: profileId, name: name.trim(), parent_id: parentId })
-    setSaving(false)
-    if (error) { toast.error('Erro ao criar categoria.'); return }
-    setNewName('')
-    setNewSubName(prev => parentId ? { ...prev, [parentId]: '' } : prev)
-    router.refresh()
+    runAdd(true, async () => {
+      const supabase = createClient()
+      const { error } = await supabase.from('transaction_categories').insert({ profile_id: profileId, name: name.trim(), parent_id: parentId })
+      if (error) { toast.error('Erro ao criar categoria.'); return }
+      setNewName('')
+      setNewSubName(prev => parentId ? { ...prev, [parentId]: '' } : prev)
+      router.refresh()
+    })
   }
 
-  async function removeCategory(id: string) {
+  function removeCategory(id: string) {
     if (!confirm('Excluir esta categoria?')) return
-    setDeletingId(id)
-    const supabase = createClient()
-    const { error } = await supabase.from('transaction_categories').delete().eq('id', id)
-    setDeletingId(null)
-    if (error) { toast.error('Erro ao excluir categoria.'); return }
-    router.refresh()
+    runDelete(id, async () => {
+      const supabase = createClient()
+      const { error } = await supabase.from('transaction_categories').delete().eq('id', id)
+      if (error) { toast.error('Erro ao excluir categoria.'); return }
+      router.refresh()
+    })
   }
 
   return (
