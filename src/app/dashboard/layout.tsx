@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getActiveProfile, getAccessibleProfiles } from '@/lib/profile/active-profile'
 import { DashboardSidebar, MobileBottomNav, MobileHeader } from '@/components/dashboard/sidebar'
 import { NotificationsBell } from '@/components/dashboard/notifications-bell'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -24,7 +25,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <header className="h-14 md:h-12 border-b flex items-center justify-between px-4 md:justify-end md:px-6 shrink-0">
           <MobileHeader profile={profile} />
-          <NotificationsBell userId={user.id} />
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <NotificationsBell userId={user.id} />
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
