@@ -168,20 +168,23 @@ export async function ensureResourceKey(
     .is('revoked_at', null)
   const grantedIds = new Set((existingGrants ?? []).map(g => g.grantee_user_id))
 
-  const rows = []
+  // Insert simples por grantee (não upsert): com RLS, "ON CONFLICT DO UPDATE" exige
+  // conseguir enxergar (via SELECT) uma eventual linha já existente de OUTRA pessoa
+  // pra decidir se há conflito — o que trava exatamente no primeiro grant de alguém
+  // que não seja eu mesmo. Um insert direto só depende da política de INSERT (que já
+  // é permissiva pra qualquer autenticado); se a linha já existir, cai no "already
+  // exists" (23505) e é só ignorar — não precisa recifrar nada.
   for (const granteeId of grantees) {
     if (grantedIds.has(granteeId)) continue
     const publicKey = await getPublicKeyOf(granteeId)
     if (!publicKey) continue // ainda não configurou E2EE — sem acesso até configurar
-    rows.push({
+    const { error } = await supabase.from('encrypted_dek_grants').insert({
       resource_type: resourceType,
       resource_id: resourceId,
       grantee_user_id: granteeId,
       wrapped_dek: await e2ee.wrapDEKForRecipient(dek, publicKey),
     })
-  }
-  if (rows.length > 0) {
-    await supabase.from('encrypted_dek_grants').upsert(rows, { onConflict: 'resource_type,resource_id,grantee_user_id' })
+    if (error && error.code !== '23505') console.error('grant insert failed:', granteeId, error)
   }
 
   return dek
