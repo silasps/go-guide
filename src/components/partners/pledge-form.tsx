@@ -20,6 +20,7 @@ interface Props {
   isRecurring: boolean
   currency: string
   paymentOptions: { method: PledgePaymentMethod; label: string; value: string }[]
+  onBecomePartner?: () => void
 }
 
 function toMasked(raw: string) {
@@ -31,7 +32,7 @@ function fromMasked(masked: string) {
   return masked.replace(/\./g, '').replace(',', '.')
 }
 
-export function PledgeForm({ profileId, missionaryName, highlightId, highlightTitle, isRecurring, currency, paymentOptions }: Props) {
+export function PledgeForm({ profileId, missionaryName, highlightId, highlightTitle, isRecurring, currency, paymentOptions, onBecomePartner }: Props) {
   const [done, setDone] = useState(false)
   const [saving, setSaving] = useState(false)
   const [amount, setAmount] = useState('')
@@ -88,15 +89,29 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
 
   if (done) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center space-y-3">
-          <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
-          <h2 className="text-xl font-semibold">Recebemos seu registro!</h2>
-          <p className="text-muted-foreground text-sm">
-            {missionaryName} vai confirmar o recebimento em breve. Assim que confirmado, você será notificado(a).
-          </p>
-        </CardContent>
-      </Card>
+      <div className="space-y-3">
+        <Card>
+          <CardContent className="py-12 text-center space-y-3">
+            <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+            <h2 className="text-xl font-semibold">Recebemos seu registro!</h2>
+            <p className="text-muted-foreground text-sm">
+              {missionaryName} vai confirmar o recebimento em breve. Assim que confirmado, você será notificado(a).
+            </p>
+          </CardContent>
+        </Card>
+        {!isRecurring && onBecomePartner && (
+          <Card className="bg-primary/5 border-primary/20">
+            <CardContent className="py-6 text-center space-y-3">
+              <p className="text-sm">
+                Gostaria de saber mais e participar ainda mais da caminhada de {missionaryName}?
+              </p>
+              <Button type="button" variant="outline" className="w-full" onClick={onBecomePartner}>
+                Quero ser parceiro fixo
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     )
   }
 

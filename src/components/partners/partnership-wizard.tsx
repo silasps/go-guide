@@ -5,7 +5,7 @@ import { PledgeForm } from './pledge-form'
 import { PartnershipForm } from './partnership-form'
 import { PledgePaymentMethod } from '@/types/database'
 
-type Choice = 'financial_once' | 'financial_ongoing' | 'prayer' | 'ambassador' | 'volunteer'
+type Choice = 'financial_once' | 'financial_once_general' | 'financial_ongoing' | 'prayer' | 'ambassador' | 'volunteer'
 
 interface Props {
   profileId: string
@@ -21,11 +21,12 @@ interface Props {
 export function PartnershipWizard({ profileId, missionaryName, missionStartYear, highlightId, highlightTitle, currency, paymentOptions, hasFinancialOptions }: Props) {
   const [choice, setChoice] = useState<Choice | null>(null)
 
-  if (choice === 'financial_once' || choice === 'financial_ongoing') {
+  if (choice === 'financial_once' || choice === 'financial_once_general' || choice === 'financial_ongoing') {
     return (
       <div className="space-y-3">
         <button onClick={() => setChoice(null)} className="text-xs text-muted-foreground hover:text-foreground">← Voltar</button>
         <PledgeForm
+          key={choice}
           profileId={profileId}
           missionaryName={missionaryName}
           highlightId={choice === 'financial_once' ? highlightId : undefined}
@@ -33,6 +34,7 @@ export function PartnershipWizard({ profileId, missionaryName, missionStartYear,
           isRecurring={choice === 'financial_ongoing'}
           currency={currency}
           paymentOptions={paymentOptions}
+          onBecomePartner={choice === 'financial_ongoing' ? undefined : () => setChoice('financial_ongoing')}
         />
       </div>
     )
@@ -60,6 +62,19 @@ export function PartnershipWizard({ profileId, missionaryName, missionStartYear,
           <div>
             <p className="font-medium text-sm">Apoiar {highlightTitle ?? 'este projeto'}</p>
             <p className="text-xs text-muted-foreground">Uma oferta pontual para esta campanha específica</p>
+          </div>
+        </button>
+      )}
+      {hasFinancialOptions && (
+        <button
+          type="button"
+          onClick={() => setChoice('financial_once_general')}
+          className="w-full flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors text-left"
+        >
+          <span className="text-2xl shrink-0">🎁</span>
+          <div>
+            <p className="font-medium text-sm">Fazer uma doação única</p>
+            <p className="text-xs text-muted-foreground">Uma contribuição pontual, sem compromisso de continuidade</p>
           </div>
         </button>
       )}
