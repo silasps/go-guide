@@ -1,12 +1,42 @@
 import { createClient } from '@/lib/supabase/client'
 import * as e2ee from './e2ee'
 
-/** Cache em memória da sessão (não persiste entre recarregamentos de página —
- *  o usuário precisa do código de recuperação para desbloquear novamente).
- *  Isso é intencional: a chave privada em claro nunca é persistida no disco. */
 let cachedPrivateKeyB64: string | null = null
 let cachedPublicKeyB64: string | null = null
 const dekCache = new Map<string, Uint8Array>() // `${resourceType}:${resourceId}` -> DEK
+
+/** Chave privada cacheada localmente neste navegador/dispositivo, para que o
+ *  desbloqueio seja automático (como no WhatsApp) — só é preciso o código de
+ *  recuperação ao trocar de dispositivo/navegador ou limpar os dados do site. */
+function localStorageKey(userId: string) {
+  return `go_guide_e2ee_${userId}`
+}
+
+function saveLocalKeys(userId: string, privateKeyB64: string, publicKeyB64: string) {
+  try {
+    localStorage.setItem(localStorageKey(userId), JSON.stringify({ privateKeyB64, publicKeyB64 }))
+  } catch {
+    // localStorage indisponível (modo privado etc.) — segue funcionando só nesta sessão
+  }
+}
+
+function loadLocalKeys(userId: string): { privateKeyB64: string; publicKeyB64: string } | null {
+  try {
+    const raw = localStorage.getItem(localStorageKey(userId))
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+/** Tenta desbloquear a partir da chave salva neste dispositivo. Retorna se conseguiu. */
+export function tryAutoUnlock(userId: string): boolean {
+  const local = loadLocalKeys(userId)
+  if (!local) return false
+  cachedPrivateKeyB64 = local.privateKeyB64
+  cachedPublicKeyB64 = local.publicKeyB64
+  return true
+}
 
 export function isUnlocked() {
   return cachedPrivateKeyB64 !== null
@@ -50,6 +80,7 @@ export async function setupKeys(userId: string): Promise<{ recoveryCode: string 
 
   cachedPrivateKeyB64 = e2ee.toBase64(keyPair.privateKey)
   cachedPublicKeyB64 = publicKeyB64
+  saveLocalKeys(userId, cachedPrivateKeyB64, cachedPublicKeyB64)
 
   return { recoveryCode }
 }
@@ -66,6 +97,7 @@ export async function unlockWithRecoveryCode(userId: string, recoveryCode: strin
 
   cachedPrivateKeyB64 = e2ee.toBase64(privateKey)
   cachedPublicKeyB64 = data.public_key
+  if (cachedPublicKeyB64) saveLocalKeys(userId, cachedPrivateKeyB64, cachedPublicKeyB64)
 }
 
 async function getPublicKeyOf(userId: string): Promise<string | null> {
