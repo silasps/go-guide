@@ -41,13 +41,13 @@ export function PrayerRequestForm({ profileId, missionaryName, missionaryUserId 
 
     if (!user) {
       // Anônimo: criar conta temporária seria complexo — pede login simples
-      toast.error('Faça login para enviar um pedido de oração.')
+      toast.error('Faça login para enviar uma oração.')
       setSaving(false)
       return
     }
 
     if (isPrivate && !keyManager.isUnlocked()) {
-      toast.error('Configure sua criptografia antes de enviar um pedido privado. Tente enviar sem marcar como privado, ou acesse Mensagens primeiro.')
+      toast.error('Configure sua criptografia antes de enviar uma oração privada. Tente enviar sem marcar como privada, ou acesse Mensagens primeiro.')
       setSaving(false)
       return
     }
@@ -82,8 +82,8 @@ export function PrayerRequestForm({ profileId, missionaryName, missionaryUserId 
       <Card>
         <CardContent className="py-12 text-center space-y-3">
           <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
-          <h2 className="text-xl font-semibold">Pedido enviado!</h2>
-          <p className="text-muted-foreground text-sm">{missionaryName} receberá seu pedido.</p>
+          <h2 className="text-xl font-semibold">Oração enviada!</h2>
+          <p className="text-muted-foreground text-sm">{missionaryName} vai receber sua oração.</p>
         </CardContent>
       </Card>
     )
@@ -98,11 +98,11 @@ export function PrayerRequestForm({ profileId, missionaryName, missionaryUserId 
             <Input value={name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)} placeholder="Seu nome (opcional)" />
           </div>
           <div className="space-y-2">
-            <Label>Pedido de oração *</Label>
+            <Label>Sua oração *</Label>
             <Textarea
               value={content}
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setContent(e.target.value)}
-              placeholder="Compartilhe seu pedido..."
+              placeholder="Escreva uma oração de apoio e incentivo..."
               rows={4}
               required
             />
@@ -115,11 +115,11 @@ export function PrayerRequestForm({ profileId, missionaryName, missionaryUserId 
               className="rounded border-input"
             />
             <Lock className="h-3.5 w-3.5" />
-            Pedido privado (cifrado — só {missionaryName} consegue ler)
+            Oração privada (cifrada — só {missionaryName} consegue ler)
           </label>
 
           {isPrivate && !userId && (
-            <p className="text-xs text-destructive">Faça login para enviar um pedido privado.</p>
+            <p className="text-xs text-destructive">Faça login para enviar uma oração privada.</p>
           )}
           {isPrivate && userId && !unlocked && (
             <E2EEGate userId={userId}>
@@ -129,7 +129,7 @@ export function PrayerRequestForm({ profileId, missionaryName, missionaryUserId 
 
           <Button type="submit" className="w-full" disabled={saving || (isPrivate && !unlocked)}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Enviar pedido
+            Enviar oração
           </Button>
         </form>
       </CardContent>

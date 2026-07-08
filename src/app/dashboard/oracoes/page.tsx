@@ -23,8 +23,8 @@ export default async function OracoesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold">Pedidos de Oração</h1>
-          <p className="text-muted-foreground text-sm mt-1">Seus pedidos e os pedidos dos parceiros</p>
+          <h1 className="text-xl font-semibold">Oração</h1>
+          <p className="text-muted-foreground text-sm mt-1">Seus pedidos e as orações que os parceiros enviaram para você</p>
         </div>
         <NewPrayerButton profileId={profile!.id} />
       </div>
