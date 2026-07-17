@@ -1,11 +1,37 @@
-import { LanguageSwitcher } from '@/components/marketing/language-switcher'
+import { ProfileTabs } from '@/components/profile/profile-tabs'
+import { createClient } from '@/lib/supabase/server'
+import { getProfileViewerContext } from '@/lib/profile/viewer-context'
 
-export default function UsernameLayout({ children }: { children: React.ReactNode }) {
+interface Props {
+  children: React.ReactNode
+  params: Promise<{ username: string }>
+}
+
+export default async function UsernameLayout({ children, params }: Props) {
+  const { username } = await params
+  const supabase = await createClient()
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, username, display_name, avatar_url, accent_color, plan, user_role')
+    .eq('username', username)
+    .maybeSingle()
+
+  let hasTrajectory = false
+  if (profile) {
+    const { count } = await supabase
+      .from('highlights')
+      .select('id', { count: 'exact', head: true })
+      .eq('profile_id', profile.id)
+      .eq('status', 'completed')
+    hasTrajectory = (count ?? 0) > 0
+  }
+
+  const { canEdit } = await getProfileViewerContext(username)
+
   return (
     <>
-      <div className="fixed top-3 right-3 z-50">
-        <LanguageSwitcher className="bg-background/90 backdrop-blur rounded-full ring-1 ring-foreground/10 shadow-sm p-1" />
-      </div>
+      <ProfileTabs username={username} hasTrajectory={hasTrajectory} canEdit={canEdit} ownerProfile={profile ?? null} />
       {children}
     </>
   )

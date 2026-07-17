@@ -48,7 +48,7 @@ function LoginForm() {
     const supabase = createClient()
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback?redirect=${redirect}` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirect)}` },
     })
   }
 
@@ -120,7 +120,7 @@ function LoginForm() {
       <CardFooter className="justify-center">
         <p className="text-sm text-muted-foreground">
           {t('noAccount')}{' '}
-          <Link href="/cadastro" className="text-primary hover:underline font-medium">
+          <Link href={`/cadastro?redirect=${encodeURIComponent(redirect)}`} className="text-primary hover:underline font-medium">
             {t('createAccount')}
           </Link>
         </p>

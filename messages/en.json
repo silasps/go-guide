@@ -23,37 +23,65 @@
     "perfil-publico": {
       "title": "Public profile",
       "description": "A professional page for you, with public, private, or invisible (stealth) mode.",
-      "bullets": ["A single link to share with partners", "You decide who sees what", "Story, journey, and projects in one place"]
+      "bullets": [
+        "A single link to share with partners",
+        "You decide who sees what",
+        "Story, journey, and projects in one place"
+      ]
     },
     "projetos": {
       "title": "Projects and campaigns",
       "description": "Financial goals, category-based budgets, milestones, and reports.",
-      "bullets": ["Single goal or detailed budget by category", "Linked milestones and updates", "Public fundraising link"]
+      "bullets": [
+        "Single goal or detailed budget by category",
+        "Linked milestones and updates",
+        "Public fundraising link"
+      ]
     },
     "crm-parceiros": {
       "title": "Partner CRM",
       "description": "Organize who prays, who gives, and who represents your mission.",
-      "bullets": ["Types: financial, prayer, ambassador", "Notes and tags per partner", "Granular visibility per section"]
+      "bullets": [
+        "Types: financial, prayer, ambassador",
+        "Notes and tags per partner",
+        "Granular visibility per section"
+      ]
     },
     "financeiro": {
       "title": "Multi-currency finances",
       "description": "Accounts, categories, and offering reconciliation — solo or with a team.",
-      "bullets": ["Shared accounts with family/team", "Hierarchical categories", "Manual reconciliation of Pix/PayPal/Wise"]
+      "bullets": [
+        "Shared accounts with family/team",
+        "Hierarchical categories",
+        "Manual reconciliation of Pix/PayPal/Wise"
+      ]
     },
     "oracao": {
       "title": "Prayer requests",
       "description": "A direct channel between you and your prayer partners.",
-      "bullets": ["Two-way requests (you ↔ partner)", "Optional encrypted private content", "Replies and follow-up"]
+      "bullets": [
+        "Two-way requests (you ↔ partner)",
+        "Optional encrypted private content",
+        "Replies and follow-up"
+      ]
     },
     "mensagens": {
       "title": "Encrypted messages",
       "description": "End-to-end (E2EE) conversations — not even we can access the content.",
-      "bullets": ["Real end-to-end encryption", "Recovery key under your control", "Sensitive profile data also encrypted"]
+      "bullets": [
+        "Real end-to-end encryption",
+        "Recovery key under your control",
+        "Sensitive profile data also encrypted"
+      ]
     },
     "notificacoes": {
       "title": "Real-time notifications",
       "description": "Know instantly when someone gives, prays for you, or sends a message.",
-      "bullets": ["Real-time via Supabase Realtime", "Notification center in the dashboard", "WhatsApp (coming soon)"]
+      "bullets": [
+        "Real-time via Supabase Realtime",
+        "Notification center in the dashboard",
+        "WhatsApp (coming soon)"
+      ]
     }
   },
   "Landing": {
@@ -113,19 +141,36 @@
     "free": {
       "name": "Free",
       "tagline": "To try out the platform",
-      "features": ["Public profile", "Up to 2 partners", "1 post per month", "Prayer requests"],
+      "features": [
+        "Public profile",
+        "Up to 2 partners",
+        "1 post per month",
+        "Prayer requests"
+      ],
       "cta": "Start for free"
     },
     "pro": {
       "name": "Pro",
       "tagline": "For those who live off partner support",
-      "features": ["Unlimited partners and posts", "Multi-currency finances", "Unlimited projects and campaigns", "50 AI credits per month", "Encrypted messages and sensitive data (E2EE)"],
+      "features": [
+        "Unlimited partners and posts",
+        "Multi-currency finances",
+        "Unlimited projects and campaigns",
+        "50 AI credits per month",
+        "Encrypted messages and sensitive data (E2EE)"
+      ],
       "cta": "Subscribe to Pro"
     },
     "mission": {
       "name": "Mission",
       "tagline": "For couples and families in the field",
-      "features": ["Everything in Pro", "Shared account (couple/family/team)", "Shared, editable team project", "WhatsApp notifications", "150 AI credits per month"],
+      "features": [
+        "Everything in Pro",
+        "Shared account (couple/family/team)",
+        "Shared, editable team project",
+        "WhatsApp notifications",
+        "150 AI credits per month"
+      ],
       "cta": "Subscribe to Mission"
     }
   },
@@ -241,6 +286,35 @@
     "group_africa": "Africa",
     "group_sensitive": "Restricted access",
     "group_other": "Other",
+    "group_automatic": "Automatic",
+    "bankHolderLabel": "Account holder",
+    "bankHolderPlaceholder": "Holder's full name",
+    "bankAccountLabel": "Account number / IBAN",
+    "bankNameLabel": "Bank",
+    "bankSwiftLabel": "SWIFT/BIC",
+    "bankRoutingLabel": "Routing number (US)",
+    "bankAddressLabel": "Bank country/address",
+    "stripeTitle": "Receive by credit card (Stripe)",
+    "stripeDescription": "Connect your own Stripe account — the money goes straight there, the platform keeps nothing. Enables automatic subscriptions for recurring partners.",
+    "stripeConnect": "Connect with Stripe",
+    "stripeConnected": "Connected",
+    "stripeDisconnect": "Disconnect",
+    "stripeConfirmDisconnect": "Disconnect your Stripe account? Active subscriptions keep charging, but you'll stop showing up as an option for new partners.",
+    "stripeDisconnected": "Stripe disconnected.",
+    "stripeLinkedAccountLabel": "Auto-deposit into",
+    "stripeLinkedAccountNone": "Don't auto-post (just record the gift)",
+    "stripeLinkedAccountHint": "Each confirmed charge becomes an entry in that financial account. Leave blank to only record the gift without posting it.",
+    "stripeSecurityNote": "No bank details, password, or key from your Stripe account are stored here — you fill everything in directly on Stripe's own secure form, and the app only keeps an identifier to route payments to you.",
+    "stripeCountryLabel": "Your bank account's country",
+    "stripeCountryPlaceholder": "Select a country",
+    "stripePending": "Setup pending",
+    "stripePendingHint": "You started connecting your Stripe account, but still need to finish the form on Stripe's side. Click below to continue where you left off.",
+    "stripeContinueOnboarding": "Continue setup",
+    "stripeToastConnected": "Stripe account connected! You can now receive partners via automatic subscription.",
+    "stripeToastIncomplete": "You still need to finish the setup on Stripe's form — click \"Continue setup\" when you're ready.",
+    "stripeToastCountryRequired": "Select your bank account's country before connecting.",
+    "stripeToastNotConfigured": "Stripe payments aren't available on this platform yet.",
+    "stripeToastError": "Couldn't connect your Stripe account right now. Please try again in a moment.",
     "type_pix": "Pix",
     "type_mercadopago": "Mercado Pago",
     "type_paypal": "PayPal",
@@ -255,6 +329,7 @@
     "type_mpesa": "M-Pesa / mobile money",
     "type_crypto": "Crypto wallet (USDT/BTC)",
     "type_other": "Other",
+    "type_stripe": "Stripe",
     "placeholder_pix": "CPF, email, phone, or random key",
     "placeholder_mercadopago": "Mercado Pago link or @handle",
     "placeholder_paypal": "https://paypal.me/yourname",
@@ -269,6 +344,29 @@
     "placeholder_mpesa": "M-Pesa phone number",
     "placeholder_crypto": "Wallet address (USDT, BTC...)",
     "placeholder_other": "Link or contact info"
+  },
+  "PartnershipForm": {
+    "whatsappLabel": "WhatsApp/Phone"
+  },
+  "RecurringPledge": {
+    "needsAccountTitle": "Create your account to continue",
+    "needsAccountDescription": "To become a recurring partner you need an account — so the missionary can find you later and, if you want, you can manage your partnership.",
+    "createAccount": "Create account",
+    "alreadyHaveAccount": "I already have an account",
+    "title": "Support {name} monthly",
+    "amountLabel": "Monthly amount ({currency})",
+    "stripeCta": "Subscribe by card — automatic monthly charge",
+    "preferManual": "I'd rather send it manually",
+    "preferStripe": "I'd rather use automatic card billing",
+    "manualDescription": "No automatic charge — you send the amount yourself every month. If you want, we'll remind you by email.",
+    "methodLabel": "How you'll send it",
+    "reminderOptInLabel": "Remind me by email every month",
+    "manualSubmit": "Confirm commitment",
+    "doneTitle": "Set!",
+    "doneDescription": "Your recurring partnership with {name} has been recorded. Thank you for being part of this journey!",
+    "errorAmount": "Enter a valid amount.",
+    "errorCheckout": "Error starting the subscription. Please try again.",
+    "errorSave": "Error recording. Please try again."
   },
   "PrivacyForm": {
     "publicLabel": "Public",
@@ -367,7 +465,10 @@
     "displayNamePlaceholderOrganization": "Such-and-such School"
   },
   "DashboardNav": {
+    "feed": "Feed",
     "overview": "Overview",
+    "myProjects": "My projects",
+    "myGiving": "My giving",
     "posts": "Posts",
     "projects": "Projects",
     "partners": "Partners",
@@ -381,7 +482,29 @@
     "menu": "Menu",
     "viewProfile": "View my profile",
     "viewPublicProfile": "View my public profile",
-    "signOut": "Log out"
+    "signOut": "Log out",
+    "profileTab": "Profile"
+  },
+  "CreateContent": {
+    "ariaLabel": "Create content",
+    "newPost": "New post",
+    "newProject": "New project"
+  },
+  "ProjectStories": {
+    "viewFullProject": "View full project",
+    "close": "Close",
+    "previous": "Previous update",
+    "next": "Next update"
+  },
+  "Feed": {
+    "title": "Feed",
+    "follow": "Follow",
+    "following": "Following",
+    "loadMore": "Load more",
+    "loading": "Loading...",
+    "emptyTitle": "Start following missionaries",
+    "emptyDescription": "Follow public profiles to see their posts here.",
+    "emptyNoMissionaries": "No public missionaries found yet."
   },
   "PublicProfile": {
     "beAPartner": "Become a Partner",
@@ -393,7 +516,19 @@
     "missionaryFallbackName": "Missionary",
     "pixAvailable": "Pix available — ask the missionary for the key",
     "privateProfileMessage": "This profile is private. Contact the missionary to request access.",
-    "notFoundTitle": "Profile not found"
+    "notFoundTitle": "Profile not found",
+    "tabProfile": "Profile",
+    "tabHistory": "Story",
+    "tabProjects": "Projects",
+    "tabTrajectory": "Journey",
+    "editProfile": "Edit profile",
+    "shareProfile": "Share profile",
+    "linkCopied": "Profile link copied",
+    "backToDashboard": "Back to dashboard"
+  },
+  "PrayerRequestForm": {
+    "becomePartnerPrompt": "Would you like to pray regularly for {name}, not just this once?",
+    "becomePartnerCta": "I want to be a prayer partner"
   },
   "PostType": {
     "text": "Text",

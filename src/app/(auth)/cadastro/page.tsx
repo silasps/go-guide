@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
@@ -13,9 +13,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 
-export default function CadastroPage() {
+function CadastroForm() {
   const t = useTranslations('Auth')
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirect = searchParams.get('redirect') ?? '/onboarding'
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -47,14 +49,14 @@ export default function CadastroPage() {
     }
 
     toast.success(t('signupSuccess'))
-    router.push('/onboarding')
+    router.push(redirect)
   }
 
   async function handleGoogle() {
     const supabase = createClient()
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback?redirect=/onboarding` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirect)}` },
     })
   }
 
@@ -134,11 +136,20 @@ export default function CadastroPage() {
       <CardFooter className="justify-center">
         <p className="text-sm text-muted-foreground">
           {t('hasAccount')}{' '}
-          <Link href="/login" className="text-primary hover:underline font-medium">
+          <Link href={`/login?redirect=${encodeURIComponent(redirect)}`} className="text-primary hover:underline font-medium">
             {t('login')}
           </Link>
         </p>
       </CardFooter>
     </Card>
+  )
+}
+
+export default function CadastroPage() {
+  const t = useTranslations('Auth')
+  return (
+    <Suspense fallback={<div className="h-96 flex items-center justify-center text-muted-foreground text-sm">{t('loading')}</div>}>
+      <CadastroForm />
+    </Suspense>
   )
 }

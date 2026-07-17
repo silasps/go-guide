@@ -27,7 +27,7 @@ export default async function OracaoPage({ params }: Props) {
           <h1 className="text-2xl font-bold">Orar por {profile.display_name}</h1>
           <p className="text-muted-foreground mt-2">Envie uma palavra de oração e incentivo para fortalecer essa missão.</p>
         </div>
-        <PrayerRequestForm profileId={profile.id} missionaryName={profile.display_name} missionaryUserId={profile.user_id} />
+        <PrayerRequestForm profileId={profile.id} username={username} missionaryName={profile.display_name} missionaryUserId={profile.user_id} />
       </div>
     </div>
   )

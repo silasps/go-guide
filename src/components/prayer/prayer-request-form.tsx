@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -11,10 +13,12 @@ import { toast } from 'sonner'
 import { Loader2, CheckCircle, Lock } from 'lucide-react'
 import * as keyManager from '@/lib/crypto/key-manager'
 import { E2EEGate } from '@/components/messages/e2ee-gate'
+import { cn } from '@/lib/utils'
 
-interface Props { profileId: string; missionaryName: string; missionaryUserId: string }
+interface Props { profileId: string; username: string; missionaryName: string; missionaryUserId: string }
 
-export function PrayerRequestForm({ profileId, missionaryName, missionaryUserId }: Props) {
+export function PrayerRequestForm({ profileId, username, missionaryName, missionaryUserId }: Props) {
+  const t = useTranslations('PrayerRequestForm')
   const [done, setDone] = useState(false)
   const [saving, setSaving] = useState(false)
   const [name, setName] = useState('')
@@ -79,13 +83,25 @@ export function PrayerRequestForm({ profileId, missionaryName, missionaryUserId 
 
   if (done) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center space-y-3">
-          <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
-          <h2 className="text-xl font-semibold">Oração enviada!</h2>
-          <p className="text-muted-foreground text-sm">{missionaryName} vai receber sua oração.</p>
-        </CardContent>
-      </Card>
+      <div className="space-y-3">
+        <Card>
+          <CardContent className="py-12 text-center space-y-3">
+            <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+            <h2 className="text-xl font-semibold">Oração enviada!</h2>
+            <p className="text-muted-foreground text-sm">{missionaryName} vai receber sua oração.</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-primary/5 border-primary/20">
+          <CardContent className="py-6 text-center space-y-3">
+            <p className="text-sm">
+              {t('becomePartnerPrompt', { name: missionaryName })}
+            </p>
+            <Link href={`/${username}/parceria?choice=prayer`} className={cn(buttonVariants({ variant: 'outline' }), 'w-full')}>
+              {t('becomePartnerCta')}
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 

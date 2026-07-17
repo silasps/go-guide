@@ -6,7 +6,8 @@ import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
 import { PaymentMethod, PaymentMethodType } from '@/types/database'
-import { PAYMENT_METHOD_CATALOG, PAYMENT_METHOD_GROUPS, getPaymentMethodEntry } from '@/lib/payment-methods/catalog'
+import { MANUAL_PAYMENT_METHOD_CATALOG, PAYMENT_METHOD_GROUPS, getPaymentMethodEntry } from '@/lib/payment-methods/catalog'
+import { formatBankDetails, parseBankDetails } from '@/lib/payment-methods/bank-details'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,6 +15,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { Loader2, Plus } from 'lucide-react'
+
+const GROUPS_IN_FORM = PAYMENT_METHOD_GROUPS.filter(g => g !== 'automatic')
 
 interface Props {
   profileId: string
@@ -30,14 +33,16 @@ export function PaymentMethodForm({ profileId, method, nextSortOrder = 0 }: Prop
   const [label, setLabel] = useState(method?.label ?? '')
   const [value, setValue] = useState(method?.value ?? '')
   const [details, setDetails] = useState(method?.details ?? '')
+  const [bankFields, setBankFields] = useState(() => parseBankDetails(method?.details ?? null))
   const [isActive, setIsActive] = useState(method?.is_active ?? true)
   const entry = getPaymentMethodEntry(type)
   const isOther = type === 'other'
+  const isBank = type === 'bank_transfer'
 
   function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!value.trim()) { toast.error(t('errorValueRequired')); return }
-    if (isOther && !label.trim()) { toast.error(t('errorLabelRequired')); return }
+    if ((isOther || isBank) && !label.trim()) { toast.error(t('errorLabelRequired')); return }
 
     run(true, async () => {
       const supabase = createClient()
@@ -45,7 +50,7 @@ export function PaymentMethodForm({ profileId, method, nextSortOrder = 0 }: Prop
         type,
         label: label.trim() || null,
         value: value.trim(),
-        details: entry.hasDetails ? (details.trim() || null) : null,
+        details: isBank ? (formatBankDetails(bankFields) || null) : entry.hasDetails ? (details.trim() || null) : null,
         is_active: isActive,
       }
 
@@ -87,9 +92,9 @@ export function PaymentMethodForm({ profileId, method, nextSortOrder = 0 }: Prop
               onChange={(e) => setType(e.target.value as PaymentMethodType)}
               className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
             >
-              {PAYMENT_METHOD_GROUPS.map(group => (
+              {GROUPS_IN_FORM.map(group => (
                 <optgroup key={group} label={t(`group_${group}`)}>
-                  {PAYMENT_METHOD_CATALOG.filter(e => e.group === group).map(e => (
+                  {MANUAL_PAYMENT_METHOD_CATALOG.filter(e => e.group === group).map(e => (
                     <option key={e.type} value={e.type}>{t(`type_${e.type}`)}</option>
                   ))}
                 </optgroup>
@@ -97,16 +102,16 @@ export function PaymentMethodForm({ profileId, method, nextSortOrder = 0 }: Prop
             </select>
           </div>
           <div className="space-y-2">
-            <Label>{t('labelLabel')}{isOther && ' *'}</Label>
+            <Label>{isBank ? t('bankHolderLabel') : t('labelLabel')}{(isOther || isBank) && ' *'}</Label>
             <Input
               value={label}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLabel(e.target.value)}
-              placeholder={isOther ? t('labelPlaceholderOther') : t(`type_${type}`)}
-              required={isOther}
+              placeholder={isBank ? t('bankHolderPlaceholder') : isOther ? t('labelPlaceholderOther') : t(`type_${type}`)}
+              required={isOther || isBank}
             />
           </div>
           <div className="space-y-2">
-            <Label>{t('valueLabel')} *</Label>
+            <Label>{isBank ? t('bankAccountLabel') : t('valueLabel')} *</Label>
             <Input
               value={value}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValue(e.target.value)}
@@ -114,7 +119,28 @@ export function PaymentMethodForm({ profileId, method, nextSortOrder = 0 }: Prop
               required
             />
           </div>
-          {entry.hasDetails && (
+          {isBank ? (
+            <div className="space-y-3 rounded-lg border border-input p-3">
+              <div className="space-y-2">
+                <Label>{t('bankNameLabel')}</Label>
+                <Input value={bankFields.bankName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBankFields({ ...bankFields, bankName: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>{t('bankSwiftLabel')}</Label>
+                  <Input value={bankFields.swift} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBankFields({ ...bankFields, swift: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t('bankRoutingLabel')}</Label>
+                  <Input value={bankFields.routingNumber} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBankFields({ ...bankFields, routingNumber: e.target.value })} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>{t('bankAddressLabel')}</Label>
+                <Input value={bankFields.bankAddress} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBankFields({ ...bankFields, bankAddress: e.target.value })} />
+              </div>
+            </div>
+          ) : entry.hasDetails && (
             <div className="space-y-2">
               <Label>{t('detailsLabel')}</Label>
               <Textarea

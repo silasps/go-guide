@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { E2EEGate } from '@/components/messages/e2ee-gate'
 import { MessageThread } from '@/components/messages/message-thread'
+import { getProfileViewerContext } from '@/lib/profile/viewer-context'
 import Link from 'next/link'
 
 interface Props { params: Promise<{ username: string }> }
@@ -11,6 +12,9 @@ export default async function PartnerMensagensPage({ params }: Props) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect(`/login?next=/${username}/mensagens`)
+
+  const { canEdit } = await getProfileViewerContext(username)
+  if (canEdit) redirect(`/${username}`)
 
   const { data: profile } = await supabase
     .from('profiles')

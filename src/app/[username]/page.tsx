@@ -6,7 +6,9 @@ import type { Locale } from '@/i18n/config'
 import { ProfileHeader } from '@/components/profile/profile-header'
 import { ProjectsSection } from '@/components/profile/projects-section'
 import { ProfileCTA } from '@/components/profile/profile-cta'
+import { ProfileOwnerActions } from '@/components/profile/profile-owner-actions'
 import { PublicationsFeed } from '@/components/profile/publications-feed'
+import { getProfileViewerContext } from '@/lib/profile/viewer-context'
 
 interface Props {
   params: Promise<{ username: string }>
@@ -53,7 +55,9 @@ export default async function ProfilePage({ params }: Props) {
 
   if (!profile) notFound()
 
-  if (profile.privacy_mode === 'private') {
+  const { canEdit } = await getProfileViewerContext(username)
+
+  if (profile.privacy_mode === 'private' && !canEdit) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return <PrivateProfileScreen name={profile.display_name} />
     const { data: partner } = await supabase
@@ -92,7 +96,11 @@ export default async function ProfilePage({ params }: Props) {
     <div className="min-h-screen bg-background">
       <div className="max-w-xl mx-auto px-4 py-8 space-y-8">
         <ProfileHeader profile={profile} />
-        <ProfileCTA username={profile.username} hasTrajectory={(completedCount ?? 0) > 0} />
+        {canEdit ? (
+          <ProfileOwnerActions profile={profile} />
+        ) : (
+          <ProfileCTA username={profile.username} hasTrajectory={(completedCount ?? 0) > 0} />
+        )}
         {projects && projects.length > 0 && (
           <ProjectsSection projects={projects} username={profile.username} accentColor={profile.accent_color} />
         )}

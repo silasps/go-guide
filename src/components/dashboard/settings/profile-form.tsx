@@ -20,11 +20,12 @@ import type { Locale } from '@/i18n/config'
 
 interface Props {
   profile: Profile
+  onSaved?: () => void
 }
 
 type UsernameStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid'
 
-export function ProfileForm({ profile }: Props) {
+export function ProfileForm({ profile, onSaved }: Props) {
   const t = useTranslations('ProfileForm')
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -177,6 +178,7 @@ export function ProfileForm({ profile }: Props) {
       toast.success(t('profileUpdated'))
       localStorage.removeItem('profile-banner-dismissed')
       router.refresh()
+      onSaved?.()
     })
   }
 

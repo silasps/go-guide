@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
-import { Profile, ProfileManager, PaymentMethod } from '@/types/database'
+import { Profile, ProfileManager, PaymentMethod, FinancialAccount } from '@/types/database'
 import { ProfileForm } from './profile-form'
 import { PaymentMethodsList } from './payment-methods-list'
 import { PrivacyForm } from './privacy-form'
@@ -15,11 +16,13 @@ interface Props {
   profile: Profile
   managers: ProfileManager[]
   paymentMethods: PaymentMethod[]
+  financialAccounts: FinancialAccount[]
 }
 
-export function SettingsTabs({ profile, managers, paymentMethods }: Props) {
+export function SettingsTabs({ profile, managers, paymentMethods, financialAccounts }: Props) {
   const t = useTranslations('SettingsPage')
-  const [activeTab, setActiveTab] = useState('perfil')
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') ?? 'perfil')
 
   const tabs = [
     { id: 'perfil', label: t('tabProfile'), icon: User },
@@ -54,7 +57,7 @@ export function SettingsTabs({ profile, managers, paymentMethods }: Props) {
       {/* Tab content — instant switch, no navigation */}
       <div className="pt-6">
         {activeTab === 'perfil' && <ProfileForm profile={profile} />}
-        {activeTab === 'pagamentos' && <PaymentMethodsList profileId={profile.id} methods={paymentMethods} />}
+        {activeTab === 'pagamentos' && <PaymentMethodsList profileId={profile.id} methods={paymentMethods} financialAccounts={financialAccounts} />}
         {activeTab === 'privacidade' && <PrivacyForm profile={profile} />}
         {activeTab === 'acesso' && <AccessManagersForm profile={profile} managers={managers} />}
         {activeTab === 'conta' && <AccountForm profile={profile} />}

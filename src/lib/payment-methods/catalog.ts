@@ -1,7 +1,7 @@
-import { QrCode, Landmark, CreditCard, Globe, Banknote, Wallet, Smartphone, HandCoins, Bitcoin, Coins, LucideIcon } from 'lucide-react'
+import { QrCode, Landmark, CreditCard, Globe, Banknote, Wallet, Smartphone, HandCoins, Bitcoin, Coins, Zap, LucideIcon } from 'lucide-react'
 import { PaymentMethodType } from '@/types/database'
 
-export const PAYMENT_METHOD_GROUPS = ['popular', 'international', 'usLocal', 'asia', 'africa', 'sensitive', 'other'] as const
+export const PAYMENT_METHOD_GROUPS = ['popular', 'international', 'usLocal', 'asia', 'africa', 'sensitive', 'other', 'automatic'] as const
 export type PaymentMethodGroup = typeof PAYMENT_METHOD_GROUPS[number]
 
 interface PaymentMethodCatalogEntry {
@@ -26,7 +26,11 @@ export const PAYMENT_METHOD_CATALOG: PaymentMethodCatalogEntry[] = [
   { type: 'mpesa', group: 'africa', icon: HandCoins, hasDetails: false },
   { type: 'crypto', group: 'sensitive', icon: Bitcoin, hasDetails: true },
   { type: 'other', group: 'other', icon: Coins, hasDetails: true },
+  { type: 'stripe', group: 'automatic', icon: Zap, hasDetails: false },
 ]
+
+// Sem 'stripe' — ele não passa pelo formulário genérico (é OAuth, ver StripeConnectCard).
+export const MANUAL_PAYMENT_METHOD_CATALOG = PAYMENT_METHOD_CATALOG.filter(e => e.type !== 'stripe')
 
 export function getPaymentMethodEntry(type: PaymentMethodType): PaymentMethodCatalogEntry {
   return PAYMENT_METHOD_CATALOG.find(e => e.type === type) ?? PAYMENT_METHOD_CATALOG[PAYMENT_METHOD_CATALOG.length - 1]

@@ -23,37 +23,65 @@
     "perfil-publico": {
       "title": "Perfil público",
       "description": "Uma página profissional para você, com modo público, privado ou invisível (stealth).",
-      "bullets": ["Link único para compartilhar com parceiros", "Você decide quem vê o quê", "História, trajetória e projetos em um só lugar"]
+      "bullets": [
+        "Link único para compartilhar com parceiros",
+        "Você decide quem vê o quê",
+        "História, trajetória e projetos em um só lugar"
+      ]
     },
     "projetos": {
       "title": "Projetos e campanhas",
       "description": "Metas financeiras, orçamento por categoria, marcos e relatórios.",
-      "bullets": ["Meta única ou orçamento detalhado por categoria", "Marcos e atualizações vinculadas", "Link público de arrecadação"]
+      "bullets": [
+        "Meta única ou orçamento detalhado por categoria",
+        "Marcos e atualizações vinculadas",
+        "Link público de arrecadação"
+      ]
     },
     "crm-parceiros": {
       "title": "CRM de parceiros",
       "description": "Organize quem ora, quem contribui e quem representa sua missão.",
-      "bullets": ["Tipos: financeiro, oração, embaixador", "Notas e tags por parceiro", "Visibilidade granular por seção"]
+      "bullets": [
+        "Tipos: financeiro, oração, embaixador",
+        "Notas e tags por parceiro",
+        "Visibilidade granular por seção"
+      ]
     },
     "financeiro": {
       "title": "Financeiro multi-moeda",
       "description": "Contas, categorias e conciliação de ofertas — sozinho ou em equipe.",
-      "bullets": ["Contas compartilhadas com família/equipe", "Categorias hierárquicas", "Conciliação manual de Pix/PayPal/Wise"]
+      "bullets": [
+        "Contas compartilhadas com família/equipe",
+        "Categorias hierárquicas",
+        "Conciliação manual de Pix/PayPal/Wise"
+      ]
     },
     "oracao": {
       "title": "Pedidos de oração",
       "description": "Um canal direto entre você e seus parceiros de oração.",
-      "bullets": ["Pedidos bilaterais (você ↔ parceiro)", "Conteúdo privado cifrado opcional", "Respostas e acompanhamento"]
+      "bullets": [
+        "Pedidos bilaterais (você ↔ parceiro)",
+        "Conteúdo privado cifrado opcional",
+        "Respostas e acompanhamento"
+      ]
     },
     "mensagens": {
       "title": "Mensagens cifradas",
       "description": "Conversas ponta-a-ponta (E2EE) — nem nós temos acesso ao conteúdo.",
-      "bullets": ["Criptografia de ponta-a-ponta real", "Chave de recuperação sob seu controle", "Dados sensíveis do perfil também cifrados"]
+      "bullets": [
+        "Criptografia de ponta-a-ponta real",
+        "Chave de recuperação sob seu controle",
+        "Dados sensíveis do perfil também cifrados"
+      ]
     },
     "notificacoes": {
       "title": "Notificações em tempo real",
       "description": "Saiba na hora quando alguém contribui, ora por você ou manda mensagem.",
-      "bullets": ["Tempo real via Supabase Realtime", "Central de notificações no painel", "WhatsApp (em breve)"]
+      "bullets": [
+        "Tempo real via Supabase Realtime",
+        "Central de notificações no painel",
+        "WhatsApp (em breve)"
+      ]
     }
   },
   "Landing": {
@@ -113,19 +141,36 @@
     "free": {
       "name": "Free",
       "tagline": "Para experimentar a plataforma",
-      "features": ["Perfil público", "Até 2 parceiros", "1 publicação por mês", "Pedidos de oração"],
+      "features": [
+        "Perfil público",
+        "Até 2 parceiros",
+        "1 publicação por mês",
+        "Pedidos de oração"
+      ],
       "cta": "Começar grátis"
     },
     "pro": {
       "name": "Pro",
       "tagline": "Para quem vive de apoio de parceiros",
-      "features": ["Parceiros e publicações ilimitados", "Financeiro multi-moeda", "Projetos e campanhas ilimitados", "50 créditos de IA por mês", "Mensagens e dados sensíveis cifrados (E2EE)"],
+      "features": [
+        "Parceiros e publicações ilimitados",
+        "Financeiro multi-moeda",
+        "Projetos e campanhas ilimitados",
+        "50 créditos de IA por mês",
+        "Mensagens e dados sensíveis cifrados (E2EE)"
+      ],
       "cta": "Assinar Pro"
     },
     "mission": {
       "name": "Missão",
       "tagline": "Para casais e famílias em campo",
-      "features": ["Tudo do Pro", "Conta compartilhada (casal/família/equipe)", "Projeto compartilhado e editável em equipe", "Notificações via WhatsApp", "150 créditos de IA por mês"],
+      "features": [
+        "Tudo do Pro",
+        "Conta compartilhada (casal/família/equipe)",
+        "Projeto compartilhado e editável em equipe",
+        "Notificações via WhatsApp",
+        "150 créditos de IA por mês"
+      ],
       "cta": "Assinar Missão"
     }
   },
@@ -241,6 +286,35 @@
     "group_africa": "África",
     "group_sensitive": "Acesso restrito",
     "group_other": "Outro",
+    "group_automatic": "Automático",
+    "bankHolderLabel": "Titular da conta",
+    "bankHolderPlaceholder": "Nome completo do titular",
+    "bankAccountLabel": "Número da conta / IBAN",
+    "bankNameLabel": "Banco",
+    "bankSwiftLabel": "SWIFT/BIC",
+    "bankRoutingLabel": "Routing number (EUA)",
+    "bankAddressLabel": "País/endereço do banco",
+    "stripeTitle": "Receber por cartão de crédito (Stripe)",
+    "stripeDescription": "Conecte sua própria conta Stripe — o dinheiro cai direto nela, a plataforma não retém nada. Permite assinatura automática para parceiros recorrentes.",
+    "stripeConnect": "Conectar com Stripe",
+    "stripeConnected": "Conectado",
+    "stripeDisconnect": "Desconectar",
+    "stripeConfirmDisconnect": "Desconectar sua conta Stripe? Assinaturas já ativas continuam cobrando, mas você para de aparecer como opção pra novos parceiros.",
+    "stripeDisconnected": "Stripe desconectado.",
+    "stripeLinkedAccountLabel": "Depositar automaticamente em",
+    "stripeLinkedAccountNone": "Não lançar automaticamente (só registra a oferta)",
+    "stripeLinkedAccountHint": "Cada cobrança confirmada vira um lançamento nessa conta financeira. Deixe em branco pra só registrar a oferta sem lançar.",
+    "stripeSecurityNote": "Nenhum dado bancário, senha ou chave da sua conta Stripe fica salvo aqui — você preenche tudo direto num formulário seguro da própria Stripe, e o app só guarda um identificador pra direcionar os pagamentos até você.",
+    "stripeCountryLabel": "País da sua conta bancária",
+    "stripeCountryPlaceholder": "Selecione o país",
+    "stripePending": "Configuração pendente",
+    "stripePendingHint": "Você começou a conectar sua conta Stripe, mas ainda falta terminar de preencher os dados no formulário da Stripe. Clique abaixo pra continuar de onde parou.",
+    "stripeContinueOnboarding": "Continuar configuração",
+    "stripeToastConnected": "Conta Stripe conectada! Você já pode receber parceiros por assinatura automática.",
+    "stripeToastIncomplete": "Falta terminar a configuração no formulário da Stripe — clique em \"Continuar configuração\" quando puder.",
+    "stripeToastCountryRequired": "Selecione o país da sua conta bancária antes de conectar.",
+    "stripeToastNotConfigured": "Pagamento por Stripe ainda não está disponível nesta plataforma.",
+    "stripeToastError": "Não deu pra conectar sua conta Stripe agora. Tente de novo em instantes.",
     "type_pix": "Pix",
     "type_mercadopago": "Mercado Pago",
     "type_paypal": "PayPal",
@@ -255,6 +329,7 @@
     "type_mpesa": "M-Pesa / mobile money",
     "type_crypto": "Carteira cripto (USDT/BTC)",
     "type_other": "Outro",
+    "type_stripe": "Stripe",
     "placeholder_pix": "CPF, e-mail, telefone ou chave aleatória",
     "placeholder_mercadopago": "Link ou @usuário do Mercado Pago",
     "placeholder_paypal": "https://paypal.me/seunome",
@@ -269,6 +344,29 @@
     "placeholder_mpesa": "Número de telefone M-Pesa",
     "placeholder_crypto": "Endereço da carteira (USDT, BTC...)",
     "placeholder_other": "Link ou dado de contato"
+  },
+  "PartnershipForm": {
+    "whatsappLabel": "WhatsApp/Telefone"
+  },
+  "RecurringPledge": {
+    "needsAccountTitle": "Crie sua conta para continuar",
+    "needsAccountDescription": "Pra virar parceiro(a) fixo(a) você precisa de uma conta — assim o missionário te encontra depois e, se quiser, você pode gerenciar sua parceria.",
+    "createAccount": "Criar conta",
+    "alreadyHaveAccount": "Já tenho conta",
+    "title": "Apoiar {name} mensalmente",
+    "amountLabel": "Valor mensal ({currency})",
+    "stripeCta": "Assinar via cartão — cobrança automática todo mês",
+    "preferManual": "Prefiro enviar manualmente",
+    "preferStripe": "Prefiro cobrança automática por cartão",
+    "manualDescription": "Sem cobrança automática — você mesmo envia o valor todo mês. Se quiser, te lembramos por e-mail.",
+    "methodLabel": "Forma de envio",
+    "reminderOptInLabel": "Quero receber um lembrete por e-mail todo mês",
+    "manualSubmit": "Confirmar compromisso",
+    "doneTitle": "Combinado!",
+    "doneDescription": "Sua parceria recorrente com {name} foi registrada. Obrigado por fazer parte dessa caminhada!",
+    "errorAmount": "Informe um valor válido.",
+    "errorCheckout": "Erro ao iniciar a assinatura. Tente novamente.",
+    "errorSave": "Erro ao registrar. Tente novamente."
   },
   "PrivacyForm": {
     "publicLabel": "Público",
@@ -367,7 +465,10 @@
     "displayNamePlaceholderOrganization": "Escola Tal"
   },
   "DashboardNav": {
+    "feed": "Feed",
     "overview": "Visão Geral",
+    "myProjects": "Meus projetos",
+    "myGiving": "Minhas doações",
     "posts": "Publicações",
     "projects": "Projetos",
     "partners": "Parceiros",
@@ -381,7 +482,29 @@
     "menu": "Menu",
     "viewProfile": "Ver meu perfil",
     "viewPublicProfile": "Ver meu perfil público",
-    "signOut": "Sair"
+    "signOut": "Sair",
+    "profileTab": "Perfil"
+  },
+  "CreateContent": {
+    "ariaLabel": "Criar conteúdo",
+    "newPost": "Nova publicação",
+    "newProject": "Novo projeto"
+  },
+  "ProjectStories": {
+    "viewFullProject": "Ver projeto completo",
+    "close": "Fechar",
+    "previous": "Atualização anterior",
+    "next": "Próxima atualização"
+  },
+  "Feed": {
+    "title": "Feed",
+    "follow": "Seguir",
+    "following": "Seguindo",
+    "loadMore": "Carregar mais",
+    "loading": "Carregando...",
+    "emptyTitle": "Comece a seguir missionários",
+    "emptyDescription": "Siga perfis públicos para ver as publicações deles aqui.",
+    "emptyNoMissionaries": "Nenhum missionário público encontrado ainda."
   },
   "PublicProfile": {
     "beAPartner": "Seja Parceiro",
@@ -393,7 +516,19 @@
     "missionaryFallbackName": "Missionário",
     "pixAvailable": "Pix disponível — solicite a chave ao missionário",
     "privateProfileMessage": "Este perfil é privado. Entre em contato com o missionário para solicitar acesso.",
-    "notFoundTitle": "Perfil não encontrado"
+    "notFoundTitle": "Perfil não encontrado",
+    "tabProfile": "Perfil",
+    "tabHistory": "História",
+    "tabProjects": "Projetos",
+    "tabTrajectory": "Trajetória",
+    "editProfile": "Editar perfil",
+    "shareProfile": "Compartilhar perfil",
+    "linkCopied": "Link do perfil copiado",
+    "backToDashboard": "Voltar ao painel"
+  },
+  "PrayerRequestForm": {
+    "becomePartnerPrompt": "Gostaria de orar regularmente por {name}, não só desta vez?",
+    "becomePartnerCta": "Quero ser parceiro de oração"
   },
   "PostType": {
     "text": "Texto",

@@ -11,6 +11,13 @@ export type RequesterType = 'missionary' | 'partner'
 export type AccountMemberRole = 'owner' | 'viewer'
 export type HighlightStatus = 'active' | 'hidden' | 'completed'
 export type GoalType = 'financial' | 'prayer' | 'ambassador' | 'volunteer' | 'ongoing'
+export type UserRole = 'partner' | 'missionary'
+export type ProjectCategory =
+  | 'children' | 'health' | 'education' | 'evangelism'
+  | 'community_development' | 'disaster_relief' | 'other'
+export type FeedEventType =
+  | 'post_view' | 'post_click' | 'project_view' | 'project_click'
+  | 'follow' | 'unfollow' | 'pledge_from_feed'
 export type NotificationType =
   | 'new_post'
   | 'new_prayer_request'
@@ -36,6 +43,7 @@ export interface Profile {
   location: string | null
   show_location: boolean
   account_type: ProfileAccountType
+  user_role: UserRole
   avatar_url: string | null
   cover_url: string | null
   privacy_mode: PrivacyMode
@@ -94,6 +102,7 @@ export interface Highlight {
   status: HighlightStatus
   slug: string | null
   goal_type: GoalType[]
+  category: ProjectCategory[]
   partner_token: string | null
   cover_position: string
   scripture: string | null
@@ -181,6 +190,23 @@ export interface ProfileSensitiveData {
   updated_at: string
 }
 
+export interface Follow {
+  id: string
+  follower_user_id: string
+  profile_id: string
+  created_at: string
+}
+
+export interface FeedEvent {
+  id: string
+  actor_user_id: string | null
+  event_type: FeedEventType
+  profile_id: string
+  post_id: string | null
+  project_id: string | null
+  created_at: string
+}
+
 export interface Partner {
   id: string
   profile_id: string
@@ -209,7 +235,7 @@ export interface PartnerVisibilityGrant {
 
 export type PaymentMethodType =
   | 'pix' | 'mercadopago' | 'paypal' | 'wise' | 'bank_transfer' | 'revolut'
-  | 'zelle' | 'venmo' | 'cashapp' | 'alipay' | 'wechatpay' | 'mpesa' | 'crypto' | 'other'
+  | 'zelle' | 'venmo' | 'cashapp' | 'alipay' | 'wechatpay' | 'mpesa' | 'crypto' | 'other' | 'stripe'
 
 export interface PaymentMethod {
   id: string
@@ -218,6 +244,7 @@ export interface PaymentMethod {
   label: string | null
   value: string
   details: string | null
+  linked_account_id: string | null
   is_active: boolean
   sort_order: number
   created_at: string
@@ -241,11 +268,30 @@ export interface Pledge {
   reported_at: string
   proof_url: string | null
   is_recurring_pledge: boolean
+  recurring_pledge_id: string | null
   status: PledgeStatus
   confirmed_transaction_id: string | null
   reviewed_by_user_id: string | null
   reviewed_at: string | null
   rejection_reason: string | null
+  created_at: string
+}
+
+export type RecurringPledgeStatus = 'pending' | 'active' | 'paused' | 'cancelled'
+
+export interface RecurringPledge {
+  id: string
+  profile_id: string
+  partner_id: string
+  reporter_user_id: string
+  amount: number
+  currency: string
+  payment_method: PaymentMethodType
+  highlight_id: string | null
+  reminder_opt_in: boolean
+  next_reminder_at: string | null
+  stripe_subscription_id: string | null
+  status: RecurringPledgeStatus
   created_at: string
 }
 
@@ -382,7 +428,17 @@ export interface WhatsappConfig {
 
 // Joined types for queries
 export interface PostWithProfile extends Post {
-  profile: Pick<Profile, 'username' | 'display_name' | 'avatar_url'>
+  profile: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url' | 'accent_color'>
+  highlight: Pick<Highlight, 'title' | 'slug' | 'category'> | null
+}
+
+export type StoryPost = Pick<Post, 'id' | 'content' | 'media_urls' | 'type' | 'published_at' | 'original_locale' | 'translations'>
+
+export interface ProjectStory {
+  highlight: Pick<Highlight, 'id' | 'title' | 'slug' | 'cover_url' | 'cover_position'>
+  profile: Pick<Profile, 'id' | 'username' | 'display_name' | 'accent_color'>
+  posts: StoryPost[]
+  hasUnseen: boolean
 }
 
 export interface TransactionWithCategory extends Transaction {

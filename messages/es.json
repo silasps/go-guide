@@ -23,37 +23,65 @@
     "perfil-publico": {
       "title": "Perfil público",
       "description": "Una página profesional para ti, con modo público, privado o invisible (stealth).",
-      "bullets": ["Un único enlace para compartir con tus socios", "Tú decides quién ve qué", "Historia, trayectoria y proyectos en un solo lugar"]
+      "bullets": [
+        "Un único enlace para compartir con tus socios",
+        "Tú decides quién ve qué",
+        "Historia, trayectoria y proyectos en un solo lugar"
+      ]
     },
     "projetos": {
       "title": "Proyectos y campañas",
       "description": "Metas financieras, presupuesto por categoría, hitos e informes.",
-      "bullets": ["Meta única o presupuesto detallado por categoría", "Hitos y actualizaciones vinculadas", "Enlace público de recaudación"]
+      "bullets": [
+        "Meta única o presupuesto detallado por categoría",
+        "Hitos y actualizaciones vinculadas",
+        "Enlace público de recaudación"
+      ]
     },
     "crm-parceiros": {
       "title": "CRM de socios",
       "description": "Organiza quién ora, quién contribuye y quién representa tu misión.",
-      "bullets": ["Tipos: financiero, oración, embajador", "Notas y etiquetas por socio", "Visibilidad granular por sección"]
+      "bullets": [
+        "Tipos: financiero, oración, embajador",
+        "Notas y etiquetas por socio",
+        "Visibilidad granular por sección"
+      ]
     },
     "financeiro": {
       "title": "Finanzas multi-moneda",
       "description": "Cuentas, categorías y conciliación de ofrendas — solo o en equipo.",
-      "bullets": ["Cuentas compartidas con familia/equipo", "Categorías jerárquicas", "Conciliación manual de Pix/PayPal/Wise"]
+      "bullets": [
+        "Cuentas compartidas con familia/equipo",
+        "Categorías jerárquicas",
+        "Conciliación manual de Pix/PayPal/Wise"
+      ]
     },
     "oracao": {
       "title": "Peticiones de oración",
       "description": "Un canal directo entre tú y tus socios de oración.",
-      "bullets": ["Peticiones bilaterales (tú ↔ socio)", "Contenido privado cifrado opcional", "Respuestas y seguimiento"]
+      "bullets": [
+        "Peticiones bilaterales (tú ↔ socio)",
+        "Contenido privado cifrado opcional",
+        "Respuestas y seguimiento"
+      ]
     },
     "mensagens": {
       "title": "Mensajes cifrados",
       "description": "Conversaciones de extremo a extremo (E2EE) — ni nosotros tenemos acceso al contenido.",
-      "bullets": ["Cifrado de extremo a extremo real", "Clave de recuperación bajo tu control", "Datos sensibles del perfil también cifrados"]
+      "bullets": [
+        "Cifrado de extremo a extremo real",
+        "Clave de recuperación bajo tu control",
+        "Datos sensibles del perfil también cifrados"
+      ]
     },
     "notificacoes": {
       "title": "Notificaciones en tiempo real",
       "description": "Entérate al instante cuando alguien contribuye, ora por ti o envía un mensaje.",
-      "bullets": ["Tiempo real vía Supabase Realtime", "Central de notificaciones en el panel", "WhatsApp (próximamente)"]
+      "bullets": [
+        "Tiempo real vía Supabase Realtime",
+        "Central de notificaciones en el panel",
+        "WhatsApp (próximamente)"
+      ]
     }
   },
   "Landing": {
@@ -113,19 +141,36 @@
     "free": {
       "name": "Free",
       "tagline": "Para probar la plataforma",
-      "features": ["Perfil público", "Hasta 2 socios", "1 publicación al mes", "Peticiones de oración"],
+      "features": [
+        "Perfil público",
+        "Hasta 2 socios",
+        "1 publicación al mes",
+        "Peticiones de oración"
+      ],
       "cta": "Empezar gratis"
     },
     "pro": {
       "name": "Pro",
       "tagline": "Para quienes viven del apoyo de sus socios",
-      "features": ["Socios y publicaciones ilimitados", "Finanzas multi-moneda", "Proyectos y campañas ilimitados", "50 créditos de IA al mes", "Mensajes y datos sensibles cifrados (E2EE)"],
+      "features": [
+        "Socios y publicaciones ilimitados",
+        "Finanzas multi-moneda",
+        "Proyectos y campañas ilimitados",
+        "50 créditos de IA al mes",
+        "Mensajes y datos sensibles cifrados (E2EE)"
+      ],
       "cta": "Suscribirse a Pro"
     },
     "mission": {
       "name": "Misión",
       "tagline": "Para parejas y familias en el campo",
-      "features": ["Todo lo de Pro", "Cuenta compartida (pareja/familia/equipo)", "Proyecto compartido y editable en equipo", "Notificaciones por WhatsApp", "150 créditos de IA al mes"],
+      "features": [
+        "Todo lo de Pro",
+        "Cuenta compartida (pareja/familia/equipo)",
+        "Proyecto compartido y editable en equipo",
+        "Notificaciones por WhatsApp",
+        "150 créditos de IA al mes"
+      ],
       "cta": "Suscribirse a Misión"
     }
   },
@@ -241,6 +286,35 @@
     "group_africa": "África",
     "group_sensitive": "Acceso restringido",
     "group_other": "Otro",
+    "group_automatic": "Automático",
+    "bankHolderLabel": "Titular de la cuenta",
+    "bankHolderPlaceholder": "Nombre completo del titular",
+    "bankAccountLabel": "Número de cuenta / IBAN",
+    "bankNameLabel": "Banco",
+    "bankSwiftLabel": "SWIFT/BIC",
+    "bankRoutingLabel": "Routing number (EE. UU.)",
+    "bankAddressLabel": "País/dirección del banco",
+    "stripeTitle": "Recibir por tarjeta de crédito (Stripe)",
+    "stripeDescription": "Conecta tu propia cuenta Stripe — el dinero va directo a ella, la plataforma no retiene nada. Habilita suscripción automática para socios recurrentes.",
+    "stripeConnect": "Conectar con Stripe",
+    "stripeConnected": "Conectado",
+    "stripeDisconnect": "Desconectar",
+    "stripeConfirmDisconnect": "¿Desconectar tu cuenta Stripe? Las suscripciones activas siguen cobrando, pero dejarás de aparecer como opción para nuevos socios.",
+    "stripeDisconnected": "Stripe desconectado.",
+    "stripeLinkedAccountLabel": "Depositar automáticamente en",
+    "stripeLinkedAccountNone": "No registrar automáticamente (solo guarda la oferta)",
+    "stripeLinkedAccountHint": "Cada cobro confirmado se convierte en un movimiento en esa cuenta financiera. Déjalo en blanco para solo registrar la oferta sin moverla.",
+    "stripeSecurityNote": "Ningún dato bancario, contraseña o clave de tu cuenta Stripe se guarda aquí — completas todo directamente en un formulario seguro de la propia Stripe, y la app solo guarda un identificador para dirigir los pagos hacia ti.",
+    "stripeCountryLabel": "País de tu cuenta bancaria",
+    "stripeCountryPlaceholder": "Selecciona el país",
+    "stripePending": "Configuración pendiente",
+    "stripePendingHint": "Empezaste a conectar tu cuenta Stripe, pero aún falta terminar de completar el formulario de Stripe. Haz clic abajo para continuar donde lo dejaste.",
+    "stripeContinueOnboarding": "Continuar configuración",
+    "stripeToastConnected": "¡Cuenta Stripe conectada! Ya puedes recibir socios por suscripción automática.",
+    "stripeToastIncomplete": "Falta terminar la configuración en el formulario de Stripe — haz clic en \"Continuar configuración\" cuando puedas.",
+    "stripeToastCountryRequired": "Selecciona el país de tu cuenta bancaria antes de conectar.",
+    "stripeToastNotConfigured": "El pago por Stripe todavía no está disponible en esta plataforma.",
+    "stripeToastError": "No se pudo conectar tu cuenta Stripe ahora. Inténtalo de nuevo en un momento.",
     "type_pix": "Pix",
     "type_mercadopago": "Mercado Pago",
     "type_paypal": "PayPal",
@@ -255,6 +329,7 @@
     "type_mpesa": "M-Pesa / dinero móvil",
     "type_crypto": "Billetera cripto (USDT/BTC)",
     "type_other": "Otro",
+    "type_stripe": "Stripe",
     "placeholder_pix": "CPF, correo, teléfono o clave aleatoria",
     "placeholder_mercadopago": "Enlace o @usuario de Mercado Pago",
     "placeholder_paypal": "https://paypal.me/tunombre",
@@ -269,6 +344,29 @@
     "placeholder_mpesa": "Número de teléfono M-Pesa",
     "placeholder_crypto": "Dirección de la billetera (USDT, BTC...)",
     "placeholder_other": "Enlace o dato de contacto"
+  },
+  "PartnershipForm": {
+    "whatsappLabel": "WhatsApp/Teléfono"
+  },
+  "RecurringPledge": {
+    "needsAccountTitle": "Crea tu cuenta para continuar",
+    "needsAccountDescription": "Para ser socio(a) recurrente necesitas una cuenta — así el misionero te encuentra después y, si quieres, puedes gestionar tu apoyo.",
+    "createAccount": "Crear cuenta",
+    "alreadyHaveAccount": "Ya tengo cuenta",
+    "title": "Apoyar a {name} mensualmente",
+    "amountLabel": "Valor mensual ({currency})",
+    "stripeCta": "Suscribirse por tarjeta — cobro automático todos los meses",
+    "preferManual": "Prefiero enviarlo manualmente",
+    "preferStripe": "Prefiero el cobro automático por tarjeta",
+    "manualDescription": "Sin cobro automático — tú mismo envías el valor cada mes. Si quieres, te lo recordamos por correo.",
+    "methodLabel": "Forma de envío",
+    "reminderOptInLabel": "Quiero recibir un recordatorio por correo cada mes",
+    "manualSubmit": "Confirmar compromiso",
+    "doneTitle": "¡Listo!",
+    "doneDescription": "Tu apoyo recurrente a {name} fue registrado. ¡Gracias por ser parte de este camino!",
+    "errorAmount": "Ingresa un valor válido.",
+    "errorCheckout": "Error al iniciar la suscripción. Inténtalo de nuevo.",
+    "errorSave": "Error al registrar. Inténtalo de nuevo."
   },
   "PrivacyForm": {
     "publicLabel": "Público",
@@ -367,7 +465,10 @@
     "displayNamePlaceholderOrganization": "Escuela Tal"
   },
   "DashboardNav": {
+    "feed": "Feed",
     "overview": "Resumen",
+    "myProjects": "Mis proyectos",
+    "myGiving": "Mis donaciones",
     "posts": "Publicaciones",
     "projects": "Proyectos",
     "partners": "Socios",
@@ -381,7 +482,29 @@
     "menu": "Menú",
     "viewProfile": "Ver mi perfil",
     "viewPublicProfile": "Ver mi perfil público",
-    "signOut": "Salir"
+    "signOut": "Salir",
+    "profileTab": "Perfil"
+  },
+  "CreateContent": {
+    "ariaLabel": "Crear contenido",
+    "newPost": "Nueva publicación",
+    "newProject": "Nuevo proyecto"
+  },
+  "ProjectStories": {
+    "viewFullProject": "Ver proyecto completo",
+    "close": "Cerrar",
+    "previous": "Actualización anterior",
+    "next": "Próxima actualización"
+  },
+  "Feed": {
+    "title": "Feed",
+    "follow": "Seguir",
+    "following": "Siguiendo",
+    "loadMore": "Cargar más",
+    "loading": "Cargando...",
+    "emptyTitle": "Empieza a seguir misioneros",
+    "emptyDescription": "Sigue perfiles públicos para ver sus publicaciones aquí.",
+    "emptyNoMissionaries": "Aún no hay misioneros públicos disponibles."
   },
   "PublicProfile": {
     "beAPartner": "Sé un Socio",
@@ -393,7 +516,19 @@
     "missionaryFallbackName": "Misionero",
     "pixAvailable": "Pix disponible — solicita la clave al misionero",
     "privateProfileMessage": "Este perfil es privado. Contacta al misionero para solicitar acceso.",
-    "notFoundTitle": "Perfil no encontrado"
+    "notFoundTitle": "Perfil no encontrado",
+    "tabProfile": "Perfil",
+    "tabHistory": "Historia",
+    "tabProjects": "Proyectos",
+    "tabTrajectory": "Trayectoria",
+    "editProfile": "Editar perfil",
+    "shareProfile": "Compartir perfil",
+    "linkCopied": "Enlace del perfil copiado",
+    "backToDashboard": "Volver al panel"
+  },
+  "PrayerRequestForm": {
+    "becomePartnerPrompt": "¿Te gustaría orar regularmente por {name}, no solo esta vez?",
+    "becomePartnerCta": "Quiero ser compañero de oración"
   },
   "PostType": {
     "text": "Texto",

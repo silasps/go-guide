@@ -1,14 +1,24 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { PledgeForm } from './pledge-form'
+import { RecurringPledgeForm } from './recurring-pledge-form'
 import { PartnershipForm } from './partnership-form'
 import { PledgePaymentMethod } from '@/types/database'
 
 type Choice = 'financial_once' | 'financial_once_general' | 'financial_ongoing' | 'prayer' | 'ambassador' | 'volunteer'
 
+interface SessionUser {
+  id: string
+  email: string | null
+  user_metadata?: { full_name?: string }
+}
+
 interface Props {
   profileId: string
+  username: string
+  initialChoice?: Choice
   missionaryName: string
   missionStartYear: number | null
   highlightId?: string
@@ -16,12 +26,14 @@ interface Props {
   currency: string
   paymentOptions: { method: PledgePaymentMethod; label: string; value: string }[]
   hasFinancialOptions: boolean
+  stripeAvailable: boolean
+  user: SessionUser | null
 }
 
-export function PartnershipWizard({ profileId, missionaryName, missionStartYear, highlightId, highlightTitle, currency, paymentOptions, hasFinancialOptions }: Props) {
-  const [choice, setChoice] = useState<Choice | null>(null)
+export function PartnershipWizard({ profileId, username, initialChoice, missionaryName, missionStartYear, highlightId, highlightTitle, currency, paymentOptions, hasFinancialOptions, stripeAvailable, user }: Props) {
+  const [choice, setChoice] = useState<Choice | null>(initialChoice ?? null)
 
-  if (choice === 'financial_once' || choice === 'financial_once_general' || choice === 'financial_ongoing') {
+  if (choice === 'financial_once' || choice === 'financial_once_general') {
     return (
       <div className="space-y-3">
         <button onClick={() => setChoice(null)} className="text-xs text-muted-foreground hover:text-foreground">← Voltar</button>
@@ -31,10 +43,29 @@ export function PartnershipWizard({ profileId, missionaryName, missionStartYear,
           missionaryName={missionaryName}
           highlightId={choice === 'financial_once' ? highlightId : undefined}
           highlightTitle={choice === 'financial_once' ? highlightTitle : undefined}
-          isRecurring={choice === 'financial_ongoing'}
+          isRecurring={false}
           currency={currency}
           paymentOptions={paymentOptions}
-          onBecomePartner={choice === 'financial_ongoing' ? undefined : () => setChoice('financial_ongoing')}
+          onBecomePartner={() => setChoice('financial_ongoing')}
+        />
+      </div>
+    )
+  }
+
+  if (choice === 'financial_ongoing') {
+    const returnPath = `/${username}/parceria${highlightId ? `?highlight_id=${highlightId}` : ''}`
+    return (
+      <div className="space-y-3">
+        <button onClick={() => setChoice(null)} className="text-xs text-muted-foreground hover:text-foreground">← Voltar</button>
+        <RecurringPledgeForm
+          profileId={profileId}
+          missionaryName={missionaryName}
+          currency={currency}
+          paymentOptions={paymentOptions}
+          stripeAvailable={stripeAvailable}
+          user={user}
+          returnPath={returnPath}
+          highlightId={highlightId}
         />
       </div>
     )
@@ -52,6 +83,9 @@ export function PartnershipWizard({ profileId, missionaryName, missionStartYear,
 
   return (
     <div className="space-y-3">
+      <Link href={`/${username}`} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+        ← Voltar ao perfil de {missionaryName}
+      </Link>
       {hasFinancialOptions && highlightId && (
         <button
           type="button"

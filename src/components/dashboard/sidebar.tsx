@@ -2,13 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { createClient } from '@/lib/supabase/client'
 import { cn, getInitials } from '@/lib/utils'
 import { Profile } from '@/types/database'
 import { AccessibleProfile } from '@/lib/profile/active-profile'
 import { setActiveProfile } from '@/app/dashboard/actions'
+import { useNav, useBottomNavItems, useSignOut } from '@/hooks/use-dashboard-nav'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -18,21 +17,10 @@ import {
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu'
 import {
-  Home,
-  FileText,
-  FolderOpen,
-  Users,
-  Heart,
-  Wallet,
-  Sparkles,
-  Settings,
-  MessageSquare,
+  UserCircle,
   LogOut,
-  ExternalLink,
-  Menu,
   ChevronsUpDown,
   Check,
-  X,
 } from 'lucide-react'
 
 function AccountSwitcher({ profile, accessibleProfiles }: { profile: Profile; accessibleProfiles: AccessibleProfile[] }) {
@@ -59,48 +47,11 @@ function AccountSwitcher({ profile, accessibleProfiles }: { profile: Profile; ac
   )
 }
 
-function useNav() {
-  const t = useTranslations('DashboardNav')
-  return [
-    { href: '/dashboard', label: t('overview'), icon: Home, exact: true },
-    { href: '/dashboard/publicacoes', label: t('posts'), icon: FileText },
-    { href: '/dashboard/projetos', label: t('projects'), icon: FolderOpen },
-    { href: '/dashboard/parceiros', label: t('partners'), icon: Users },
-    { href: '/dashboard/oracoes', label: t('prayers'), icon: Heart },
-    { href: '/dashboard/mensagens', label: t('messages'), icon: MessageSquare },
-    { href: '/dashboard/financeiro', label: t('finance'), icon: Wallet },
-    { href: '/dashboard/ia', label: t('aiCopilot'), icon: Sparkles },
-    { href: '/dashboard/configuracoes', label: t('settings'), icon: Settings },
-  ]
-}
-
-function useBottomNavItems() {
-  const t = useTranslations('DashboardNav')
-  return [
-    { href: '/dashboard', label: t('home'), icon: Home, exact: true },
-    { href: '/dashboard/projetos', label: t('projects'), icon: FolderOpen },
-    { href: '/dashboard/parceiros', label: t('partners'), icon: Users },
-    { href: '/dashboard/publicacoes', label: t('postsShort'), icon: FileText },
-  ]
-}
-
-function useSignOut() {
-  return async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    // Reload completo (não router.push) para evitar corrida entre o clear de
-    // cookies do signOut e a checagem de sessão server-side de "/" — com
-    // navegação client-side, "/" às vezes ainda via cookie stale e redirecionava
-    // para /dashboard, que o middleware então barrava de volta para /login.
-    window.location.href = '/'
-  }
-}
-
 export function DashboardSidebar({ profile, accessibleProfiles }: { profile: Profile; accessibleProfiles: AccessibleProfile[] }) {
   const t = useTranslations('DashboardNav')
   const pathname = usePathname()
   const handleSignOut = useSignOut()
-  const nav = useNav()
+  const nav = useNav(profile.user_role)
 
   return (
     <aside className="hidden md:flex flex-col w-60 border-r bg-card shrink-0">
@@ -152,10 +103,9 @@ export function DashboardSidebar({ profile, accessibleProfiles }: { profile: Pro
       <div className="px-2 py-3 border-t space-y-0.5">
         <Link
           href={`/${profile.username}`}
-          target="_blank"
           className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
-          <ExternalLink className="h-4 w-4" />
+          <UserCircle className="h-4 w-4" />
           {t('viewProfile')}
         </Link>
         <button
@@ -187,119 +137,39 @@ export function MobileHeader({ profile }: { profile: Profile }) {
 export function MobileBottomNav({ profile }: { profile: Profile }) {
   const t = useTranslations('DashboardNav')
   const pathname = usePathname()
-  const [menuOpen, setMenuOpen] = useState(false)
-  const handleSignOut = useSignOut()
-  const nav = useNav()
-  const bottomNavItems = useBottomNavItems()
+  const bottomNavItems = useBottomNavItems(profile.user_role)
 
   return (
-    <>
-      {/* Bottom tab bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card border-t flex items-stretch h-16">
-        {bottomNavItems.map(({ href, label, icon: Icon, exact }) => {
-          const active = exact ? pathname === href : pathname.startsWith(href)
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                'flex-1 flex flex-col items-center justify-center gap-0.5 text-xs transition-colors',
-                active ? 'text-primary' : 'text-muted-foreground'
-              )}
-            >
-              <Icon className={cn('h-5 w-5', active && 'fill-primary/10')} />
-              <span>{label}</span>
-            </Link>
-          )
-        })}
-        <button
-          onClick={() => setMenuOpen(true)}
-          className="flex-1 flex flex-col items-center justify-center gap-0.5 text-xs text-muted-foreground"
-        >
-          <Menu className="h-5 w-5" />
-          <span>{t('menu')}</span>
-        </button>
-      </nav>
-
-      {/* Full menu overlay */}
-      {menuOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex flex-col">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setMenuOpen(false)}
-          />
-          {/* Drawer from bottom */}
-          <div className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl max-h-[85vh] flex flex-col">
-            {/* Handle */}
-            <div className="flex justify-center pt-3 pb-1">
-              <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
-            </div>
-
-            {/* Profile info */}
-            <div className="flex items-center gap-3 px-5 py-3 border-b">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={profile.avatar_url ?? ''} alt={profile.display_name} />
-                <AvatarFallback>{getInitials(profile.display_name)}</AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <p className="font-medium truncate">{profile.display_name}</p>
-                <p className="text-sm text-muted-foreground truncate">@{profile.username}</p>
-              </div>
-              <Badge variant="secondary" className="text-xs shrink-0">{profile.plan}</Badge>
-              <button
-                onClick={() => setMenuOpen(false)}
-                className="p-1 rounded-md text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* All nav items */}
-            <div className="flex-1 overflow-y-auto px-3 py-2">
-              {nav.map(({ href, label, icon: Icon, exact }) => {
-                const active = exact ? pathname === href : pathname.startsWith(href)
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    onClick={() => setMenuOpen(false)}
-                    className={cn(
-                      'flex items-center gap-3 px-3 py-3 rounded-xl text-sm transition-colors',
-                      active
-                        ? 'bg-primary/10 text-primary font-medium'
-                        : 'text-foreground hover:bg-muted'
-                    )}
-                  >
-                    <Icon className="h-5 w-5 shrink-0" />
-                    {label}
-                  </Link>
-                )
-              })}
-            </div>
-
-            {/* Footer actions */}
-            <div className="px-3 py-3 border-t space-y-1 pb-safe">
-              <Link
-                href={`/${profile.username}`}
-                target="_blank"
-                onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-muted-foreground hover:bg-muted transition-colors"
-              >
-                <ExternalLink className="h-5 w-5" />
-                {t('viewPublicProfile')}
-              </Link>
-              <button
-                onClick={handleSignOut}
-                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-muted-foreground hover:bg-muted transition-colors"
-              >
-                <LogOut className="h-5 w-5" />
-                {t('signOut')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card border-t flex items-stretch h-16">
+      {bottomNavItems.map(({ href, label, icon: Icon, exact }) => {
+        const active = exact ? pathname === href : pathname.startsWith(href)
+        return (
+          <Link
+            key={href}
+            href={href}
+            className={cn(
+              'flex-1 flex flex-col items-center justify-center gap-0.5 text-xs transition-colors',
+              active ? 'text-primary' : 'text-muted-foreground'
+            )}
+          >
+            <Icon className={cn('h-5 w-5', active && 'fill-primary/10')} />
+            <span>{label}</span>
+          </Link>
+        )
+      })}
+      {/* Miniatura do próprio perfil — abre /[username], onde o dono vê
+          abas/edição/menu completo, igual ao Instagram (avatar sempre a
+          última aba do rodapé). */}
+      <Link
+        href={`/${profile.username}`}
+        className="flex-1 flex flex-col items-center justify-center gap-0.5 text-xs text-muted-foreground"
+      >
+        <Avatar className="h-5 w-5">
+          <AvatarImage src={profile.avatar_url ?? ''} alt={profile.display_name} />
+          <AvatarFallback className="text-[9px]">{getInitials(profile.display_name)}</AvatarFallback>
+        </Avatar>
+        <span>{t('profileTab')}</span>
+      </Link>
+    </nav>
   )
 }

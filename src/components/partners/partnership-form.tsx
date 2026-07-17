@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Loader2, CheckCircle } from 'lucide-react'
@@ -13,6 +15,7 @@ import { Loader2, CheckCircle } from 'lucide-react'
 interface Props { profileId: string; missionaryName: string; defaultType?: 'financial' | 'prayer' | 'both' | 'ambassador' }
 
 export function PartnershipForm({ profileId, missionaryName, defaultType }: Props) {
+  const t = useTranslations('PartnershipForm')
   const [done, setDone] = useState(false)
   const [saving, setSaving] = useState(false)
   const [name, setName] = useState('')
@@ -98,8 +101,8 @@ export function PartnershipForm({ profileId, missionaryName, defaultType }: Prop
             <Input type="email" value={email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} placeholder="seu@email.com" required />
           </div>
           <div className="space-y-2">
-            <Label>WhatsApp</Label>
-            <Input value={phone} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)} placeholder="+55 11 99999-9999" />
+            <Label>{t('whatsappLabel')}</Label>
+            <PhoneInput defaultValue={phone} onChange={setPhone} />
           </div>
           <div className="space-y-2">
             <Label>Data de nascimento (opcional)</Label>
