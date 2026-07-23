@@ -23,6 +23,10 @@ export function SplashScreen() {
   const [frame, setFrame] = useState(0)
 
   useEffect(() => {
+    // ?splash=preview mantém a splash visível pra sempre, sem depender do
+    // tempo real de carregamento — só pra revisar a animação com calma.
+    const forcePreview = new URLSearchParams(window.location.search).get('splash') === 'preview'
+    if (forcePreview) return
     const id = setTimeout(() => setHidden(true), 0)
     return () => clearTimeout(id)
   }, [])
