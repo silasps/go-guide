@@ -6,8 +6,9 @@ import { getInitials } from '@/lib/utils'
 import { MapPin } from 'lucide-react'
 import Link from 'next/link'
 import { FollowButton } from './follow-button'
+import { BecomeMissionaryCard } from '@/components/dashboard/become-missionary-card'
 
-export async function DiscoverMissionaries() {
+export async function DiscoverMissionaries({ showBecomeMissionary = false }: { showBecomeMissionary?: boolean }) {
   const t = await getTranslations('Feed')
   const [missionaries, followedIds] = await Promise.all([getDiscoverMissionaries(), getFollowedProfileIds()])
   const followedSet = new Set(followedIds)
@@ -60,6 +61,8 @@ export async function DiscoverMissionaries() {
           <p className="col-span-2 text-sm text-muted-foreground text-center py-6">{t('emptyNoMissionaries')}</p>
         )}
       </div>
+
+      {showBecomeMissionary && <BecomeMissionaryCard />}
     </div>
   )
 }

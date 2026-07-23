@@ -213,7 +213,8 @@
     "confirmPassword": "Confirmar senha",
     "newPasswordSubmit": "Salvar nova senha",
     "passwordsDontMatch": "As senhas não coincidem.",
-    "passwordUpdated": "Senha atualizada com sucesso!"
+    "passwordUpdated": "Senha atualizada com sucesso!",
+    "signupPartnerNote": "Essa conta será uma conta de apoiador — você vai poder seguir, orar e apoiar missionários."
   },
   "SettingsPage": {
     "title": "Configurações",
@@ -536,7 +537,9 @@
     "viewPublicProfile": "Ver meu perfil público",
     "signOut": "Sair",
     "profileTab": "Perfil",
-    "search": "Buscar"
+    "search": "Buscar",
+    "roleBadgePartner": "Apoiador",
+    "roleBadgeMissionary": "Missionário"
   },
   "CreateContent": {
     "ariaLabel": "Criar conteúdo",

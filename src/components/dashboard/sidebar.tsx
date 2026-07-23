@@ -7,8 +7,9 @@ import { useTranslations } from 'next-intl'
 import { cn, getInitials } from '@/lib/utils'
 import { Profile } from '@/types/database'
 import { AccessibleProfile } from '@/lib/profile/active-profile'
-import { setActiveProfile } from '@/app/dashboard/actions'
+import { setActiveProfile, becomeMissionary } from '@/app/dashboard/actions'
 import { useNav, useBottomNavItems, useSignOut } from '@/hooks/use-dashboard-nav'
+import { usePendingAction } from '@/hooks/use-pending-action'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -22,6 +23,8 @@ import {
   LogOut,
   ChevronsUpDown,
   Check,
+  Compass,
+  Loader2,
 } from 'lucide-react'
 
 function AccountSwitcher({ profile, accessibleProfiles }: { profile: Profile; accessibleProfiles: AccessibleProfile[] }) {
@@ -50,9 +53,11 @@ function AccountSwitcher({ profile, accessibleProfiles }: { profile: Profile; ac
 
 export function DashboardSidebar({ profile, accessibleProfiles }: { profile: Profile; accessibleProfiles: AccessibleProfile[] }) {
   const t = useTranslations('DashboardNav')
+  const tBecome = useTranslations('BecomeMissionary')
   const pathname = usePathname()
   const handleSignOut = useSignOut()
   const nav = useNav(profile.user_role)
+  const { isPending: becomingMissionary, run: runBecomeMissionary } = usePendingAction()
 
   return (
     <aside className="hidden md:flex flex-col w-60 border-r bg-card shrink-0">
@@ -69,7 +74,9 @@ export function DashboardSidebar({ profile, accessibleProfiles }: { profile: Pro
           </Avatar>
           <div className="min-w-0">
             <p className="text-sm font-medium truncate">{profile.display_name}</p>
-            <p className="text-xs text-muted-foreground truncate">@{profile.username}</p>
+            <p className="text-xs text-muted-foreground truncate">
+              @{profile.username} · {profile.user_role === 'missionary' ? t('roleBadgeMissionary') : t('roleBadgePartner')}
+            </p>
           </div>
           <Badge variant="secondary" className="ml-auto text-xs shrink-0">
             {profile.plan}
@@ -107,6 +114,16 @@ export function DashboardSidebar({ profile, accessibleProfiles }: { profile: Pro
           <UserCircle className="h-4 w-4" />
           {t('viewProfile')}
         </Link>
+        {profile.user_role === 'partner' && (
+          <button
+            disabled={becomingMissionary}
+            onClick={() => runBecomeMissionary(true, async () => { await becomeMissionary() })}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-60"
+          >
+            {becomingMissionary ? <Loader2 className="h-4 w-4 animate-spin" /> : <Compass className="h-4 w-4" />}
+            {tBecome('cta')}
+          </button>
+        )}
         <button
           onClick={handleSignOut}
           className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"

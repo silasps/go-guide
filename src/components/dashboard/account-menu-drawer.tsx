@@ -9,9 +9,11 @@ import { getInitials } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { Profile } from '@/types/database'
 import { useNav, useSignOut } from '@/hooks/use-dashboard-nav'
+import { usePendingAction } from '@/hooks/use-pending-action'
+import { becomeMissionary } from '@/app/dashboard/actions'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Menu, UserCircle, LogOut, X } from 'lucide-react'
+import { Menu, UserCircle, LogOut, X, Compass, Loader2 } from 'lucide-react'
 
 export type DrawerProfile = Pick<
   Profile,
@@ -30,10 +32,12 @@ interface Props {
 export function AccountMenuDrawer({ profile }: Props) {
   const [open, setOpen] = useState(false)
   const t = useTranslations('DashboardNav')
+  const tBecome = useTranslations('BecomeMissionary')
   const pathname = usePathname()
   const handleSignOut = useSignOut()
   const nav = useNav(profile.user_role)
   const onOwnProfile = pathname.startsWith(`/${profile.username}`)
+  const { isPending: becomingMissionary, run: runBecomeMissionary } = usePendingAction()
 
   return (
     <>
@@ -65,7 +69,9 @@ export function AccountMenuDrawer({ profile }: Props) {
               </Avatar>
               <div className="min-w-0 flex-1">
                 <p className="font-medium truncate">{profile.display_name}</p>
-                <p className="text-sm text-muted-foreground truncate">@{profile.username}</p>
+                <p className="text-sm text-muted-foreground truncate">
+                  @{profile.username} · {profile.user_role === 'missionary' ? t('roleBadgeMissionary') : t('roleBadgePartner')}
+                </p>
               </div>
               <Badge variant="secondary" className="text-xs shrink-0">{profile.plan}</Badge>
               <button
@@ -108,6 +114,16 @@ export function AccountMenuDrawer({ profile }: Props) {
                   <UserCircle className="h-5 w-5" />
                   {t('viewPublicProfile')}
                 </Link>
+              )}
+              {profile.user_role === 'partner' && (
+                <button
+                  disabled={becomingMissionary}
+                  onClick={() => runBecomeMissionary(true, async () => { await becomeMissionary() })}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-muted-foreground hover:bg-muted transition-colors disabled:opacity-60"
+                >
+                  {becomingMissionary ? <Loader2 className="h-5 w-5 animate-spin" /> : <Compass className="h-5 w-5" />}
+                  {tBecome('cta')}
+                </button>
               )}
               <button
                 onClick={handleSignOut}

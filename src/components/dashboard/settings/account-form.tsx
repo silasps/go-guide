@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
-import { becomeMissionary } from '@/app/dashboard/actions'
+import { BecomeMissionaryCard } from '@/components/dashboard/become-missionary-card'
 import { Profile } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,11 +24,9 @@ interface Props {
 
 export function AccountForm({ profile }: Props) {
   const t = useTranslations('AccountForm')
-  const tBecome = useTranslations('BecomeMissionary')
   const router = useRouter()
   const [locale, setLocale] = useState<Locale>(profile.locale)
   const { pendingValue: pendingLocale, run: runLocaleChange } = usePendingAction<Locale>()
-  const { isPending: becomingMissionary, run: runBecomeMissionary } = usePendingAction()
 
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -150,24 +148,7 @@ export function AccountForm({ profile }: Props) {
       </Card>
 
       {/* Become missionary — só para quem hoje é parceiro */}
-      {profile.user_role === 'partner' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{tBecome('cardTitle')}</CardTitle>
-            <CardDescription>{tBecome('cardDescription')}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              variant="outline"
-              disabled={becomingMissionary}
-              onClick={() => runBecomeMissionary(true, async () => { await becomeMissionary() })}
-            >
-              {becomingMissionary && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {tBecome('cta')}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      {profile.user_role === 'partner' && <BecomeMissionaryCard />}
 
       {/* Delete account */}
       <Card className="border-destructive/50">

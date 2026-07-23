@@ -213,7 +213,8 @@
     "confirmPassword": "Confirm password",
     "newPasswordSubmit": "Save new password",
     "passwordsDontMatch": "Passwords don't match.",
-    "passwordUpdated": "Password updated successfully!"
+    "passwordUpdated": "Password updated successfully!",
+    "signupPartnerNote": "This account will be a partner/supporter account — you'll be able to follow, pray for, and support missionaries."
   },
   "SettingsPage": {
     "title": "Settings",
@@ -536,7 +537,9 @@
     "viewPublicProfile": "View my public profile",
     "signOut": "Log out",
     "profileTab": "Profile",
-    "search": "Search"
+    "search": "Search",
+    "roleBadgePartner": "Partner",
+    "roleBadgeMissionary": "Missionary"
   },
   "CreateContent": {
     "ariaLabel": "Create content",

@@ -56,11 +56,12 @@ export default async function RootLayout({
     <html lang={locale} className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {/* Preload dos frames de passo da splash — React 19 içça <link> pro <head>
-            de onde quer que seja renderizado; evita pop-in quando a fase de
-            caminhada começa (~900ms depois do primeiro paint). */}
+            de onde quer que seja renderizado; evita pop-in no primeiro loop. */}
         <link rel="preload" as="image" href="/splash/walk-1.png" />
         <link rel="preload" as="image" href="/splash/walk-2.png" />
         <link rel="preload" as="image" href="/splash/walk-3.png" />
+        <link rel="preload" as="image" href="/splash/walk-4.png" />
+        <link rel="preload" as="image" href="/splash/walk-5.png" />
         <SplashScreen />
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>

@@ -8,16 +8,14 @@ import { useEffect, useState } from 'react'
 // do HTML já renderizado no servidor (não depende de JS pra aparecer), e se
 // auto-remove assim que o React hidrata no cliente.
 //
-// Duas fases: (1) a marca "GO" pisca por um instante, (2) a figura entra
-// em loop de passo, alternando 3 poses de passada reais (não só o quique
-// de CSS) pra dar sensação de "andando pra frente".
-const WALK_FRAMES = ['/splash/walk-1.png', '/splash/walk-2.png', '/splash/walk-3.png']
-const FRAME_MS = 260
-const BLINK_PHASE_MS = 900
+// Loop com 5 poses reais de passada (desenhadas pelo usuário, com "Go guide"
+// já embutido em cada frame na mesma posição — o texto fica parado enquanto
+// só as pernas se movem).
+const WALK_FRAMES = ['/splash/walk-1.png', '/splash/walk-2.png', '/splash/walk-3.png', '/splash/walk-4.png', '/splash/walk-5.png']
+const FRAME_MS = 220
 
 export function SplashScreen() {
   const [hidden, setHidden] = useState(false)
-  const [walking, setWalking] = useState(false)
   const [frame, setFrame] = useState(0)
 
   useEffect(() => {
@@ -30,17 +28,11 @@ export function SplashScreen() {
   }, [])
 
   useEffect(() => {
-    const id = setTimeout(() => setWalking(true), BLINK_PHASE_MS)
-    return () => clearTimeout(id)
-  }, [])
-
-  useEffect(() => {
-    if (!walking) return
     const id = setInterval(() => {
       setFrame((f) => (f + 1) % WALK_FRAMES.length)
     }, FRAME_MS)
     return () => clearInterval(id)
-  }, [walking])
+  }, [])
 
   return (
     <div
@@ -49,25 +41,14 @@ export function SplashScreen() {
         hidden ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
     >
-      {!walking ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src="/icon-mark.png"
-          alt=""
-          width={64}
-          height={64}
-          className="h-16 w-16 animate-[splash-blink_0.45s_ease-in-out_infinite]"
-        />
-      ) : (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={WALK_FRAMES[frame]}
-          alt=""
-          width={176}
-          height={179}
-          className="h-20 w-auto animate-[splash-step_0.52s_ease-in-out_infinite]"
-        />
-      )}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={WALK_FRAMES[frame]}
+        alt=""
+        width={307}
+        height={270}
+        className="h-40 w-auto sm:h-48"
+      />
     </div>
   )
 }

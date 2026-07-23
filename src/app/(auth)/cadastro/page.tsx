@@ -18,6 +18,11 @@ function CadastroForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') ?? '/onboarding'
+  // Quem chega aqui vindo do fluxo de "apoiar um missionário" pula o
+  // /onboarding (volta direto pro redirect) e nunca vê a pergunta explícita
+  // de papel — sem essa nota, a pessoa não percebe que está criando uma
+  // conta de apoiador (feedback direto do usuário).
+  const isPartnerFlow = !redirect.startsWith('/onboarding')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -68,6 +73,11 @@ function CadastroForm() {
       </CardHeader>
 
       <CardContent>
+        {isPartnerFlow && (
+          <p className="mb-4 rounded-xl border border-support/30 bg-support/10 px-3 py-2.5 text-sm text-support">
+            {t('signupPartnerNote')}
+          </p>
+        )}
         <Button variant="outline" className="w-full mb-4" onClick={handleGoogle}>
           <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />

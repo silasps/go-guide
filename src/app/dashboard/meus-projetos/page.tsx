@@ -2,12 +2,15 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getTranslations } from 'next-intl/server'
 import { MyProjectsList } from '@/components/dashboard/partner/my-projects-list'
+import { BecomeMissionaryCard } from '@/components/dashboard/become-missionary-card'
+import { getActiveProfile } from '@/lib/profile/active-profile'
 
 export default async function MyProjectsPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  const profile = await getActiveProfile()
   const t = await getTranslations('PartnerFinance')
 
   const [{ data: pledged }, { data: recurring }] = await Promise.all([
@@ -31,6 +34,7 @@ export default async function MyProjectsPage() {
     <div className="space-y-4">
       <h1 className="text-lg font-semibold">{t('myProjectsTitle')}</h1>
       <MyProjectsList projects={highlights ?? []} />
+      {profile?.user_role === 'partner' && <BecomeMissionaryCard />}
     </div>
   )
 }

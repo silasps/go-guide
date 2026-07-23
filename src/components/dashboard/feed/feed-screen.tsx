@@ -33,7 +33,7 @@ export async function FeedScreen({ viewerUserId, role, displayName, avatarUrl }:
       <h1 className="text-lg font-semibold">{t('title')}</h1>
 
       {posts.length === 0 ? (
-        <DiscoverMissionaries />
+        <DiscoverMissionaries showBecomeMissionary={role === 'partner'} />
       ) : (
         <FeedList initialPosts={posts} initialCursor={nextCursor} visitorLocale={locale} />
       )}

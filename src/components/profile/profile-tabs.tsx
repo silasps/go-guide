@@ -66,11 +66,15 @@ export function ProfileTabs({ username, hasTrajectory, isMissionary, canEdit, vi
     )
   }
 
+  // História/Projetos/Trajetória são conceitos de missionário (jornada,
+  // campanhas de arrecadação) — no perfil de um apoiador/parceiro só fazem
+  // sentido a aba de Perfil mesmo, senão parece que ele também "é" um
+  // missionário (feedback direto do usuário).
   const tabs = [
     { href: base, label: t('tabProfile'), exact: true },
-    { href: `${base}/historia`, label: t('tabHistory'), exact: false },
-    { href: `${base}/projetos`, label: t('tabProjects'), exact: false },
-    ...(hasTrajectory ? [{ href: `${base}/trajetoria`, label: t('tabTrajectory'), exact: false }] : []),
+    ...(isMissionary ? [{ href: `${base}/historia`, label: t('tabHistory'), exact: false }] : []),
+    ...(isMissionary ? [{ href: `${base}/projetos`, label: t('tabProjects'), exact: false }] : []),
+    ...(isMissionary && hasTrajectory ? [{ href: `${base}/trajetoria`, label: t('tabTrajectory'), exact: false }] : []),
   ]
 
   return (
