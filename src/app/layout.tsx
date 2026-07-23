@@ -13,15 +13,34 @@ const inter = Inter({
   subsets: ['latin'],
 })
 
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL?.startsWith('https')
+  ? process.env.NEXT_PUBLIC_APP_URL
+  : 'https://mission-guide.vercel.app'
+
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('Metadata')
+  const title = { default: 'go→guide', template: '%s | go→guide' }
+  const description = t('description')
+
   return {
-    title: {
-      default: 'go→guide',
-      template: '%s | go→guide',
-    },
-    description: t('description'),
+    metadataBase: new URL(SITE_URL),
+    title,
+    description,
     robots: { index: true, follow: true },
+    openGraph: {
+      title: 'go→guide',
+      description,
+      url: '/',
+      siteName: 'go→guide',
+      type: 'website',
+      images: [{ url: '/icons/icon-512.png', width: 512, height: 512, alt: 'go→guide' }],
+    },
+    twitter: {
+      card: 'summary',
+      title: 'go→guide',
+      description,
+      images: ['/icons/icon-512.png'],
+    },
   }
 }
 
