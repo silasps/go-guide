@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getActiveProfile } from '@/lib/profile/active-profile'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Users, FileText, Heart, Sparkles, Plus, FolderOpen, ArrowRight } from 'lucide-react'
+import { Users, FileText, Heart, Sparkles, FolderOpen, ArrowRight } from 'lucide-react'
 import { SetupChecklistBanner } from '@/components/dashboard/setup-checklist-banner'
 import { BirthdayReminders } from '@/components/dashboard/birthday-reminders'
 import { NewPostQuickAction, NewPostEmptyCta } from '@/components/dashboard/new-post-triggers'
@@ -103,7 +103,7 @@ export default async function DashboardPage() {
               <CardTitle className="text-sm font-semibold">{t('quickActions')}</CardTitle>
             </CardHeader>
             <CardContent className="pt-0 space-y-2">
-              <NewPostQuickAction label={t('newPost')} description={t('newPostDesc')} icon={Plus} />
+              <NewPostQuickAction label={t('newPost')} description={t('newPostDesc')} />
               <Link
                 href="/dashboard/projetos/novo"
                 className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted transition-colors group"
