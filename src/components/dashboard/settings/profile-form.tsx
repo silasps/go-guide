@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { LocaleContentTabs } from '@/components/dashboard/locale-content-tabs'
+import { AvatarCropDialog } from '@/components/dashboard/settings/avatar-crop-dialog'
 import { toast } from 'sonner'
 import { Loader2, Camera, Check, X } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
@@ -32,6 +33,8 @@ export function ProfileForm({ profile, onSaved }: Props) {
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(profile.avatar_url)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [rawAvatarFile, setRawAvatarFile] = useState<File | null>(null)
+  const [cropDialogOpen, setCropDialogOpen] = useState(false)
   const [displayName, setDisplayName] = useState(profile.display_name)
   const [accountType, setAccountType] = useState(profile.account_type)
   const { bioPlaceholder, bioHint, displayNamePlaceholder } = useAccountTypeCopy(accountType)
@@ -86,12 +89,20 @@ export function ProfileForm({ profile, onSaved }: Props) {
   const [usernameTimer, setUsernameTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
   const { isPending: saving, run } = usePendingAction()
 
-  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
+    e.target.value = ''
     if (!file) return
-    const compressed = await compressImage(file)
+    setRawAvatarFile(file)
+    setCropDialogOpen(true)
+  }
+
+  async function handleCropApply(croppedFile: File) {
+    const compressed = await compressImage(croppedFile)
     setAvatarFile(compressed)
     setAvatarPreview(URL.createObjectURL(compressed))
+    setCropDialogOpen(false)
+    setRawAvatarFile(null)
   }
 
   function handleUsernameChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -195,10 +206,16 @@ export function ProfileForm({ profile, onSaved }: Props) {
       {/* Avatar — Instagram-style: centered with tap-to-edit */}
       <div className="flex flex-col items-center gap-2 pb-2 border-b">
         <div className="relative">
-          <Avatar className="h-24 w-24">
-            <AvatarImage src={avatarPreview ?? ''} alt={displayName} />
-            <AvatarFallback className="text-xl">{getInitials(displayName)}</AvatarFallback>
-          </Avatar>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="block rounded-full"
+            aria-label={t('editPhoto')}
+          >
+            <Avatar className="h-24 w-24">
+              <AvatarImage src={avatarPreview ?? ''} alt={displayName} />
+              <AvatarFallback className="text-xl">{getInitials(displayName)}</AvatarFallback>
+            </Avatar>
+          </button>
           <button
             onClick={() => fileInputRef.current?.click()}
             className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-colors shadow-md"
@@ -221,6 +238,16 @@ export function ProfileForm({ profile, onSaved }: Props) {
         </button>
         <p className="text-xs text-muted-foreground">{t('photoHint')}</p>
       </div>
+
+      <AvatarCropDialog
+        file={rawAvatarFile}
+        open={cropDialogOpen}
+        onOpenChange={(o) => {
+          setCropDialogOpen(o)
+          if (!o) setRawAvatarFile(null)
+        }}
+        onApply={handleCropApply}
+      />
 
       {/* Tipo de conta */}
       <div className="space-y-2">

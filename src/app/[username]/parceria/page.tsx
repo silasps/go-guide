@@ -45,13 +45,15 @@ export default async function ParceriaPage({ params, searchParams }: Props) {
   const stripeAvailable = (methods ?? []).some(m => m.type === 'stripe')
   const manualMethods = (methods ?? []).filter(m => m.type !== 'stripe')
 
-  const paymentOptions: { method: PledgePaymentMethod; label: string; value: string }[] =
-    manualMethods.map(m => ({ method: m.type, label: m.label || t(`type_${m.type}`), value: m.value }))
+  const defaultCurrency = highlight?.currency ?? 'BRL'
+
+  const paymentOptions: { id: string; method: PledgePaymentMethod; label: string; value: string; details: string | null; currency: string }[] =
+    manualMethods.map(m => ({ id: m.id, method: m.type, label: m.label || t(`type_${m.type}`), value: m.value, details: m.details, currency: m.currency }))
   if (!paymentOptions.some(o => o.method === 'bank_transfer')) {
-    paymentOptions.push({ method: 'bank_transfer', label: t('type_bank_transfer'), value: '' })
+    paymentOptions.push({ id: 'bank_transfer', method: 'bank_transfer', label: t('type_bank_transfer'), value: '', details: null, currency: defaultCurrency })
   }
   if (!paymentOptions.some(o => o.method === 'other')) {
-    paymentOptions.push({ method: 'other', label: t('type_other'), value: '' })
+    paymentOptions.push({ id: 'other', method: 'other', label: t('type_other'), value: '', details: null, currency: defaultCurrency })
   }
 
   const missionStartYear = profile.mission_start_date ? new Date(profile.mission_start_date).getFullYear() : null
@@ -59,10 +61,6 @@ export default async function ParceriaPage({ params, searchParams }: Props) {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Faça parte com {profile.display_name}</h1>
-          <p className="text-muted-foreground mt-2">Escolha como você quer se envolver com esta missão.</p>
-        </div>
         <PartnershipWizard
           profileId={profile.id}
           username={username}
@@ -71,7 +69,7 @@ export default async function ParceriaPage({ params, searchParams }: Props) {
           missionStartYear={missionStartYear}
           highlightId={highlight?.id}
           highlightTitle={highlight?.title}
-          currency={highlight?.currency ?? 'BRL'}
+          defaultCurrency={defaultCurrency}
           paymentOptions={paymentOptions}
           hasFinancialOptions={true}
           stripeAvailable={stripeAvailable}

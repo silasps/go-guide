@@ -1,0 +1,4 @@
+ALTER TABLE pledges ALTER COLUMN reporter_name DROP NOT NULL;
+ALTER TABLE pledges ADD COLUMN is_anonymous BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE pledges ADD COLUMN message TEXT;
+ALTER TABLE payment_methods ADD COLUMN currency TEXT NOT NULL DEFAULT 'BRL';

@@ -26,9 +26,6 @@ export default async function PartnerMensagensPage({ params }: Props) {
   return (
     <div className="min-h-screen bg-background px-4 py-8">
       <div className="max-w-lg mx-auto space-y-4">
-        <Link href={`/${username}`} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-          ← Voltar ao perfil de {profile.display_name}
-        </Link>
         <h1 className="text-xl font-semibold">Conversa com {profile.display_name}</h1>
         <E2EEGate userId={user.id}>
           <MessageThread profileId={profile.id} myUserId={user.id} otherUserId={profile.user_id} otherName={profile.display_name} />

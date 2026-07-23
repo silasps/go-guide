@@ -40,7 +40,7 @@ export async function getFeedPage(cursor: string | null): Promise<{
 
   let query = supabase
     .from('posts')
-    .select('*, profile:profiles(id, username, display_name, avatar_url, accent_color), highlight:highlights(title, slug, category)')
+    .select('*, profile:profiles(id, username, display_name, avatar_url, accent_color), highlight:highlights(title, slug, category, cover_url)')
     .in('profile_id', Array.from(profileIds))
     .eq('is_draft', false)
     .order('published_at', { ascending: false })
@@ -94,7 +94,7 @@ export async function getDiscoverMissionaries() {
 
   let query = supabase
     .from('profiles')
-    .select('id, username, display_name, avatar_url, accent_color, bio')
+    .select('id, username, display_name, avatar_url, cover_url, accent_color, bio, location, show_location')
     .eq('privacy_mode', 'public')
     .eq('user_role', 'missionary')
     .order('created_at', { ascending: false })

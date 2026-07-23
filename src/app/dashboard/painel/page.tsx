@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Users, FileText, Heart, Sparkles, Plus, FolderOpen, ArrowRight } from 'lucide-react'
 import { SetupChecklistBanner } from '@/components/dashboard/setup-checklist-banner'
 import { BirthdayReminders } from '@/components/dashboard/birthday-reminders'
+import { NewPostQuickAction, NewPostEmptyCta } from '@/components/dashboard/new-post-triggers'
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -35,11 +36,6 @@ export default async function DashboardPage() {
     { label: t('statPosts'), value: postsCount ?? 0, icon: FileText, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/40', href: '/dashboard/publicacoes' },
     { label: t('statPrayers'), value: prayerCount ?? 0, icon: Heart, color: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-950/40', href: '/dashboard/oracoes' },
     { label: t('statAiCredits'), value: profile?.ai_credits ?? 0, icon: Sparkles, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-950/40', href: '/planos' },
-  ]
-
-  const quickActions = [
-    { href: '/dashboard/publicacoes/nova', label: t('newPost'), icon: Plus, description: t('newPostDesc') },
-    { href: '/dashboard/projetos/novo', label: t('newProject'), icon: FolderOpen, description: t('newProjectDesc') },
   ]
 
   const firstName = profile?.display_name?.split(' ')[0]
@@ -107,21 +103,19 @@ export default async function DashboardPage() {
               <CardTitle className="text-sm font-semibold">{t('quickActions')}</CardTitle>
             </CardHeader>
             <CardContent className="pt-0 space-y-2">
-              {quickActions.map(({ href, label, icon: Icon, description }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted transition-colors group"
-                >
-                  <div className="p-1.5 bg-muted rounded-md shrink-0 group-hover:bg-background transition-colors">
-                    <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium leading-tight">{label}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-                  </div>
-                </Link>
-              ))}
+              <NewPostQuickAction label={t('newPost')} description={t('newPostDesc')} icon={Plus} />
+              <Link
+                href="/dashboard/projetos/novo"
+                className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted transition-colors group"
+              >
+                <div className="p-1.5 bg-muted rounded-md shrink-0 group-hover:bg-background transition-colors">
+                  <FolderOpen className="h-3.5 w-3.5 text-muted-foreground" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium leading-tight">{t('newProject')}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t('newProjectDesc')}</p>
+                </div>
+              </Link>
             </CardContent>
           </Card>
 
@@ -160,13 +154,7 @@ async function RecentPosts({ profileId }: { profileId: string }) {
     return (
       <div className="py-6 text-center">
         <p className="text-sm text-muted-foreground">{t('noPostsYet')}</p>
-        <Link
-          href="/dashboard/publicacoes/nova"
-          className={cn(buttonVariants({ size: 'sm' }), 'mt-3 gap-1.5')}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {t('createFirstPost')}
-        </Link>
+        <NewPostEmptyCta />
       </div>
     )
   }

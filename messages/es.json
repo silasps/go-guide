@@ -227,6 +227,10 @@
   "ProfileForm": {
     "editPhoto": "Editar foto de perfil",
     "photoHint": "JPG, PNG o WebP · máx 5MB",
+    "adjustPhoto": "Ajustar foto",
+    "zoom": "Zoom",
+    "cancel": "Cancelar",
+    "usePhoto": "Usar foto",
     "accountTypeLabel": "Este perfil representa",
     "displayName": "Nombre para mostrar",
     "username": "Nombre de usuario",
@@ -260,6 +264,7 @@
     "editTitle": "Editar método de recibo",
     "edit": "Editar",
     "typeLabel": "Tipo",
+    "currencyLabel": "Moneda",
     "labelLabel": "Nombre (opcional)",
     "labelPlaceholderOther": "Ej: Ko-fi, Patreon, portal de la agencia...",
     "valueLabel": "Clave, enlace o dato de contacto",
@@ -345,6 +350,51 @@
     "placeholder_crypto": "Dirección de la billetera (USDT, BTC...)",
     "placeholder_other": "Enlace o dato de contacto"
   },
+  "PaymentInstructions": {
+    "notConfigured": "El misionero aún no configuró este método de recepción.",
+    "titleBankTransfer": "Datos bancarios de {name}",
+    "titlePix": "Clave Pix de {name}",
+    "titleSuggested": "{name} sugirió",
+    "titleGeneric": "{label}",
+    "openLink": "Abrir {label}",
+    "bankHolder": "Titular",
+    "bankAccount": "Cuenta/IBAN",
+    "bankName": "Banco",
+    "bankSwift": "SWIFT/BIC",
+    "bankRouting": "Routing",
+    "bankAddress": "País/dirección",
+    "otherDescriptionLabel": "Describe la forma usada",
+    "otherDescriptionPlaceholder": "Ej: pagué por Zelle directo a su contacto",
+    "copied": "¡Copiado!"
+  },
+  "PledgeForm": {
+    "title": "Registrar ofrenda{highlightTitle}",
+    "titleRecurring": "Registrar contribución continua",
+    "intro": "Mira abajo cómo enviar tu ofrenda a {name} y registra el valor para acelerar la confirmación — no hay cobro automático por este método.",
+    "methodLabel": "Forma de envío",
+    "amountLabel": "Valor enviado ({currency})",
+    "amountLabelPlain": "Valor enviado",
+    "dateLabel": "Fecha de envío",
+    "anonymousLabel": "Prefiero no identificarme",
+    "nameLabel": "Tu nombre",
+    "namePlaceholder": "Nombre completo",
+    "emailLabel": "Correo electrónico",
+    "emailPlaceholder": "tu@correo.com",
+    "messageLabel": "Mensaje para {name} (opcional)",
+    "messagePlaceholder": "Deja una palabra de aliento...",
+    "proofLabel": "Comprobante (opcional, acelera la confirmación)",
+    "proofChange": "Cambiar",
+    "proofAttach": "Adjuntar captura/comprobante",
+    "submit": "Registrar ofrenda",
+    "otherPrefix": "Forma usada",
+    "errorAmount": "Ingresa un valor válido.",
+    "errorName": "Ingresa tu nombre o marca \"Prefiero no identificarme\".",
+    "errorSave": "Error al registrar la ofrenda. Intenta de nuevo.",
+    "doneTitle": "¡Recibimos tu registro!",
+    "doneDescription": "{name} confirmará la recepción pronto. Serás notificado en cuanto se confirme.",
+    "becomePartnerPrompt": "¿Te gustaría saber más y participar aún más en el camino de {name}?",
+    "becomePartnerCta": "Quiero ser socio fijo"
+  },
   "PartnershipForm": {
     "whatsappLabel": "WhatsApp/Teléfono"
   },
@@ -353,8 +403,10 @@
     "needsAccountDescription": "Para ser socio(a) recurrente necesitas una cuenta — así el misionero te encuentra después y, si quieres, puedes gestionar tu apoyo.",
     "createAccount": "Crear cuenta",
     "alreadyHaveAccount": "Ya tengo cuenta",
+    "linkingAs": "Conectado como {email} — esta cuenta será vinculada como socia de {name}.",
     "title": "Apoyar a {name} mensualmente",
     "amountLabel": "Valor mensual ({currency})",
+    "amountLabelPlain": "Valor mensual",
     "stripeCta": "Suscribirse por tarjeta — cobro automático todos los meses",
     "preferManual": "Prefiero enviarlo manualmente",
     "preferStripe": "Prefiero el cobro automático por tarjeta",
@@ -483,12 +535,49 @@
     "viewProfile": "Ver mi perfil",
     "viewPublicProfile": "Ver mi perfil público",
     "signOut": "Salir",
-    "profileTab": "Perfil"
+    "profileTab": "Perfil",
+    "search": "Buscar"
   },
   "CreateContent": {
     "ariaLabel": "Crear contenido",
     "newPost": "Nueva publicación",
     "newProject": "Nuevo proyecto"
+  },
+  "PostComposer": {
+    "title": "Nueva publicación",
+    "titleEdit": "Editar publicación",
+    "postingAs": "Publicando como {name}",
+    "contentLabel": "Texto",
+    "placeholder": "Comparte lo que Dios está haciendo...",
+    "unsupportedFormat": "Formato no compatible. Usa imágenes o videos.",
+    "addImage": "Agregar imagen",
+    "addVideo": "Agregar video",
+    "videoMaxSize": "Máx {size}MB",
+    "uploadingMedia": "Subiendo contenido... {progress}%",
+    "linkProject": "Vincular a un proyecto",
+    "noProject": "Ninguno",
+    "clearProject": "Quitar vínculo",
+    "saveDraft": "Guardar borrador",
+    "publish": "Publicar",
+    "saveEdit": "Guardar cambios",
+    "emptyError": "Agrega texto o contenido multimedia antes de guardar.",
+    "translateError": "Error al traducir. Inténtalo de nuevo.",
+    "insufficientAiCredits": "Créditos de IA insuficientes.",
+    "viewPlans": "Ver planes",
+    "saveError": "Error al guardar. Inténtalo de nuevo.",
+    "draftSaved": "Borrador guardado.",
+    "published": "¡Publicado!",
+    "updated": "Publicación actualizada."
+  },
+  "PostsList": {
+    "confirmDelete": "¿Eliminar esta publicación?",
+    "deleteError": "Error al eliminar.",
+    "deleted": "Publicación eliminada.",
+    "updateError": "Error al actualizar.",
+    "published": "¡Publicado!",
+    "movedToDraft": "Movido a borrador.",
+    "draftBadge": "Borrador",
+    "publishedBadge": "Publicado"
   },
   "ProjectStories": {
     "viewFullProject": "Ver proyecto completo",
@@ -504,7 +593,36 @@
     "loading": "Cargando...",
     "emptyTitle": "Empieza a seguir misioneros",
     "emptyDescription": "Sigue perfiles públicos para ver sus publicaciones aquí.",
-    "emptyNoMissionaries": "Aún no hay misioneros públicos disponibles."
+    "emptyNoMissionaries": "Aún no hay misioneros públicos disponibles.",
+    "composePlaceholder": "¿Qué quieres compartir?",
+    "followBack": "Seguir de vuelta"
+  },
+  "BecomeMissionary": {
+    "cardTitle": "Compartir mi propia misión",
+    "cardDescription": "Activa las herramientas de misionero: perfil público, proyectos, publicaciones, socios y recepción de contribuciones.",
+    "cta": "Convertirme en misionero"
+  },
+  "Superadmin": {
+    "viewingAs": "Viendo como:",
+    "missionary": "Misionero",
+    "partner": "Socio",
+    "reset": "Volver a lo normal"
+  },
+  "PartnerFinance": {
+    "myProjectsTitle": "Mis proyectos",
+    "noProjectsYet": "Todavía no eres socio de ningún proyecto. Sigue a un misionero y apoya un proyecto para verlo aquí.",
+    "pageTitle": "Mis donaciones",
+    "taxExportTitle": "Comprobante para declaración de impuestos",
+    "taxExportDisclaimer": "Exportación agregada de tus donaciones confirmadas — no reemplaza un recibo fiscal oficial.",
+    "historyTitle": "Historial",
+    "filterAllMissionaries": "Todos los misioneros",
+    "noGivingYet": "Aún no hay donaciones registradas.",
+    "generalGiving": "Donación general",
+    "status": {
+      "pending": "Pendiente",
+      "confirmed": "Confirmada",
+      "rejected": "Rechazada"
+    }
   },
   "PublicProfile": {
     "beAPartner": "Sé un Socio",
@@ -514,6 +632,9 @@
     "ourStory": "Nuestra historia",
     "trajectory": "Trayectoria",
     "missionaryFallbackName": "Misionero",
+    "statsPosts": "posts",
+    "statsProjects": "proyectos",
+    "statsAchievements": "logros",
     "pixAvailable": "Pix disponible — solicita la clave al misionero",
     "privateProfileMessage": "Este perfil es privado. Contacta al misionero para solicitar acceso.",
     "notFoundTitle": "Perfil no encontrado",
@@ -522,9 +643,28 @@
     "tabProjects": "Proyectos",
     "tabTrajectory": "Trayectoria",
     "editProfile": "Editar perfil",
+    "closeEdit": "Cerrar edición",
     "shareProfile": "Compartir perfil",
     "linkCopied": "Enlace del perfil copiado",
-    "backToDashboard": "Volver al panel"
+    "backToDashboard": "Volver al panel",
+    "backToProfile": "Volver al perfil",
+    "tabFollowers": "Seguidores",
+    "statsFollowers": "seguidores",
+    "statsFollowing": "siguiendo"
+  },
+  "PublicProject": {
+    "editSection": "Editar {section}",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "saved": "Cambios guardados.",
+    "saveError": "Error al guardar.",
+    "sectionCover": "portada y título",
+    "sectionDescription": "descripción",
+    "sectionSupportTypes": "formas de apoyar",
+    "sectionFinancial": "financiero",
+    "sectionMilestones": "hitos",
+    "sectionLetter": "historia",
+    "sectionDatesStatus": "fechas y estado"
   },
   "PrayerRequestForm": {
     "becomePartnerPrompt": "¿Te gustaría orar regularmente por {name}, no solo esta vez?",
@@ -598,6 +738,14 @@
   "Onboarding": {
     "welcomeTitle": "Bienvenido a go→guide",
     "welcomeSubtitle": "Vamos a configurar tu sistema en pocos pasos",
+    "roleStepTitle": "¿Cómo vas a usar go→guide?",
+    "roleStepDescription": "Puedes cambiar esto después, en cualquier momento.",
+    "rolePartnerLabel": "Soy apoyador/socio",
+    "rolePartnerDescription": "Quiero seguir a misioneros, ver el avance de proyectos y mis donaciones.",
+    "roleMissionaryLabel": "Soy misionero/organización",
+    "roleMissionaryDescription": "Quiero compartir mi jornada, gestionar socios y recibir contribuciones.",
+    "partnerDoneTitle": "¡Todo listo!",
+    "partnerDoneDescription": "Empieza siguiendo misioneros en tu feed. Si algún día quieres compartir tu propia misión, puedes activarlo después en Configuración.",
     "stepLabel1": "Perfil",
     "stepLabel2": "Recepción de apoyo",
     "stepLabel3": "Primer proyecto",
@@ -654,5 +802,20 @@
     "inDays": "cumple {age} años en {days} días",
     "sendWishes": "Enviar felicitación",
     "waMessage": "¡Feliz cumpleaños, {name}! 🎉 ¡Que Dios bendiga mucho tu vida!"
+  },
+  "FollowsList": {
+    "tabFollowers": "Seguidores",
+    "tabFollowing": "Siguiendo",
+    "emptyFollowers": "Aún no hay seguidores.",
+    "emptyFollowing": "Aún no sigues a nadie.",
+    "followsYou": "Te sigue"
+  },
+  "Search": {
+    "title": "Buscar",
+    "placeholder": "Buscar misioneros y proyectos...",
+    "prompt": "Escribe al menos 2 letras para buscar.",
+    "sectionMissionaries": "Misioneros",
+    "sectionProjects": "Proyectos",
+    "noResults": "No se encontró nada para \"{query}\"."
   }
 }

@@ -227,6 +227,10 @@
   "ProfileForm": {
     "editPhoto": "Edit profile photo",
     "photoHint": "JPG, PNG or WebP · max 5MB",
+    "adjustPhoto": "Adjust photo",
+    "zoom": "Zoom",
+    "cancel": "Cancel",
+    "usePhoto": "Use photo",
     "accountTypeLabel": "This profile represents",
     "displayName": "Display name",
     "username": "Username",
@@ -260,6 +264,7 @@
     "editTitle": "Edit payment method",
     "edit": "Edit",
     "typeLabel": "Type",
+    "currencyLabel": "Currency",
     "labelLabel": "Name (optional)",
     "labelPlaceholderOther": "E.g. Ko-fi, Patreon, agency portal...",
     "valueLabel": "Key, link, or contact info",
@@ -345,6 +350,51 @@
     "placeholder_crypto": "Wallet address (USDT, BTC...)",
     "placeholder_other": "Link or contact info"
   },
+  "PaymentInstructions": {
+    "notConfigured": "The missionary hasn't set up this receiving method yet.",
+    "titleBankTransfer": "{name}'s bank details",
+    "titlePix": "{name}'s Pix key",
+    "titleSuggested": "{name} suggested",
+    "titleGeneric": "{label}",
+    "openLink": "Open {label}",
+    "bankHolder": "Account holder",
+    "bankAccount": "Account/IBAN",
+    "bankName": "Bank",
+    "bankSwift": "SWIFT/BIC",
+    "bankRouting": "Routing",
+    "bankAddress": "Country/address",
+    "otherDescriptionLabel": "Describe how you sent it",
+    "otherDescriptionPlaceholder": "E.g. I paid via Zelle directly to their contact",
+    "copied": "Copied!"
+  },
+  "PledgeForm": {
+    "title": "Register offering{highlightTitle}",
+    "titleRecurring": "Register ongoing contribution",
+    "intro": "See below how to send your offering to {name} and register the amount to speed up confirmation — there's no automatic charge for this method.",
+    "methodLabel": "Sending method",
+    "amountLabel": "Amount sent ({currency})",
+    "amountLabelPlain": "Amount sent",
+    "dateLabel": "Date sent",
+    "anonymousLabel": "I'd rather not identify myself",
+    "nameLabel": "Your name",
+    "namePlaceholder": "Full name",
+    "emailLabel": "Email",
+    "emailPlaceholder": "you@email.com",
+    "messageLabel": "Message to {name} (optional)",
+    "messagePlaceholder": "Leave a word of encouragement...",
+    "proofLabel": "Proof (optional, speeds up confirmation)",
+    "proofChange": "Change",
+    "proofAttach": "Attach screenshot/proof",
+    "submit": "Register offering",
+    "otherPrefix": "Method used",
+    "errorAmount": "Enter a valid amount.",
+    "errorName": "Enter your name or check \"I'd rather not identify myself\".",
+    "errorSave": "Error registering offering. Please try again.",
+    "doneTitle": "We received your record!",
+    "doneDescription": "{name} will confirm receipt soon. You'll be notified once confirmed.",
+    "becomePartnerPrompt": "Want to know more and be even more part of {name}'s journey?",
+    "becomePartnerCta": "I want to become a regular partner"
+  },
   "PartnershipForm": {
     "whatsappLabel": "WhatsApp/Phone"
   },
@@ -353,8 +403,10 @@
     "needsAccountDescription": "To become a recurring partner you need an account — so the missionary can find you later and, if you want, you can manage your partnership.",
     "createAccount": "Create account",
     "alreadyHaveAccount": "I already have an account",
+    "linkingAs": "Signed in as {email} — this account will be linked as a partner of {name}.",
     "title": "Support {name} monthly",
     "amountLabel": "Monthly amount ({currency})",
+    "amountLabelPlain": "Monthly amount",
     "stripeCta": "Subscribe by card — automatic monthly charge",
     "preferManual": "I'd rather send it manually",
     "preferStripe": "I'd rather use automatic card billing",
@@ -483,12 +535,49 @@
     "viewProfile": "View my profile",
     "viewPublicProfile": "View my public profile",
     "signOut": "Log out",
-    "profileTab": "Profile"
+    "profileTab": "Profile",
+    "search": "Search"
   },
   "CreateContent": {
     "ariaLabel": "Create content",
     "newPost": "New post",
     "newProject": "New project"
+  },
+  "PostComposer": {
+    "title": "New post",
+    "titleEdit": "Edit post",
+    "postingAs": "Posting as {name}",
+    "contentLabel": "Text",
+    "placeholder": "Share what God is doing...",
+    "unsupportedFormat": "Unsupported format. Use images or videos.",
+    "addImage": "Add image",
+    "addVideo": "Add video",
+    "videoMaxSize": "Max {size}MB",
+    "uploadingMedia": "Uploading media... {progress}%",
+    "linkProject": "Link to a project",
+    "noProject": "None",
+    "clearProject": "Remove link",
+    "saveDraft": "Save draft",
+    "publish": "Publish",
+    "saveEdit": "Save changes",
+    "emptyError": "Add text or media before saving.",
+    "translateError": "Error translating. Please try again.",
+    "insufficientAiCredits": "Insufficient AI credits.",
+    "viewPlans": "View plans",
+    "saveError": "Error saving. Please try again.",
+    "draftSaved": "Draft saved.",
+    "published": "Published!",
+    "updated": "Post updated."
+  },
+  "PostsList": {
+    "confirmDelete": "Delete this post?",
+    "deleteError": "Error deleting.",
+    "deleted": "Post deleted.",
+    "updateError": "Error updating.",
+    "published": "Published!",
+    "movedToDraft": "Moved to draft.",
+    "draftBadge": "Draft",
+    "publishedBadge": "Published"
   },
   "ProjectStories": {
     "viewFullProject": "View full project",
@@ -504,7 +593,36 @@
     "loading": "Loading...",
     "emptyTitle": "Start following missionaries",
     "emptyDescription": "Follow public profiles to see their posts here.",
-    "emptyNoMissionaries": "No public missionaries found yet."
+    "emptyNoMissionaries": "No public missionaries found yet.",
+    "composePlaceholder": "What do you want to share?",
+    "followBack": "Follow back"
+  },
+  "BecomeMissionary": {
+    "cardTitle": "Share my own mission",
+    "cardDescription": "Turn on missionary tools: public profile, projects, posts, partners and receiving contributions.",
+    "cta": "Become a missionary"
+  },
+  "Superadmin": {
+    "viewingAs": "Viewing as:",
+    "missionary": "Missionary",
+    "partner": "Partner",
+    "reset": "Back to normal"
+  },
+  "PartnerFinance": {
+    "myProjectsTitle": "My projects",
+    "noProjectsYet": "You're not partnered in any project yet. Follow a missionary and support a project to see it here.",
+    "pageTitle": "My giving",
+    "taxExportTitle": "Tax statement",
+    "taxExportDisclaimer": "Aggregated export of your confirmed giving — not an official tax receipt.",
+    "historyTitle": "History",
+    "filterAllMissionaries": "All missionaries",
+    "noGivingYet": "No giving recorded yet.",
+    "generalGiving": "General giving",
+    "status": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "rejected": "Rejected"
+    }
   },
   "PublicProfile": {
     "beAPartner": "Become a Partner",
@@ -514,6 +632,9 @@
     "ourStory": "Our story",
     "trajectory": "Journey",
     "missionaryFallbackName": "Missionary",
+    "statsPosts": "posts",
+    "statsProjects": "projects",
+    "statsAchievements": "achievements",
     "pixAvailable": "Pix available — ask the missionary for the key",
     "privateProfileMessage": "This profile is private. Contact the missionary to request access.",
     "notFoundTitle": "Profile not found",
@@ -522,9 +643,28 @@
     "tabProjects": "Projects",
     "tabTrajectory": "Journey",
     "editProfile": "Edit profile",
+    "closeEdit": "Close editing",
     "shareProfile": "Share profile",
     "linkCopied": "Profile link copied",
-    "backToDashboard": "Back to dashboard"
+    "backToDashboard": "Back to dashboard",
+    "backToProfile": "Back to profile",
+    "tabFollowers": "Followers",
+    "statsFollowers": "followers",
+    "statsFollowing": "following"
+  },
+  "PublicProject": {
+    "editSection": "Edit {section}",
+    "save": "Save",
+    "cancel": "Cancel",
+    "saved": "Changes saved.",
+    "saveError": "Error saving.",
+    "sectionCover": "cover and title",
+    "sectionDescription": "description",
+    "sectionSupportTypes": "ways to support",
+    "sectionFinancial": "financial",
+    "sectionMilestones": "milestones",
+    "sectionLetter": "story",
+    "sectionDatesStatus": "dates and status"
   },
   "PrayerRequestForm": {
     "becomePartnerPrompt": "Would you like to pray regularly for {name}, not just this once?",
@@ -598,6 +738,14 @@
   "Onboarding": {
     "welcomeTitle": "Welcome to go→guide",
     "welcomeSubtitle": "Let's set up your system in a few steps",
+    "roleStepTitle": "How will you use go→guide?",
+    "roleStepDescription": "You can change this later, anytime.",
+    "rolePartnerLabel": "I'm a supporter/partner",
+    "rolePartnerDescription": "I want to follow missionaries, track project progress and my giving.",
+    "roleMissionaryLabel": "I'm a missionary/organization",
+    "roleMissionaryDescription": "I want to share my journey, manage partners and receive contributions.",
+    "partnerDoneTitle": "All set!",
+    "partnerDoneDescription": "Start by following missionaries in your feed. If you ever want to share your own mission, you can turn that on later in Settings.",
     "stepLabel1": "Profile",
     "stepLabel2": "Receiving support",
     "stepLabel3": "First project",
@@ -654,5 +802,20 @@
     "inDays": "turns {age} in {days} days",
     "sendWishes": "Send wishes",
     "waMessage": "Happy birthday, {name}! 🎉 God bless you richly!"
+  },
+  "FollowsList": {
+    "tabFollowers": "Followers",
+    "tabFollowing": "Following",
+    "emptyFollowers": "No followers yet.",
+    "emptyFollowing": "Not following anyone yet.",
+    "followsYou": "Follows you"
+  },
+  "Search": {
+    "title": "Search",
+    "placeholder": "Search missionaries and projects...",
+    "prompt": "Type at least 2 letters to search.",
+    "sectionMissionaries": "Missionaries",
+    "sectionProjects": "Projects",
+    "noResults": "Nothing found for \"{query}\"."
   }
 }

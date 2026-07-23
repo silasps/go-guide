@@ -2,11 +2,10 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Image from 'next/image'
 import Link from 'next/link'
-import { buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { cn, formatCurrency } from '@/lib/utils'
-import { ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 
 interface Props { params: Promise<{ username: string }> }
 
@@ -41,13 +40,6 @@ export default async function ProjetosPublicosPage({ params }: Props) {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
-        <div className="flex items-center gap-3">
-          <Link href={`/${username}`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5 -ml-2 text-muted-foreground')}>
-            <ArrowLeft className="h-4 w-4" />
-            {profile.display_name}
-          </Link>
-        </div>
-
         <div>
           <h1 className="text-2xl font-bold">Projetos</h1>
           <p className="text-muted-foreground text-sm mt-1">Veja tudo o que {profile.display_name} está construindo e o que já foi realizado.</p>

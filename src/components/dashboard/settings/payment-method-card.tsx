@@ -50,7 +50,10 @@ export function PaymentMethodCard({ method, profileId }: Props) {
             <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
             <p className="font-medium text-sm truncate">{label}</p>
           </div>
-          {!method.is_active && <Badge variant="secondary">{t('inactive')}</Badge>}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Badge variant="outline">{method.currency}</Badge>
+            {!method.is_active && <Badge variant="secondary">{t('inactive')}</Badge>}
+          </div>
         </div>
         <button onClick={handleCopy} className="flex w-full items-center gap-2 rounded-lg border border-input px-2.5 py-1.5 text-left text-sm hover:bg-muted/50 transition-colors">
           <span className="truncate flex-1 font-mono">{method.value}</span>

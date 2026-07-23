@@ -5,14 +5,14 @@ interface Props { blocks: HistoryBlock[] }
 export function HistoryView({ blocks }: Props) {
   if (!blocks.length) {
     return (
-      <div className="px-4 py-12 text-center text-muted-foreground">
+      <div className="py-12 text-center text-muted-foreground">
         <p>A história deste missionário ainda não foi escrita.</p>
       </div>
     )
   }
 
   return (
-    <div className="px-4 space-y-8 mt-6">
+    <div className="space-y-8">
       {blocks.map(b => <HistoryBlock key={b.id} block={b} />)}
     </div>
   )

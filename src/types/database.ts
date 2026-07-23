@@ -244,6 +244,7 @@ export interface PaymentMethod {
   label: string | null
   value: string
   details: string | null
+  currency: string
   linked_account_id: string | null
   is_active: boolean
   sort_order: number
@@ -260,8 +261,10 @@ export interface Pledge {
   profile_id: string
   partner_id: string | null
   reporter_user_id: string | null
-  reporter_name: string
+  reporter_name: string | null
   reporter_email: string | null
+  is_anonymous: boolean
+  message: string | null
   reported_amount: number
   currency: string
   payment_method: PledgePaymentMethod
@@ -429,7 +432,7 @@ export interface WhatsappConfig {
 // Joined types for queries
 export interface PostWithProfile extends Post {
   profile: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url' | 'accent_color'>
-  highlight: Pick<Highlight, 'title' | 'slug' | 'category'> | null
+  highlight: Pick<Highlight, 'title' | 'slug' | 'category' | 'cover_url'> | null
 }
 
 export type StoryPost = Pick<Post, 'id' | 'content' | 'media_urls' | 'type' | 'published_at' | 'original_locale' | 'translations'>

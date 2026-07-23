@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { PledgeForm } from './pledge-form'
 import { RecurringPledgeForm } from './recurring-pledge-form'
 import { PartnershipForm } from './partnership-form'
@@ -23,76 +22,68 @@ interface Props {
   missionStartYear: number | null
   highlightId?: string
   highlightTitle?: string
-  currency: string
-  paymentOptions: { method: PledgePaymentMethod; label: string; value: string }[]
+  defaultCurrency: string
+  paymentOptions: { id: string; method: PledgePaymentMethod; label: string; value: string; details: string | null; currency: string }[]
   hasFinancialOptions: boolean
   stripeAvailable: boolean
   user: SessionUser | null
 }
 
-export function PartnershipWizard({ profileId, username, initialChoice, missionaryName, missionStartYear, highlightId, highlightTitle, currency, paymentOptions, hasFinancialOptions, stripeAvailable, user }: Props) {
+export function PartnershipWizard({ profileId, username, initialChoice, missionaryName, missionStartYear, highlightId, highlightTitle, defaultCurrency, paymentOptions, hasFinancialOptions, stripeAvailable, user }: Props) {
   const [choice, setChoice] = useState<Choice | null>(initialChoice ?? null)
 
   if (choice === 'financial_once' || choice === 'financial_once_general') {
     return (
-      <div className="space-y-3">
-        <button onClick={() => setChoice(null)} className="text-xs text-muted-foreground hover:text-foreground">← Voltar</button>
-        <PledgeForm
-          key={choice}
-          profileId={profileId}
-          missionaryName={missionaryName}
-          highlightId={choice === 'financial_once' ? highlightId : undefined}
-          highlightTitle={choice === 'financial_once' ? highlightTitle : undefined}
-          isRecurring={false}
-          currency={currency}
-          paymentOptions={paymentOptions}
-          onBecomePartner={() => setChoice('financial_ongoing')}
-        />
-      </div>
+      <PledgeForm
+        key={choice}
+        profileId={profileId}
+        missionaryName={missionaryName}
+        highlightId={choice === 'financial_once' ? highlightId : undefined}
+        highlightTitle={choice === 'financial_once' ? highlightTitle : undefined}
+        isRecurring={false}
+        defaultCurrency={defaultCurrency}
+        paymentOptions={paymentOptions}
+        onBecomePartner={() => setChoice('financial_ongoing')}
+      />
     )
   }
 
   if (choice === 'financial_ongoing') {
     const returnPath = `/${username}/parceria${highlightId ? `?highlight_id=${highlightId}` : ''}`
     return (
-      <div className="space-y-3">
-        <button onClick={() => setChoice(null)} className="text-xs text-muted-foreground hover:text-foreground">← Voltar</button>
-        <RecurringPledgeForm
-          profileId={profileId}
-          missionaryName={missionaryName}
-          currency={currency}
-          paymentOptions={paymentOptions}
-          stripeAvailable={stripeAvailable}
-          user={user}
-          returnPath={returnPath}
-          highlightId={highlightId}
-        />
-      </div>
+      <RecurringPledgeForm
+        profileId={profileId}
+        missionaryName={missionaryName}
+        currency={defaultCurrency}
+        paymentOptions={paymentOptions}
+        stripeAvailable={stripeAvailable}
+        user={user}
+        returnPath={returnPath}
+        highlightId={highlightId}
+      />
     )
   }
 
   if (choice === 'prayer' || choice === 'ambassador' || choice === 'volunteer') {
     const typeMap = { prayer: 'prayer', ambassador: 'ambassador', volunteer: 'both' } as const
     return (
-      <div className="space-y-3">
-        <button onClick={() => setChoice(null)} className="text-xs text-muted-foreground hover:text-foreground">← Voltar</button>
-        <PartnershipForm profileId={profileId} missionaryName={missionaryName} defaultType={typeMap[choice]} />
-      </div>
+      <PartnershipForm profileId={profileId} missionaryName={missionaryName} defaultType={typeMap[choice]} />
     )
   }
 
   return (
     <div className="space-y-3">
-      <Link href={`/${username}`} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-        ← Voltar ao perfil de {missionaryName}
-      </Link>
+      <div className="text-center mb-3">
+        <h1 className="text-2xl font-bold">Faça parte com {missionaryName}</h1>
+        <p className="text-muted-foreground mt-2">Escolha como você quer se envolver com esta missão.</p>
+      </div>
       {hasFinancialOptions && highlightId && (
         <button
           type="button"
           onClick={() => setChoice('financial_once')}
           className="w-full flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors text-left"
         >
-          <span className="text-2xl shrink-0">💰</span>
+          <span className="text-2xl shrink-0 h-10 w-10 rounded-full bg-support/10 flex items-center justify-center">💰</span>
           <div>
             <p className="font-medium text-sm">Apoiar {highlightTitle ?? 'este projeto'}</p>
             <p className="text-xs text-muted-foreground">Uma oferta pontual para esta campanha específica</p>
@@ -105,7 +96,7 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
           onClick={() => setChoice('financial_once_general')}
           className="w-full flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors text-left"
         >
-          <span className="text-2xl shrink-0">🎁</span>
+          <span className="text-2xl shrink-0 h-10 w-10 rounded-full bg-support/10 flex items-center justify-center">🎁</span>
           <div>
             <p className="font-medium text-sm">Fazer uma doação única</p>
             <p className="text-xs text-muted-foreground">Uma contribuição pontual, sem compromisso de continuidade</p>
@@ -118,7 +109,7 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
           onClick={() => setChoice('financial_ongoing')}
           className="w-full flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors text-left"
         >
-          <span className="text-2xl shrink-0">🔄</span>
+          <span className="text-2xl shrink-0 h-10 w-10 rounded-full bg-support/10 flex items-center justify-center">🔄</span>
           <div>
             <p className="font-medium text-sm">Ser parceiro fixo da missão</p>
             <p className="text-xs text-muted-foreground">

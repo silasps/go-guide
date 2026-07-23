@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
@@ -120,16 +121,11 @@ export function DashboardSidebar({ profile, accessibleProfiles }: { profile: Pro
   )
 }
 
-export function MobileHeader({ profile }: { profile: Profile }) {
+export function MobileHeader() {
   return (
     <div className="flex items-center gap-2 md:hidden">
-      <div
-        className="h-6 w-6 rounded-md flex items-center justify-center shrink-0"
-        style={{ backgroundColor: profile.accent_color }}
-      >
-        <span className="text-white text-xs font-bold">M</span>
-      </div>
-      <span className="font-semibold text-sm">go→guide</span>
+      <Image src="/icon-mark.png" alt="Go guide" width={24} height={24} className="h-6 w-6 rounded-md" priority />
+      <span className="font-semibold text-sm">Go guide</span>
     </div>
   )
 }

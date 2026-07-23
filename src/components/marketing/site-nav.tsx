@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { ChevronDown, Menu, X } from 'lucide-react'
@@ -38,11 +39,9 @@ export function SiteNav() {
   return (
     <nav className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-backdrop-filter:bg-background/60">
       <div className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto">
-        <Link href="/" className="flex items-center gap-2 shrink-0">
-          <div className="h-7 w-7 rounded-md bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground text-xs font-bold">M</span>
-          </div>
-          <span className="font-semibold">go→guide</span>
+        <Link href="/" className="flex items-center shrink-0">
+          <Image src="/logo.png" alt="Go guide" width={130} height={61} className="h-8 w-auto dark:hidden" priority />
+          <Image src="/logo-white.png" alt="Go guide" width={130} height={61} className="h-8 w-auto hidden dark:block" priority />
         </Link>
 
         <div className="hidden md:flex items-center gap-1" ref={containerRef}>

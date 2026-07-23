@@ -51,20 +51,46 @@ async function dbDelete(path: string) {
   })
 }
 
+async function dbGet(path: string) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  const res = await fetch(`${url}/rest/v1/${path}`, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
+  })
+  return res.json()
+}
+
+async function assertProfileAccess(profileId: string, userId: string) {
+  const profiles = await dbGet(`profiles?id=eq.${profileId}&select=user_id`)
+  if (!profiles[0]) throw Object.assign(new Error('Perfil não encontrado'), { status: 404 })
+  if (profiles[0].user_id === userId) return
+  const managers = await dbGet(`profile_managers?profile_id=eq.${profileId}&user_id=eq.${userId}&role=eq.manager&select=id`)
+  if (managers.length === 0) throw Object.assign(new Error('Não autorizado'), { status: 403 })
+}
+
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
   const body = await req.json()
-  const { highlightId, profileId, title, description, goalTypes, goalAmount, currentAmount,
+  const { highlightId, profileId, title, description, goalTypes, category, goalAmount, currentAmount,
     currency, coverUrl, coverPosition, tripStartDate, fundingDeadline, scripture, letter, status, milestones, budgetCategories } = body
+
+  try {
+    await assertProfileAccess(profileId, user.id)
+  } catch (err: unknown) {
+    const status = (err as { status?: number }).status ?? 403
+    const msg = err instanceof Error ? err.message : 'Não autorizado'
+    return NextResponse.json({ error: msg }, { status })
+  }
 
   const payload = {
     profile_id: profileId,
     title,
     description: description || null,
     goal_type: goalTypes.length > 0 ? goalTypes : ['ongoing'],
+    category: Array.isArray(category) ? category : [],
     goal_amount: goalAmount ?? null,
     current_amount: currentAmount ?? 0,
     currency,

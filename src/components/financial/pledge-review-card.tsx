@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { Loader2, Check, X, ExternalLink } from 'lucide-react'
 
 const METHOD_LABEL: Record<string, string> = { pix: 'Pix', paypal: 'PayPal', wise: 'Wise', bank_transfer: 'Transferência', other: 'Outro' }
+const ANONYMOUS_LABEL = 'Apoiador anônimo'
 
 interface Props {
   pledge: Pledge & { highlight?: { title: string } | null }
@@ -44,7 +45,7 @@ export function PledgeReviewCard({ pledge, accounts, profileId }: Props) {
           const { data: created } = await supabase.from('partners').insert({
             profile_id: profileId,
             user_id: pledge.reporter_user_id,
-            name: pledge.reporter_name,
+            name: pledge.reporter_name || ANONYMOUS_LABEL,
             email: pledge.reporter_email,
             type: 'financial',
           }).select('id').single()
@@ -60,7 +61,7 @@ export function PledgeReviewCard({ pledge, accounts, profileId }: Props) {
         type: 'income',
         amount: parsed,
         currency: pledge.currency,
-        description: `Oferta de ${pledge.reporter_name}`,
+        description: `Oferta de ${pledge.reporter_name || ANONYMOUS_LABEL}`,
         partner_id: partnerId,
         highlight_id: pledge.highlight_id,
         source: 'manual',
@@ -105,7 +106,7 @@ export function PledgeReviewCard({ pledge, accounts, profileId }: Props) {
     <div className="rounded-xl border bg-card p-4 space-y-3">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="font-medium text-sm">{pledge.reporter_name}</p>
+          <p className="font-medium text-sm">{pledge.reporter_name || ANONYMOUS_LABEL}</p>
           <p className="text-xs text-muted-foreground">
             {formatDate(pledge.reported_at)} · {METHOD_LABEL[pledge.payment_method]}
             {pledge.highlight?.title && ` · ${pledge.highlight.title}`}
@@ -114,6 +115,10 @@ export function PledgeReviewCard({ pledge, accounts, profileId }: Props) {
         </div>
         <p className="text-lg font-semibold shrink-0">{formatCurrency(pledge.reported_amount, pledge.currency)}</p>
       </div>
+
+      {pledge.message && (
+        <p className="text-xs bg-muted rounded-lg px-2.5 py-1.5 whitespace-pre-wrap">{pledge.message}</p>
+      )}
 
       {pledge.proof_url && (
         <a href={pledge.proof_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">

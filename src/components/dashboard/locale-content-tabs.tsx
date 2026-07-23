@@ -30,6 +30,7 @@ interface Props {
   rows?: number
   maxLength?: number
   originalPlaceholder?: string
+  textareaClassName?: string
   /** Idioma da conta (Configurações → Conta). A aba aberta por padrão prioriza esse
    *  idioma em vez do idioma original do conteúdo — quem navega o painel em EN espera
    *  abrir a aba EN primeiro, mesmo que o texto original tenha sido escrito em outro idioma. */
@@ -46,6 +47,7 @@ export function LocaleContentTabs({
   rows = 5,
   maxLength,
   originalPlaceholder,
+  textareaClassName,
   preferredLocale,
 }: Props) {
   const t = useTranslations('LocaleContentTabs')
@@ -105,6 +107,7 @@ export function LocaleContentTabs({
             <Textarea
               rows={rows}
               maxLength={maxLength}
+              className={textareaClassName}
               value={isOriginal ? originalText : translations[locale] ?? ''}
               onChange={(e) => (isOriginal ? onOriginalChange(e.target.value) : onTranslationChange(locale, e.target.value))}
               placeholder={isOriginal ? originalPlaceholder : t('manualPlaceholder')}

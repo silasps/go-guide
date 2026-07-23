@@ -5,41 +5,31 @@ import type { Locale } from '@/i18n/config'
 import { resolveLocalizedText } from '@/lib/i18n/resolve-content-locale'
 import { formatRelativeTime, getInitials } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { FollowButton } from './follow-button'
+import { PostProjectLink } from '@/components/shared/post-project-link'
 
 interface Props {
   post: PostWithProfile
   visitorLocale: Locale
-  isFollowing: boolean
 }
 
-export function FeedPostCard({ post, visitorLocale, isFollowing }: Props) {
+export function FeedPostCard({ post, visitorLocale }: Props) {
   const { text } = resolveLocalizedText(post.content, post.original_locale, post.translations, visitorLocale)
 
   return (
-    <div className="p-4 rounded-2xl border bg-card space-y-2.5">
-      <div className="flex items-center gap-2.5">
-        <Link href={`/${post.profile.username}`} target="_blank" className="flex items-center gap-2.5 min-w-0 flex-1">
-          <Avatar className="h-8 w-8 shrink-0">
-            <AvatarImage src={post.profile.avatar_url ?? ''} alt={post.profile.display_name} />
-            <AvatarFallback className="text-xs">{getInitials(post.profile.display_name)}</AvatarFallback>
-          </Avatar>
-          <div className="min-w-0">
-            <p className="text-sm font-medium truncate">{post.profile.display_name}</p>
-            <p className="text-xs text-muted-foreground truncate">@{post.profile.username}</p>
-          </div>
-        </Link>
-        <FollowButton profileId={post.profile.id} initiallyFollowing={isFollowing} />
-      </div>
+    <div className={`p-4 rounded-2xl border bg-card space-y-2.5 ${post.highlight ? 'border-l-[3px] border-l-support' : ''}`}>
+      <Link href={`/${post.profile.username}`} className="flex items-center gap-2.5 min-w-0">
+        <Avatar className="h-8 w-8 shrink-0">
+          <AvatarImage src={post.profile.avatar_url ?? ''} alt={post.profile.display_name} />
+          <AvatarFallback className="text-xs">{getInitials(post.profile.display_name)}</AvatarFallback>
+        </Avatar>
+        <div className="min-w-0">
+          <p className="text-sm font-medium truncate">{post.profile.display_name}</p>
+          <p className="text-xs text-muted-foreground truncate">@{post.profile.username}</p>
+        </div>
+      </Link>
 
       {post.highlight && (
-        <Link
-          href={`/${post.profile.username}/projetos/${post.highlight.slug ?? ''}`}
-          target="_blank"
-          className="inline-block text-xs font-medium text-primary hover:underline"
-        >
-          {post.highlight.title}
-        </Link>
+        <PostProjectLink username={post.profile.username} highlight={post.highlight} />
       )}
 
       <PostMedia post={post} />

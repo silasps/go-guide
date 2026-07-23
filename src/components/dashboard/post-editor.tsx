@@ -3,15 +3,18 @@
 import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage, validateVideo, validateVideoDuration, getMediaType, formatFileSize, VIDEO_MAX_SIZE_MB } from '@/lib/media/compress'
 import { savePost } from '@/app/dashboard/publicacoes/actions'
 import { usePendingAction } from '@/hooks/use-pending-action'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { LocaleContentTabs } from '@/components/dashboard/locale-content-tabs'
+import { PostEditorProjectPicker } from '@/components/dashboard/post-editor-project-picker'
+import { getInitials } from '@/lib/utils'
 import { toast } from 'sonner'
 import { ImagePlus, Video, X, Loader2, AlertCircle } from 'lucide-react'
 import { Post, PostType } from '@/types/database'
@@ -22,6 +25,9 @@ interface Props {
   profileId: string
   userId: string
   originalLocale: Locale
+  displayName: string
+  avatarUrl?: string | null
+  onSaved?: () => void
 }
 
 type MediaFile = {
@@ -30,12 +36,14 @@ type MediaFile = {
   type: 'image' | 'video'
 }
 
-export function PostEditor({ post, profileId, userId, originalLocale }: Props) {
+export function PostEditor({ post, profileId, userId, originalLocale, displayName, avatarUrl, onSaved }: Props) {
+  const t = useTranslations('PostComposer')
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const effectiveOriginalLocale: Locale = post?.original_locale ?? originalLocale
   const [content, setContent] = useState(post?.content ?? '')
+  const [projectId, setProjectId] = useState<string | null>(post?.project_id ?? null)
   const [translations, setTranslations] = useState<Partial<Record<Locale, string>>>(() => {
     const t: Partial<Record<Locale, string>> = {}
     for (const [locale, v] of Object.entries(post?.translations ?? {})) t[locale as Locale] = v.content
@@ -70,7 +78,7 @@ export function PostEditor({ post, profileId, userId, originalLocale }: Props) {
     for (const file of Array.from(files)) {
       const mediaType = getMediaType(file)
       if (mediaType === 'unknown') {
-        setMediaError('Formato não suportado. Use imagens ou vídeos.')
+        setMediaError(t('unsupportedFormat'))
         continue
       }
 
@@ -93,7 +101,7 @@ export function PostEditor({ post, profileId, userId, originalLocale }: Props) {
     }
 
     setMediaFiles(prev => [...prev, ...newFiles].slice(0, 10))
-  }, [])
+  }, [t])
 
   function removeMedia(index: number) {
     setMediaFiles(prev => {
@@ -146,11 +154,11 @@ export function PostEditor({ post, profileId, userId, originalLocale }: Props) {
       const data = await res.json()
       if (!res.ok) {
         if (data.error === 'insufficient_ai_credits') {
-          toast.error('Créditos de IA insuficientes.', {
-            action: { label: 'Ver planos', onClick: () => router.push('/planos') },
+          toast.error(t('insufficientAiCredits'), {
+            action: { label: t('viewPlans'), onClick: () => router.push('/planos') },
           })
         } else {
-          toast.error('Erro ao traduzir. Tente novamente.')
+          toast.error(t('translateError'))
         }
         return
       }
@@ -160,13 +168,13 @@ export function PostEditor({ post, profileId, userId, originalLocale }: Props) {
         setTranslationSources((prev) => ({ ...prev, [locale]: 'ai' }))
       }
     } catch {
-      toast.error('Erro ao traduzir. Tente novamente.')
+      toast.error(t('translateError'))
     }
   }
 
   function handleSave(isDraft: boolean) {
     if (!content.trim() && !mediaFiles.length && !existingUrls.length) {
-      toast.error('Adicione texto ou mídia antes de salvar.')
+      toast.error(t('emptyError'))
       return
     }
 
@@ -185,6 +193,7 @@ export function PostEditor({ post, profileId, userId, originalLocale }: Props) {
           content,
           mediaUrls,
           isDraft,
+          projectId,
           translations: Object.fromEntries(
             Object.entries(translations).map(([locale, text]) => [
               locale,
@@ -193,11 +202,12 @@ export function PostEditor({ post, profileId, userId, originalLocale }: Props) {
           ),
         })
 
-        toast.success(isDraft ? 'Rascunho salvo.' : 'Publicado!')
-        router.push('/dashboard/publicacoes')
+        toast.success(isDraft ? t('draftSaved') : post?.id ? t('updated') : t('published'))
         router.refresh()
+        if (onSaved) onSaved()
+        else router.push('/dashboard/publicacoes')
       } catch (err) {
-        toast.error('Erro ao salvar. Tente novamente.')
+        toast.error(t('saveError'))
         console.error(err)
       } finally {
         setUploading(false)
@@ -207,23 +217,33 @@ export function PostEditor({ post, profileId, userId, originalLocale }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Content */}
-      <div className="space-y-2">
-        <Label>Texto</Label>
-        <LocaleContentTabs
-          originalLocale={effectiveOriginalLocale}
-          preferredLocale={originalLocale}
-          originalText={content}
-          onOriginalChange={setContent}
-          translations={translations}
-          onTranslationChange={(locale, value) => {
-            setTranslations((prev) => ({ ...prev, [locale]: value }))
-            setTranslationSources((prev) => ({ ...prev, [locale]: 'human' }))
-          }}
-          onTranslateWithAi={handleTranslateWithAi}
-          originalPlaceholder="Compartilhe o que Deus está fazendo..."
-        />
+      {/* Header */}
+      <div className="flex items-center gap-2.5">
+        <Avatar className="h-9 w-9 shrink-0">
+          <AvatarImage src={avatarUrl ?? ''} alt={displayName} />
+          <AvatarFallback className="text-xs">{getInitials(displayName)}</AvatarFallback>
+        </Avatar>
+        <p className="text-sm font-medium text-muted-foreground">{t('postingAs', { name: displayName })}</p>
       </div>
+
+      {/* Content */}
+      <LocaleContentTabs
+        originalLocale={effectiveOriginalLocale}
+        preferredLocale={originalLocale}
+        originalText={content}
+        onOriginalChange={setContent}
+        translations={translations}
+        onTranslationChange={(locale, value) => {
+          setTranslations((prev) => ({ ...prev, [locale]: value }))
+          setTranslationSources((prev) => ({ ...prev, [locale]: 'human' }))
+        }}
+        onTranslateWithAi={handleTranslateWithAi}
+        originalPlaceholder={t('placeholder')}
+        textareaClassName="border-0 px-0 shadow-none focus-visible:ring-0 text-base min-h-24"
+      />
+
+      {/* Project link */}
+      <PostEditorProjectPicker profileId={profileId} value={projectId} onChange={setProjectId} />
 
       {/* Media error */}
       {mediaError && (
@@ -257,20 +277,20 @@ export function PostEditor({ post, profileId, userId, originalLocale }: Props) {
       {/* Upload progress */}
       {uploading && (
         <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">Enviando mídia... {uploadProgress}%</p>
+          <p className="text-xs text-muted-foreground">{t('uploadingMedia', { progress: uploadProgress })}</p>
           <Progress value={uploadProgress} className="h-1.5" />
         </div>
       )}
 
       {/* Post type badge */}
-      <div className="flex items-center gap-2">
-        <Badge variant="outline" className="text-xs">{postType}</Badge>
-        {mediaFiles.length > 0 && (
+      {mediaFiles.length > 0 && (
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs">{postType}</Badge>
           <span className="text-xs text-muted-foreground">
             {mediaFiles.map(m => formatFileSize(m.file.size)).join(', ')}
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* File input */}
       <input
@@ -282,21 +302,22 @@ export function PostEditor({ post, profileId, userId, originalLocale }: Props) {
         onChange={(e) => handleFileSelect(e.target.files)}
       />
 
-      {/* Actions */}
-      <div className="flex items-center gap-2 pt-2">
+      {/* Toolbar */}
+      <div className="flex items-center gap-2 pt-2 border-t">
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="icon"
           onClick={() => fileInputRef.current?.click()}
-          title="Adicionar imagem"
+          title={t('addImage')}
+          className="mt-2"
         >
           <ImagePlus className="h-4 w-4" />
         </Button>
 
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="sm"
           onClick={() => {
             if (fileInputRef.current) {
@@ -305,26 +326,27 @@ export function PostEditor({ post, profileId, userId, originalLocale }: Props) {
               fileInputRef.current.accept = 'image/*,video/*'
             }
           }}
-          className="gap-1.5"
+          className="gap-1.5 mt-2"
+          title={t('addVideo')}
         >
           <Video className="h-4 w-4" />
-          <span className="text-xs text-muted-foreground">Máx {VIDEO_MAX_SIZE_MB}MB</span>
+          <span className="text-xs text-muted-foreground">{t('videoMaxSize', { size: VIDEO_MAX_SIZE_MB })}</span>
         </Button>
 
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex gap-2 mt-2">
           <Button
             variant="outline"
             onClick={() => handleSave(true)}
             disabled={saving}
           >
-            Salvar rascunho
+            {t('saveDraft')}
           </Button>
           <Button
             onClick={() => handleSave(false)}
             disabled={saving}
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Publicar
+            {post?.id ? t('saveEdit') : t('publish')}
           </Button>
         </div>
       </div>

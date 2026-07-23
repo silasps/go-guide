@@ -12,15 +12,13 @@ import { usePendingAction } from '@/hooks/use-pending-action'
 interface Props {
   initialPosts: PostWithProfile[]
   initialCursor: string | null
-  followedProfileIds: string[]
   visitorLocale: Locale
 }
 
-export function FeedList({ initialPosts, initialCursor, followedProfileIds, visitorLocale }: Props) {
+export function FeedList({ initialPosts, initialCursor, visitorLocale }: Props) {
   const t = useTranslations('Feed')
   const [posts, setPosts] = useState(initialPosts)
   const [cursor, setCursor] = useState(initialCursor)
-  const followedSet = new Set(followedProfileIds)
   const { isPending, run } = usePendingAction()
 
   function loadMore() {
@@ -34,7 +32,7 @@ export function FeedList({ initialPosts, initialCursor, followedProfileIds, visi
   return (
     <div className="space-y-4">
       {posts.map((post) => (
-        <FeedPostCard key={post.id} post={post} visitorLocale={visitorLocale} isFollowing={followedSet.has(post.profile_id)} />
+        <FeedPostCard key={post.id} post={post} visitorLocale={visitorLocale} />
       ))}
 
       {cursor && (

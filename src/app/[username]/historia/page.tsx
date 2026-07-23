@@ -2,10 +2,6 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { HistoryView } from '@/components/profile/history-view'
 import { ProfileHeader } from '@/components/profile/profile-header'
-import Link from 'next/link'
-import { buttonVariants } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-import { ArrowLeft } from 'lucide-react'
 
 interface Props { params: Promise<{ username: string }> }
 
@@ -27,16 +23,33 @@ export default async function HistoriaPage({ params }: Props) {
     .eq('profile_id', profile.id)
     .order('order_index')
 
+  const { count: postsCount } = await supabase
+    .from('posts')
+    .select('id', { count: 'exact', head: true })
+    .eq('profile_id', profile.id)
+    .eq('is_draft', false)
+
+  const { count: projectsCount } = await supabase
+    .from('highlights')
+    .select('id', { count: 'exact', head: true })
+    .eq('profile_id', profile.id)
+    .eq('status', 'active')
+
+  const { count: achievementsCount } = await supabase
+    .from('highlights')
+    .select('id', { count: 'exact', head: true })
+    .eq('profile_id', profile.id)
+    .eq('status', 'completed')
+
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-2xl mx-auto pb-20">
-        <div className="px-4 pt-4">
-          <Link href={`/${username}`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5 -ml-2 mb-4')}>
-            <ArrowLeft className="h-4 w-4" />
-            Voltar
-          </Link>
-        </div>
-        <ProfileHeader profile={profile} />
+      <div className="max-w-2xl mx-auto px-4 py-8 pb-20 space-y-6">
+        <ProfileHeader
+          profile={profile}
+          postsCount={postsCount ?? 0}
+          projectsCount={projectsCount ?? 0}
+          achievementsCount={achievementsCount ?? 0}
+        />
         <HistoryView blocks={blocks ?? []} />
       </div>
     </div>

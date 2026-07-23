@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
-import { Profile } from '@/types/database'
+import { Profile, UserRole } from '@/types/database'
 import { AccountTypeSelector, useAccountTypeCopy } from '@/components/profile/account-type-selector'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,10 +12,13 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { Loader2, Check, ArrowRight } from 'lucide-react'
+import { Loader2, Check, ArrowRight, HandHeart, Compass } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const CURRENCIES = ['BRL', 'USD', 'EUR', 'GBP', 'CHF', 'CAD', 'AUD']
+
+type Step = 'role' | 'profile' | 'payment' | 'project' | 'summary' | 'partnerDone'
+const MISSIONARY_STEPS: Step[] = ['profile', 'payment', 'project', 'summary']
 
 interface Props {
   profile: Profile
@@ -25,7 +28,11 @@ interface Props {
 export function OnboardingWizard({ profile, hasPaymentMethod }: Props) {
   const t = useTranslations('Onboarding')
   const router = useRouter()
-  const [step, setStep] = useState(1)
+  // Quem chega aqui já como 'missionary' veio do fluxo "virar missionário"
+  // (becomeMissionary() já fez o flip antes de redirecionar) — pula a
+  // pergunta de papel e cai direto na configuração de perfil.
+  const [step, setStep] = useState<Step>(profile.user_role === 'missionary' ? 'profile' : 'role')
+  const [roleSaving, setRoleSaving] = useState(false)
 
   // Passo 1 — perfil
   const [displayName, setDisplayName] = useState(profile.display_name)
@@ -55,6 +62,16 @@ export function OnboardingWizard({ profile, hasPaymentMethod }: Props) {
   const [saving, setSaving] = useState(false)
 
   const STEP_LABELS = [t('stepLabel1'), t('stepLabel2'), t('stepLabel3'), t('stepLabel4')]
+  const missionaryStepIndex = MISSIONARY_STEPS.indexOf(step)
+
+  async function chooseRole(role: UserRole) {
+    setRoleSaving(true)
+    const supabase = createClient()
+    const { error } = await supabase.from('profiles').update({ user_role: role }).eq('id', profile.id)
+    setRoleSaving(false)
+    if (error) { toast.error(t('errorSavingProfile')); return }
+    setStep(role === 'partner' ? 'partnerDone' : 'profile')
+  }
 
   function handleUsernameChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '')
@@ -99,7 +116,7 @@ export function OnboardingWizard({ profile, hasPaymentMethod }: Props) {
     }).eq('id', profile.id)
     setSaving(false)
     if (error) { toast.error(t('errorSavingProfile')); return }
-    setStep(2)
+    setStep('payment')
   }
 
   async function handlePaymentContinue() {
@@ -117,11 +134,11 @@ export function OnboardingWizard({ profile, hasPaymentMethod }: Props) {
       if (error) { toast.error(t('errorSavingPayment')); return }
       setPaymentConfigured(true)
     }
-    setStep(3)
+    setStep('project')
   }
 
   async function handleProjectContinue() {
-    if (!projectTitle.trim()) { setStep(4); return }
+    if (!projectTitle.trim()) { setStep('summary'); return }
     setSaving(true)
     const res = await fetch('/api/highlights', {
       method: 'POST',
@@ -148,7 +165,7 @@ export function OnboardingWizard({ profile, hasPaymentMethod }: Props) {
     setSaving(false)
     if (!res.ok) { toast.error(t('errorCreatingProject')); return }
     setProjectCreated(true)
-    setStep(4)
+    setStep('summary')
   }
 
   function finish() {
@@ -158,18 +175,71 @@ export function OnboardingWizard({ profile, hasPaymentMethod }: Props) {
 
   return (
     <div className="w-full max-w-lg">
-      {/* Progresso */}
-      <div className="flex items-center gap-2 mb-6">
-        {STEP_LABELS.map((label, i) => (
-          <div key={label} className="flex-1">
-            <div className={cn('h-1.5 rounded-full transition-colors', i + 1 <= step ? 'bg-primary' : 'bg-muted')} />
-            <p className={cn('text-[11px] mt-1.5 hidden sm:block', i + 1 === step ? 'text-foreground font-medium' : 'text-muted-foreground')}>{label}</p>
-          </div>
-        ))}
-      </div>
+      {/* Progresso — só aparece na trilha de missionário (perfil/recebimento/projeto/concluído);
+          a escolha de papel e o fim de parceiro são telas fora dessa trilha. */}
+      {missionaryStepIndex >= 0 && (
+        <div className="flex items-center gap-2 mb-6">
+          {STEP_LABELS.map((label, i) => (
+            <div key={label} className="flex-1">
+              <div className={cn('h-1.5 rounded-full transition-colors', i <= missionaryStepIndex ? 'bg-primary' : 'bg-muted')} />
+              <p className={cn('text-[11px] mt-1.5 hidden sm:block', i === missionaryStepIndex ? 'text-foreground font-medium' : 'text-muted-foreground')}>{label}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       <Card>
-        {step === 1 && (
+        {step === 'role' && (
+          <>
+            <CardHeader>
+              <CardTitle>{t('roleStepTitle')}</CardTitle>
+              <CardDescription>{t('roleStepDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <button
+                type="button"
+                disabled={roleSaving}
+                onClick={() => chooseRole('partner')}
+                className="w-full flex items-start gap-3 p-4 rounded-xl border text-left transition-colors border-border hover:border-primary hover:bg-primary/5 disabled:opacity-60"
+              >
+                <HandHeart className="h-5 w-5 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium">{t('rolePartnerLabel')}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t('rolePartnerDescription')}</p>
+                </div>
+              </button>
+              <button
+                type="button"
+                disabled={roleSaving}
+                onClick={() => chooseRole('missionary')}
+                className="w-full flex items-start gap-3 p-4 rounded-xl border text-left transition-colors border-border hover:border-primary hover:bg-primary/5 disabled:opacity-60"
+              >
+                <Compass className="h-5 w-5 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium">{t('roleMissionaryLabel')}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t('roleMissionaryDescription')}</p>
+                </div>
+              </button>
+              {roleSaving && <Loader2 className="h-4 w-4 animate-spin mx-auto" />}
+            </CardContent>
+          </>
+        )}
+
+        {step === 'partnerDone' && (
+          <>
+            <CardHeader>
+              <CardTitle>{t('partnerDoneTitle')}</CardTitle>
+              <CardDescription>{t('partnerDoneDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" onClick={finish}>
+                {t('goToDashboard')}
+              </Button>
+            </CardContent>
+          </>
+        )}
+
+        {step === 'profile' && (
           <>
             <CardHeader>
               <CardTitle>{t('step1Title')}</CardTitle>
@@ -234,7 +304,7 @@ export function OnboardingWizard({ profile, hasPaymentMethod }: Props) {
           </>
         )}
 
-        {step === 2 && (
+        {step === 'payment' && (
           <>
             <CardHeader>
               <CardTitle>{t('step2Title')}</CardTitle>
@@ -253,7 +323,7 @@ export function OnboardingWizard({ profile, hasPaymentMethod }: Props) {
               ))}
               <p className="text-xs text-muted-foreground">{t('step2MoreOptionsHint')}</p>
               <div className="flex gap-2">
-                <Button variant="ghost" className="flex-1" disabled={saving} onClick={() => setStep(3)}>
+                <Button variant="ghost" className="flex-1" disabled={saving} onClick={() => setStep('project')}>
                   {t('skipForNow')}
                 </Button>
                 <Button className="flex-1" disabled={saving} onClick={handlePaymentContinue}>
@@ -265,7 +335,7 @@ export function OnboardingWizard({ profile, hasPaymentMethod }: Props) {
           </>
         )}
 
-        {step === 3 && (
+        {step === 'project' && (
           <>
             <CardHeader>
               <CardTitle>{t('step3Title')}</CardTitle>
@@ -297,7 +367,7 @@ export function OnboardingWizard({ profile, hasPaymentMethod }: Props) {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button variant="ghost" className="flex-1" disabled={saving} onClick={() => setStep(4)}>
+                <Button variant="ghost" className="flex-1" disabled={saving} onClick={() => setStep('summary')}>
                   {t('skipForNow')}
                 </Button>
                 <Button className="flex-1" disabled={saving} onClick={handleProjectContinue}>
@@ -309,7 +379,7 @@ export function OnboardingWizard({ profile, hasPaymentMethod }: Props) {
           </>
         )}
 
-        {step === 4 && (
+        {step === 'summary' && (
           <>
             <CardHeader>
               <CardTitle>{t('step4Title')}</CardTitle>

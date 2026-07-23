@@ -79,6 +79,11 @@ export function HighlightsList({ highlights: initial, basePath = '/dashboard/des
                 <Badge variant={h.status === 'active' ? 'default' : 'secondary'} className="text-xs shrink-0">
                   {h.status === 'active' ? 'Ativo' : 'Oculto'}
                 </Badge>
+                {pct === 100 && (
+                  <Badge variant="success" className="text-xs shrink-0">
+                    Meta atingida 🎉
+                  </Badge>
+                )}
               </div>
               {pct !== null && (
                 <div className="space-y-0.5">

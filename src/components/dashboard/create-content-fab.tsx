@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { UserRole } from '@/types/database'
+import { useComposer } from '@/components/dashboard/post-composer-provider'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -18,6 +19,7 @@ interface Props {
 // FAB estilo X/Twitter — parceiros não criam post/projeto, só missionários.
 export function CreateContentFab({ role }: Props) {
   const t = useTranslations('CreateContent')
+  const { openComposer } = useComposer()
   if (role === 'partner') return null
 
   return (
@@ -30,7 +32,7 @@ export function CreateContentFab({ role }: Props) {
           <Plus className="h-6 w-6" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" side="top" className="w-48">
-          <DropdownMenuItem render={<Link href="/dashboard/publicacoes/nova" />} className="gap-2">
+          <DropdownMenuItem onClick={() => openComposer()} className="gap-2">
             <FileText className="h-4 w-4" />
             {t('newPost')}
           </DropdownMenuItem>

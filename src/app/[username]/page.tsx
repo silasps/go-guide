@@ -9,6 +9,7 @@ import { ProfileCTA } from '@/components/profile/profile-cta'
 import { ProfileOwnerActions } from '@/components/profile/profile-owner-actions'
 import { PublicationsFeed } from '@/components/profile/publications-feed'
 import { getProfileViewerContext } from '@/lib/profile/viewer-context'
+import { getFollowCounts } from '@/app/dashboard/feed/follows-list-actions'
 
 interface Props {
   params: Promise<{ username: string }>
@@ -82,20 +83,28 @@ export default async function ProfilePage({ params }: Props) {
     .eq('profile_id', profile.id)
     .eq('status', 'completed')
 
-  const { data: posts } = await supabase
+  const { data: posts, count: postsCount } = await supabase
     .from('posts')
-    .select('*, highlight:highlights(title, slug)')
+    .select('*, highlight:highlights(title, slug, cover_url)', { count: 'exact' })
     .eq('profile_id', profile.id)
     .eq('is_draft', false)
     .order('published_at', { ascending: false })
     .limit(20)
 
   const visitorLocale = (await getLocale()) as Locale
+  const followCounts = profile.user_role === 'missionary' ? await getFollowCounts(profile.id) : null
 
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-xl mx-auto px-4 py-8 space-y-8">
-        <ProfileHeader profile={profile} />
+        <ProfileHeader
+          profile={profile}
+          postsCount={postsCount ?? 0}
+          projectsCount={projects?.length ?? 0}
+          achievementsCount={completedCount ?? 0}
+          followersCount={followCounts?.followers}
+          followingCount={followCounts?.following}
+        />
         {canEdit ? (
           <ProfileOwnerActions profile={profile} />
         ) : (

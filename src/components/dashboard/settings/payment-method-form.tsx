@@ -8,6 +8,7 @@ import { usePendingAction } from '@/hooks/use-pending-action'
 import { PaymentMethod, PaymentMethodType } from '@/types/database'
 import { MANUAL_PAYMENT_METHOD_CATALOG, PAYMENT_METHOD_GROUPS, getPaymentMethodEntry } from '@/lib/payment-methods/catalog'
 import { formatBankDetails, parseBankDetails } from '@/lib/payment-methods/bank-details'
+import { CURRENCIES } from '@/lib/currency-mask'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -30,6 +31,7 @@ export function PaymentMethodForm({ profileId, method, nextSortOrder = 0 }: Prop
   const [open, setOpen] = useState(false)
   const { isPending: saving, run } = usePendingAction()
   const [type, setType] = useState<PaymentMethodType>(method?.type ?? 'pix')
+  const [currency, setCurrency] = useState(method?.currency ?? 'BRL')
   const [label, setLabel] = useState(method?.label ?? '')
   const [value, setValue] = useState(method?.value ?? '')
   const [details, setDetails] = useState(method?.details ?? '')
@@ -38,6 +40,21 @@ export function PaymentMethodForm({ profileId, method, nextSortOrder = 0 }: Prop
   const entry = getPaymentMethodEntry(type)
   const isOther = type === 'other'
   const isBank = type === 'bank_transfer'
+
+  function resetForm() {
+    setType('pix')
+    setCurrency('BRL')
+    setLabel('')
+    setValue('')
+    setDetails('')
+    setBankFields(parseBankDetails(null))
+    setIsActive(true)
+  }
+
+  function handleOpenChange(nextOpen: boolean) {
+    setOpen(nextOpen)
+    if (nextOpen && !method) resetForm()
+  }
 
   function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -48,6 +65,7 @@ export function PaymentMethodForm({ profileId, method, nextSortOrder = 0 }: Prop
       const supabase = createClient()
       const payload = {
         type,
+        currency,
         label: label.trim() || null,
         value: value.trim(),
         details: isBank ? (formatBankDetails(bankFields) || null) : entry.hasDetails ? (details.trim() || null) : null,
@@ -73,7 +91,7 @@ export function PaymentMethodForm({ profileId, method, nextSortOrder = 0 }: Prop
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger render={
         <Button variant={method ? 'outline' : 'default'} size={method ? 'sm' : 'default'} className="gap-2">
           {!method && <Plus className="h-4 w-4" />}
@@ -99,6 +117,16 @@ export function PaymentMethodForm({ profileId, method, nextSortOrder = 0 }: Prop
                   ))}
                 </optgroup>
               ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label>{t('currencyLabel')}</Label>
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
+            >
+              {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div className="space-y-2">

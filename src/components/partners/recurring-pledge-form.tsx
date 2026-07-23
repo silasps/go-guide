@@ -12,6 +12,10 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Loader2, CheckCircle } from 'lucide-react'
+import { toMasked, fromMasked, CURRENCIES } from '@/lib/currency-mask'
+import { PaymentMethodInstructions } from './payment-method-instructions'
+
+type PaymentOption = { id: string; method: PledgePaymentMethod; label: string; value: string; details: string | null; currency: string }
 
 interface SessionUser {
   id: string
@@ -23,7 +27,7 @@ interface Props {
   profileId: string
   missionaryName: string
   currency: string
-  paymentOptions: { method: PledgePaymentMethod; label: string; value: string }[]
+  paymentOptions: PaymentOption[]
   stripeAvailable: boolean
   user: SessionUser | null
   returnPath: string // caminho atual (com highlight_id se houver), usado no redirect de login/cadastro
@@ -35,10 +39,16 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
   const [done, setDone] = useState(false)
   const [showManual, setShowManual] = useState(!stripeAvailable)
   const [amount, setAmount] = useState('')
-  const [method, setMethod] = useState<PledgePaymentMethod>(paymentOptions[0]?.method ?? 'other')
+  const [optionId, setOptionId] = useState(paymentOptions[0]?.id ?? 'other')
   const [reminderOptIn, setReminderOptIn] = useState(true)
   const { isPending: startingCheckout, run: runCheckout } = usePendingAction()
   const { isPending: savingManual, run: runManual } = usePendingAction()
+
+  const [freeCurrency, setFreeCurrency] = useState(currency)
+  const selectedOption = paymentOptions.find(o => o.id === optionId)
+  const method = selectedOption?.method ?? 'other'
+  const isManualConfigured = !!selectedOption?.value.trim()
+  const activeCurrency = showManual ? (isManualConfigured ? selectedOption!.currency : freeCurrency) : currency
 
   const redirectParam = encodeURIComponent(`${returnPath}${returnPath.includes('?') ? '&' : '?'}choice=financial_ongoing`)
 
@@ -74,7 +84,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
   }
 
   function handleStripeCheckout() {
-    const parsedAmount = parseFloat(amount.replace(',', '.'))
+    const parsedAmount = parseFloat(fromMasked(amount, activeCurrency))
     if (!parsedAmount || parsedAmount <= 0) { toast.error(t('errorAmount')); return }
     runCheckout(true, async () => {
       const res = await fetch('/api/stripe/checkout-recurring', {
@@ -90,7 +100,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
 
   function handleManualSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    const parsedAmount = parseFloat(amount.replace(',', '.'))
+    const parsedAmount = parseFloat(fromMasked(amount, activeCurrency))
     if (!parsedAmount || parsedAmount <= 0) { toast.error(t('errorAmount')); return }
     const currentUser = user
     if (!currentUser) return
@@ -123,7 +133,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
         partner_id: partnerId,
         reporter_user_id: currentUser.id,
         amount: parsedAmount,
-        currency,
+        currency: activeCurrency,
         payment_method: method,
         highlight_id: highlightId ?? null,
         reminder_opt_in: reminderOptIn,
@@ -142,14 +152,30 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
         <CardTitle className="text-base">{t('title', { name: missionaryName })}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+          {t('linkingAs', { email: user.email ?? '', name: missionaryName })}
+        </p>
         <div className="space-y-2">
-          <Label>{t('amountLabel', { currency })} *</Label>
-          <Input inputMode="decimal" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(e.target.value)} placeholder="0,00" required />
+          <Label className="flex items-center gap-1.5">
+            {t('amountLabelPlain')} *
+            {(!showManual || isManualConfigured) ? (
+              <span className="text-muted-foreground font-normal">({activeCurrency})</span>
+            ) : (
+              <select
+                value={freeCurrency}
+                onChange={(e) => setFreeCurrency(e.target.value)}
+                className="h-5 rounded border border-input bg-transparent px-1 text-xs font-normal outline-none focus-visible:border-ring"
+              >
+                {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            )}
+          </Label>
+          <Input inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, activeCurrency))} placeholder="0,00" required />
         </div>
 
         {stripeAvailable && !showManual && (
           <div className="space-y-2">
-            <Button type="button" className="w-full" onClick={handleStripeCheckout} disabled={startingCheckout}>
+            <Button type="button" variant="support" className="w-full" onClick={handleStripeCheckout} disabled={startingCheckout}>
               {startingCheckout && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t('stripeCta')}
             </Button>
@@ -164,27 +190,30 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
             <p className="text-xs text-muted-foreground pt-3">{t('manualDescription')}</p>
             <div className="space-y-2">
               <Label>{t('methodLabel')}</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <select
+                value={optionId}
+                onChange={(e) => { setOptionId(e.target.value); setAmount('') }}
+                className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
+              >
                 {paymentOptions.map(opt => (
-                  <button
-                    key={opt.method}
-                    type="button"
-                    onClick={() => setMethod(opt.method)}
-                    className={`py-2 px-3 rounded-lg border text-sm text-left transition-colors ${method === opt.method ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border text-muted-foreground hover:border-foreground'}`}
-                  >
-                    {opt.label}
-                  </button>
+                  <option key={opt.id} value={opt.id}>{opt.label}{opt.value.trim() ? ` (${opt.currency})` : ''}</option>
                 ))}
-              </div>
-              {paymentOptions.find(o => o.method === method)?.value && (
-                <p className="text-xs font-mono bg-muted rounded-lg px-3 py-2 select-all">{paymentOptions.find(o => o.method === method)?.value}</p>
+              </select>
+              {selectedOption && (
+                <PaymentMethodInstructions
+                  method={selectedOption.method}
+                  label={selectedOption.label}
+                  value={selectedOption.value}
+                  details={selectedOption.details}
+                  missionaryName={missionaryName}
+                />
               )}
             </div>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={reminderOptIn} onChange={(e) => setReminderOptIn(e.target.checked)} className="rounded border-input" />
               {t('reminderOptInLabel')}
             </label>
-            <Button type="submit" className="w-full" disabled={savingManual}>
+            <Button type="submit" variant="support" className="w-full" disabled={savingManual}>
               {savingManual && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t('manualSubmit')}
             </Button>

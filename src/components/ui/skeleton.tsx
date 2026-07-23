@@ -92,6 +92,43 @@ function SkList({ n = 6 }: { n?: number }) {
   )
 }
 
+/** Faixa horizontal de stories (projetos de quem eu sigo) */
+function SkStories({ n = 6 }: { n?: number }) {
+  return (
+    <div className="flex gap-4 overflow-x-auto pb-1 -mx-4 px-4">
+      {Array.from({ length: n }).map((_, i) => (
+        <div key={i} className="flex flex-col items-center gap-1.5 w-[72px] shrink-0">
+          <Sk className="h-16 w-16 rounded-full" />
+          <Sk className="h-2.5 w-12" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** Cards de post do feed (avatar + mídia + texto) */
+function SkFeedPosts({ n = 3 }: { n?: number }) {
+  return (
+    <div className="space-y-4">
+      {Array.from({ length: n }).map((_, i) => (
+        <div key={i} className="p-4 rounded-2xl border bg-card space-y-3">
+          <div className="flex items-center gap-2.5">
+            <Sk className="h-8 w-8 rounded-full shrink-0" />
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <Sk className="h-3.5 w-28" />
+              <Sk className="h-3 w-20" />
+            </div>
+            <Sk className="h-7 w-16 rounded-lg shrink-0" />
+          </div>
+          <Sk className="aspect-video w-full rounded-xl" />
+          <Sk className="h-3 w-full" />
+          <Sk className="h-3 w-2/3" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /** Formulário (campos empilhados) */
 function SkForm({ n = 4 }: { n?: number }) {
   return (
@@ -107,4 +144,4 @@ function SkForm({ n = 4 }: { n?: number }) {
   )
 }
 
-export { Sk, SkText, SkHeader, SkTable, SkStatCards, SkCardGrid, SkList, SkForm }
+export { Sk, SkText, SkHeader, SkTable, SkStatCards, SkCardGrid, SkList, SkForm, SkStories, SkFeedPosts }

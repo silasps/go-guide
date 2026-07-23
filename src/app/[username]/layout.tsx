@@ -27,11 +27,18 @@ export default async function UsernameLayout({ children, params }: Props) {
     hasTrajectory = (count ?? 0) > 0
   }
 
-  const { canEdit } = await getProfileViewerContext(username)
+  const { canEdit, viewerUserId } = await getProfileViewerContext(username)
 
   return (
     <>
-      <ProfileTabs username={username} hasTrajectory={hasTrajectory} canEdit={canEdit} ownerProfile={profile ?? null} />
+      <ProfileTabs
+        username={username}
+        hasTrajectory={hasTrajectory}
+        isMissionary={profile?.user_role === 'missionary'}
+        canEdit={canEdit}
+        viewerUserId={viewerUserId}
+        ownerProfile={profile ?? null}
+      />
       {children}
     </>
   )

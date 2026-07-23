@@ -5,15 +5,26 @@ import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Progress } from '@/components/ui/progress'
+import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { buttonVariants } from '@/components/ui/button'
 import { cn, formatCurrency, getInitials } from '@/lib/utils'
 import { resolveLocalizedText } from '@/lib/i18n/resolve-content-locale'
 import type { Locale } from '@/i18n/config'
-import { CheckCircle2, Circle, ArrowLeft, Users } from 'lucide-react'
+import { CheckCircle2, Circle, Users } from 'lucide-react'
 import { BudgetBreakdown } from '@/components/highlights/budget-breakdown'
 import { FundingProjectionCard } from '@/components/highlights/funding-projection-card'
 import type { PaymentMethodType } from '@/types/database'
+import { getProfileViewerContext } from '@/lib/profile/viewer-context'
+import { CopyableValue } from '@/components/partners/payment-method-instructions'
+import { CoverTitleEditSection } from '@/components/highlights/cover-title-edit-section'
+import { DescriptionEditSection } from '@/components/highlights/description-edit-section'
+import { SupportTypesEditSection } from '@/components/highlights/support-types-edit-section'
+import { FinancialEditSection } from '@/components/highlights/financial-edit-section'
+import { MilestonesEditSection } from '@/components/highlights/milestones-edit-section'
+import { LetterEditSection } from '@/components/highlights/letter-edit-section'
+import { DatesStatusEditSection } from '@/components/highlights/dates-status-edit-section'
+import type { HighlightSnapshot } from '@/components/highlights/section-types'
 
 interface Props {
   params: Promise<{ username: string; slug: string }>
@@ -57,6 +68,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 const SUPPORT_TYPES = [
   {
     key: 'financial',
+    choice: 'financial_once',
     icon: '💰',
     title: 'Apoio financeiro',
     description: 'Faça uma oferta pontual ou seja parceiro fixo',
@@ -64,6 +76,7 @@ const SUPPORT_TYPES = [
   },
   {
     key: 'prayer',
+    choice: 'prayer',
     icon: '🙏',
     title: 'Oração',
     description: 'Comprometa-se a orar regularmente por este projeto',
@@ -71,6 +84,7 @@ const SUPPORT_TYPES = [
   },
   {
     key: 'ambassador',
+    choice: 'ambassador',
     icon: '📣',
     title: 'Divulgue e traga apoiadores',
     description: 'Compartilhe com sua rede e ajude este projeto a crescer',
@@ -78,6 +92,7 @@ const SUPPORT_TYPES = [
   },
   {
     key: 'volunteer',
+    choice: 'volunteer',
     icon: '🤝',
     title: 'Voluntário',
     description: 'Ofereça apoio pessoal ou com suas habilidades',
@@ -85,6 +100,7 @@ const SUPPORT_TYPES = [
   },
   {
     key: 'ongoing',
+    choice: 'financial_ongoing',
     icon: '🔄',
     title: 'Parceria contínua',
     description: 'Acompanhe esta missão no longo prazo',
@@ -105,6 +121,8 @@ export default async function ProjetoPublicoPage({ params }: Props) {
   if (!profile) notFound()
   if (profile.privacy_mode === 'stealth') notFound()
 
+  const { canEdit } = await getProfileViewerContext(username)
+
   const { data: paymentMethods } = await supabase
     .from('payment_methods')
     .select('*')
@@ -118,7 +136,8 @@ export default async function ProjetoPublicoPage({ params }: Props) {
     .find(Boolean)
 
   const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)
-  const projectQuery = supabase.from('highlights').select('*').eq('profile_id', profile.id).eq('status', 'active')
+  let projectQuery = supabase.from('highlights').select('*').eq('profile_id', profile.id)
+  if (!canEdit) projectQuery = projectQuery.eq('status', 'active')
   const { data: project } = await (isUUID
     ? projectQuery.or(`slug.eq.${slug},id.eq.${slug}`)
     : projectQuery.eq('slug', slug)
@@ -157,47 +176,86 @@ export default async function ProjetoPublicoPage({ params }: Props) {
     return true
   })
 
+  const snapshot: HighlightSnapshot = {
+    title: project.title,
+    description: project.description ?? '',
+    goalTypes: types,
+    category: project.category ?? [],
+    goalAmount: project.goal_amount,
+    currentAmount: project.current_amount,
+    currency: project.currency,
+    coverUrl: project.cover_url,
+    coverPosition: project.cover_position,
+    tripStartDate: project.trip_start_date,
+    fundingDeadline: project.funding_deadline,
+    scripture: project.scripture ?? '',
+    letter: project.letter ?? '',
+    status: project.status,
+    milestones: (milestones ?? []).map(m => ({ id: m.id, title: m.title, is_completed: m.is_completed })),
+    budgetCategories: (budgetCategories ?? []).map(b => ({ category_type: b.category_type, custom_label: b.custom_label, target_amount: b.target_amount })),
+  }
+  const sectionProps = { canEdit, snapshot, highlightId: project.id, profileId: profile.id }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
 
-        {/* Voltar */}
-        <Link href={`/${username}`} className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5 -ml-2 text-muted-foreground')}>
-          <ArrowLeft className="h-4 w-4" />
-          {profile.display_name}
-        </Link>
+        <CoverTitleEditSection {...sectionProps}>
+          <>
+            {/* Hero: capa 16:9 + avatar sobreposto */}
+            {project.cover_url && (
+              <div className="relative aspect-video rounded-2xl overflow-hidden">
+                <Image src={project.cover_url} alt={project.title} fill className="object-cover" style={{ objectPosition: project.cover_position ?? '50% 50%' }} />
+                <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-black/40 backdrop-blur-sm rounded-full pr-3 py-1">
+                  <Avatar className="h-7 w-7 border-2 border-white/80">
+                    <AvatarImage src={profile.avatar_url ?? ''} alt={profile.display_name} />
+                    <AvatarFallback className="text-[10px]">{getInitials(profile.display_name)}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-white text-xs font-medium">{profile.display_name}</span>
+                </div>
+              </div>
+            )}
 
-        {/* Hero: capa 16:9 + avatar sobreposto */}
-        {project.cover_url && (
-          <div className="relative aspect-video rounded-2xl overflow-hidden">
-            <Image src={project.cover_url} alt={project.title} fill className="object-cover" style={{ objectPosition: project.cover_position ?? '50% 50%' }} />
-            <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-black/40 backdrop-blur-sm rounded-full pr-3 py-1">
-              <Avatar className="h-7 w-7 border-2 border-white/80">
-                <AvatarImage src={profile.avatar_url ?? ''} alt={profile.display_name} />
-                <AvatarFallback className="text-[10px]">{getInitials(profile.display_name)}</AvatarFallback>
-              </Avatar>
-              <span className="text-white text-xs font-medium">{profile.display_name}</span>
+            {/* Cabeçalho */}
+            <div className="space-y-3 mt-3">
+              <h1 className="text-2xl font-bold">{project.title}</h1>
+              {project.scripture && (
+                <p className="text-sm italic text-muted-foreground border-l-2 border-primary/40 pl-3">{project.scripture}</p>
+              )}
             </div>
-          </div>
+          </>
+        </CoverTitleEditSection>
+
+        {(project.description || canEdit) && (
+          <DescriptionEditSection {...sectionProps}>
+            {project.description
+              ? <p className="text-muted-foreground">{project.description}</p>
+              : (canEdit ? <p className="text-sm text-muted-foreground italic">Adicionar descrição...</p> : null)}
+          </DescriptionEditSection>
         )}
 
-        {/* Cabeçalho */}
-        <div className="space-y-3">
-          <h1 className="text-2xl font-bold">{project.title}</h1>
-          {project.scripture && (
-            <p className="text-sm italic text-muted-foreground border-l-2 border-primary/40 pl-3">{project.scripture}</p>
-          )}
-          {project.description && <p className="text-muted-foreground">{project.description}</p>}
-        </div>
+        {canEdit && (
+          <SupportTypesEditSection {...sectionProps}>
+            <div className="flex flex-wrap gap-1.5">
+              {SUPPORT_TYPES.filter(t => types.includes(t.key)).map(t => (
+                <span key={t.key} className="text-xs px-2 py-1 rounded-full border text-muted-foreground">{t.icon} {t.title}</span>
+              ))}
+            </div>
+          </SupportTypesEditSection>
+        )}
 
         {/* Datas + apoiadores */}
-        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-          {project.trip_start_date && (
-            <span className="px-2.5 py-1 rounded-full border">✈️ Viagem em {new Date(project.trip_start_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-          )}
-          {project.funding_deadline && (
-            <span className="px-2.5 py-1 rounded-full border">⏳ Prazo: {new Date(project.funding_deadline).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-          )}
+        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground items-center">
+          <DatesStatusEditSection {...sectionProps}>
+            <>
+              {project.trip_start_date && (
+                <span className="px-2.5 py-1 rounded-full border">✈️ Viagem em {new Date(project.trip_start_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+              )}
+              {project.funding_deadline && (
+                <span className="px-2.5 py-1 rounded-full border">⏳ Prazo: {new Date(project.funding_deadline).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+              )}
+            </>
+          </DatesStatusEditSection>
           {(supporterCount ?? 0) > 0 && (
             <span className="px-2.5 py-1 rounded-full border flex items-center gap-1"><Users className="h-3 w-3" /> {supporterCount} apoiador(es)</span>
           )}
@@ -206,28 +264,35 @@ export default async function ProjetoPublicoPage({ params }: Props) {
         {/* Bloco financeiro em destaque — só aparece quando relevante */}
         {hasFinancial && (
           <div className="rounded-2xl border bg-card p-5 space-y-4">
-            {project.goal_amount && pct !== null && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="font-semibold text-base">{formatCurrency(project.current_amount, project.currency)} arrecadados</span>
-                  <span className="text-muted-foreground">Meta: {formatCurrency(project.goal_amount, project.currency)}</span>
-                </div>
-                <Progress value={pct} className="h-2.5" />
-                <p className="text-xs text-muted-foreground">{pct.toFixed(0)}% da meta atingida</p>
-              </div>
-            )}
+            <FinancialEditSection {...sectionProps}>
+              <>
+                {project.goal_amount && pct !== null && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-semibold text-base">{formatCurrency(project.current_amount, project.currency)} arrecadados</span>
+                      <span className="text-muted-foreground">Meta: {formatCurrency(project.goal_amount, project.currency)}</span>
+                    </div>
+                    <Progress value={pct} className="h-2.5" />
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-muted-foreground">{pct.toFixed(0)}% da meta atingida</p>
+                      {pct >= 100 && <Badge variant="success" className="text-xs">Meta atingida 🎉</Badge>}
+                    </div>
+                  </div>
+                )}
 
-            {budgetCategories && budgetCategories.length > 0 && (
-              <BudgetBreakdown categories={budgetCategories} currency={project.currency} />
-            )}
+                {budgetCategories && budgetCategories.length > 0 && (
+                  <BudgetBreakdown categories={budgetCategories} currency={project.currency} />
+                )}
+              </>
+            </FinancialEditSection>
 
-            <Link href={`/${username}/parceria?highlight_id=${project.id}`} className={cn(buttonVariants({ size: 'lg' }), 'w-full text-base')}>
+            <Link href={`/${username}/parceria?highlight_id=${project.id}&choice=financial_once`} className={cn(buttonVariants({ variant: 'support', size: 'lg' }), 'w-full text-base')}>
               💰 Faça parte deste projeto
             </Link>
             {pixMethod && (
-              <div className="text-center space-y-1">
-                <p className="text-xs text-muted-foreground">Chave PIX para transferência direta</p>
-                <p className="font-mono text-sm font-medium select-all">{pixMethod.value}</p>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground text-center">Chave PIX para transferência direta</p>
+                <CopyableValue value={pixMethod.value} />
               </div>
             )}
           </div>
@@ -252,7 +317,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
               {activeSupportTypes.filter(t => t.key !== 'financial').map(t => (
                 <Link
                   key={t.key}
-                  href={`/${username}/parceria?highlight_id=${project.id}`}
+                  href={`/${username}/parceria?highlight_id=${project.id}&choice=${t.choice}`}
                   className="flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors group"
                 >
                   <span className="text-2xl shrink-0">{t.icon}</span>
@@ -280,7 +345,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
               {activeSupportTypes.map(t => (
                 <Link
                   key={t.key}
-                  href={`/${username}/parceria?highlight_id=${project.id}`}
+                  href={`/${username}/parceria?highlight_id=${project.id}&choice=${t.choice}`}
                   className="flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors group"
                 >
                   <span className="text-2xl shrink-0">{t.icon}</span>
@@ -301,35 +366,47 @@ export default async function ProjetoPublicoPage({ params }: Props) {
         )}
 
         {/* Marcos */}
-        {totalMilestones > 0 && (
+        {(totalMilestones > 0 || canEdit) && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold">Marcos</h2>
-              <span className="text-sm text-muted-foreground">{completedCount}/{totalMilestones} concluídos</span>
+              {totalMilestones > 0 && <span className="text-sm text-muted-foreground">{completedCount}/{totalMilestones} concluídos</span>}
             </div>
-            <ul className="space-y-2">
-              {milestones!.map(m => (
-                <li key={m.id} className="flex items-center gap-2.5 text-sm">
-                  {m.is_completed
-                    ? <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                    : <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
-                  }
-                  <span className={m.is_completed ? 'text-muted-foreground line-through' : ''}>{m.title}</span>
-                </li>
-              ))}
-            </ul>
+            <MilestonesEditSection {...sectionProps}>
+              {totalMilestones > 0 ? (
+                <ul className="space-y-2">
+                  {milestones!.map(m => (
+                    <li key={m.id} className="flex items-center gap-2.5 text-sm">
+                      {m.is_completed
+                        ? <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                        : <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
+                      }
+                      <span className={m.is_completed ? 'text-muted-foreground line-through' : ''}>{m.title}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                canEdit ? <p className="text-sm text-muted-foreground italic">Nenhum marco ainda.</p> : null
+              )}
+            </MilestonesEditSection>
           </div>
         )}
 
         {/* História por trás */}
-        {project.letter && (
+        {(project.letter || canEdit) && (
           <div className="space-y-3">
             <h2 className="font-semibold">A história por trás deste projeto</h2>
-            <div className="prose prose-sm dark:prose-invert max-w-none">
-              {(project.letter as string).split('\n').filter((l: string) => l.trim()).map((para: string, i: number) => (
-                <p key={i} className="text-sm leading-relaxed text-foreground/80 mb-3">{para}</p>
-              ))}
-            </div>
+            <LetterEditSection {...sectionProps}>
+              {project.letter ? (
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                  {(project.letter as string).split('\n').filter((l: string) => l.trim()).map((para: string, i: number) => (
+                    <p key={i} className="text-sm leading-relaxed text-foreground/80 mb-3">{para}</p>
+                  ))}
+                </div>
+              ) : (
+                canEdit ? <p className="text-sm text-muted-foreground italic">Adicionar história...</p> : null
+              )}
+            </LetterEditSection>
           </div>
         )}
 

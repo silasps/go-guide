@@ -1,15 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import Image from 'next/image'
+import { useTranslations } from 'next-intl'
 import { Post } from '@/types/database'
 import { formatDate } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { buttonVariants } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { useComposer } from '@/components/dashboard/post-composer-provider'
 import { toast } from 'sonner'
 import { Pencil, Trash2, Eye, EyeOff } from 'lucide-react'
 
@@ -18,15 +17,18 @@ interface Props {
 }
 
 export function PostsList({ posts: initialPosts }: Props) {
+  const t = useTranslations('PostsList')
+  const tOverview = useTranslations('DashboardOverview')
+  const { openComposer } = useComposer()
   const [posts, setPosts] = useState(initialPosts)
 
   async function handleDelete(id: string) {
-    if (!confirm('Excluir esta publicação?')) return
+    if (!confirm(t('confirmDelete'))) return
     const supabase = createClient()
     const { error } = await supabase.from('posts').delete().eq('id', id)
-    if (error) { toast.error('Erro ao excluir.'); return }
+    if (error) { toast.error(t('deleteError')); return }
     setPosts(posts.filter(p => p.id !== id))
-    toast.success('Publicação excluída.')
+    toast.success(t('deleted'))
   }
 
   async function toggleDraft(post: Post) {
@@ -35,18 +37,18 @@ export function PostsList({ posts: initialPosts }: Props) {
       ? { is_draft: false, published_at: new Date().toISOString() }
       : { is_draft: true, published_at: null }
     const { error } = await supabase.from('posts').update(update).eq('id', post.id)
-    if (error) { toast.error('Erro ao atualizar.'); return }
+    if (error) { toast.error(t('updateError')); return }
     setPosts(posts.map(p => p.id === post.id ? { ...p, ...update } : p))
-    toast.success(post.is_draft ? 'Publicado!' : 'Movido para rascunho.')
+    toast.success(post.is_draft ? t('published') : t('movedToDraft'))
   }
 
   if (!posts.length) {
     return (
       <div className="text-center py-16 text-muted-foreground">
-        <p>Nenhuma publicação ainda.</p>
-        <Link href="/dashboard/publicacoes/nova" className={cn(buttonVariants(), 'mt-4')}>
-          Criar primeira publicação
-        </Link>
+        <p>{tOverview('noPostsYet')}</p>
+        <Button className="mt-4" onClick={() => openComposer()}>
+          {tOverview('createFirstPost')}
+        </Button>
       </div>
     )
   }
@@ -73,7 +75,7 @@ export function PostsList({ posts: initialPosts }: Props) {
             </p>
             <div className="flex items-center gap-2 mt-1">
               <Badge variant={post.is_draft ? 'secondary' : 'default'} className="text-xs">
-                {post.is_draft ? 'Rascunho' : 'Publicado'}
+                {post.is_draft ? t('draftBadge') : t('publishedBadge')}
               </Badge>
               {post.published_at && (
                 <span className="text-xs text-muted-foreground">{formatDate(post.published_at)}</span>
@@ -86,9 +88,9 @@ export function PostsList({ posts: initialPosts }: Props) {
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleDraft(post)}>
               {post.is_draft ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
             </Button>
-            <Link href={`/dashboard/publicacoes/${post.id}`} className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'h-8 w-8')}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openComposer(post)}>
               <Pencil className="h-4 w-4" />
-            </Link>
+            </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDelete(post.id)}>
               <Trash2 className="h-4 w-4" />
             </Button>

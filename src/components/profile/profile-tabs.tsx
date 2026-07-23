@@ -11,7 +11,9 @@ import { ArrowLeft } from 'lucide-react'
 interface Props {
   username: string
   hasTrajectory: boolean
+  isMissionary: boolean
   canEdit: boolean
+  viewerUserId: string | null
   ownerProfile: DrawerProfile | null
 }
 
@@ -28,13 +30,27 @@ function BackToDashboard({ label }: { label: string }) {
   )
 }
 
+function BackToProfile({ username, label }: { username: string; label: string }) {
+  return (
+    <Link
+      href={`/${username}`}
+      aria-label={label}
+      title={label}
+      className="h-8 w-8 flex items-center justify-center rounded-full bg-background/90 backdrop-blur ring-1 ring-foreground/10 shadow-sm text-muted-foreground hover:text-foreground transition-colors"
+    >
+      <ArrowLeft className="h-4 w-4" />
+    </Link>
+  )
+}
+
 // Fluxos de ação/conversão (oração, parceria, mensagem) e a tela de um
 // projeto específico não fazem parte da navegação por abas — mesma lógica
 // do Instagram, onde compor uma mensagem ou abrir um post não mostra a
 // barra de abas do perfil por cima. O LanguageSwitcher também mora aqui
 // (em vez de flutuar solto em layout.tsx) pra nunca se sobrepor às abas —
-// nas telas sem abas, ele volta a flutuar isolado no canto.
-export function ProfileTabs({ username, hasTrajectory, canEdit, ownerProfile }: Props) {
+// nas telas sem abas, ele volta a flutuar isolado no canto, ao lado do
+// único botão de voltar (fixo, discreto) dessas telas.
+export function ProfileTabs({ username, hasTrajectory, isMissionary, canEdit, viewerUserId, ownerProfile }: Props) {
   const pathname = usePathname()
   const t = useTranslations('PublicProfile')
   const base = `/${username}`
@@ -44,8 +60,8 @@ export function ProfileTabs({ username, hasTrajectory, canEdit, ownerProfile }: 
   if (hiddenOn.includes(pathname) || isProjectDetail) {
     return (
       <div className="fixed top-3 inset-x-3 z-50 flex items-center justify-between">
-        {canEdit ? <BackToDashboard label={t('backToDashboard')} /> : <span />}
-        <LanguageSwitcher className="bg-background/90 backdrop-blur rounded-full ring-1 ring-foreground/10 shadow-sm p-1" />
+        <BackToProfile username={username} label={t('backToProfile')} />
+        <LanguageSwitcher compact className="bg-background/90 backdrop-blur rounded-full ring-1 ring-foreground/10 shadow-sm px-2 py-1" />
       </div>
     )
   }
@@ -55,12 +71,13 @@ export function ProfileTabs({ username, hasTrajectory, canEdit, ownerProfile }: 
     { href: `${base}/historia`, label: t('tabHistory'), exact: false },
     { href: `${base}/projetos`, label: t('tabProjects'), exact: false },
     ...(hasTrajectory ? [{ href: `${base}/trajetoria`, label: t('tabTrajectory'), exact: false }] : []),
+    ...(isMissionary ? [{ href: `${base}/seguidores`, label: t('tabFollowers'), exact: false }] : []),
   ]
 
   return (
     <div className="sticky top-0 z-40 bg-background/90 backdrop-blur border-b">
       <div className="max-w-xl mx-auto flex items-center gap-1">
-        {canEdit && <BackToDashboard label={t('backToDashboard')} />}
+        {viewerUserId && <BackToDashboard label={t('backToDashboard')} />}
         <nav className="flex-1 flex overflow-x-auto scrollbar-hide">
           {tabs.map(({ href, label, exact }) => {
             const active = exact ? pathname === href : pathname.startsWith(href)
@@ -86,7 +103,7 @@ export function ProfileTabs({ username, hasTrajectory, canEdit, ownerProfile }: 
           </div>
         )}
         <div className="shrink-0 pr-2">
-          <LanguageSwitcher />
+          <LanguageSwitcher compact />
         </div>
       </div>
     </div>

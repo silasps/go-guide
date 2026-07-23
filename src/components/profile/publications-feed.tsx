@@ -1,12 +1,12 @@
 import Image from 'next/image'
-import Link from 'next/link'
 import { Post } from '@/types/database'
 import type { Locale } from '@/i18n/config'
 import { resolveLocalizedText } from '@/lib/i18n/resolve-content-locale'
 import { formatRelativeTime } from '@/lib/utils'
+import { PostProjectLink } from '@/components/shared/post-project-link'
 
 interface Props {
-  posts: (Post & { highlight?: { title: string; slug: string | null } | null })[]
+  posts: (Post & { highlight?: { title: string; slug: string | null; cover_url: string | null } | null })[]
   username: string
   visitorLocale: Locale
 }
@@ -21,12 +21,7 @@ export function PublicationsFeed({ posts, username, visitorLocale }: Props) {
           return (
             <div key={post.id} className="p-4 rounded-2xl border bg-card space-y-2.5">
               {post.highlight && (
-                <Link
-                  href={`/${username}/projetos/${post.highlight.slug ?? ''}`}
-                  className="inline-block text-xs font-medium text-primary hover:underline"
-                >
-                  {post.highlight.title}
-                </Link>
+                <PostProjectLink username={username} highlight={post.highlight} />
               )}
 
               {post.media_urls?.[0] && (

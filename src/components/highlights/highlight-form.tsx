@@ -1,89 +1,33 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
-import { compressImage } from '@/lib/media/compress'
-import { Highlight, Milestone, ProjectBudgetCategory, BudgetCategoryType } from '@/types/database'
+import { Highlight, Milestone, ProjectBudgetCategory } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Loader2, ImagePlus, Plus, Trash2, CheckCircle2, Circle, Move } from 'lucide-react'
-import Image from 'next/image'
+import { Loader2 } from 'lucide-react'
+import { toMasked, fromMasked, reformatMasked, CURRENCIES } from '@/lib/currency-mask'
+import { CoverEditor, parsePosition, uniqueFileName } from './cover-editor'
+import { MilestonesEditor, type MilestoneDraft } from './milestones-editor'
+import { BudgetCategoriesEditor, type BudgetCategoryDraft } from './budget-categories-editor'
+import { SupportTypesPicker } from './support-types-picker'
 
-const CURRENCIES = ['BRL', 'USD', 'EUR', 'GBP', 'CHF', 'CAD', 'AUD']
-
-const CURRENCY_SEPARATORS: Record<string, { decimal: string; thousands: string }> = {
-  BRL: { decimal: ',', thousands: '.' },
-  EUR: { decimal: ',', thousands: '.' },
-  USD: { decimal: '.', thousands: ',' },
-  GBP: { decimal: '.', thousands: ',' },
-  CHF: { decimal: '.', thousands: ',' },
-  CAD: { decimal: '.', thousands: ',' },
-  AUD: { decimal: '.', thousands: ',' },
-}
-
-/** Formats raw digits as cents, like a bank app amount field (digits fill in from the right). */
-function toMasked(raw: string, currency: string) {
-  const digits = raw.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
-  if (!digits) return ''
-  const { decimal, thousands } = CURRENCY_SEPARATORS[currency] ?? CURRENCY_SEPARATORS.BRL
-  const cents = digits.padStart(3, '0')
-  const intPart = cents.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, thousands)
-  const decPart = cents.slice(-2)
-  return `${intPart}${decimal}${decPart}`
-}
-
-function fromMasked(masked: string, currency: string) {
-  const { decimal, thousands } = CURRENCY_SEPARATORS[currency] ?? CURRENCY_SEPARATORS.BRL
-  let result = masked.split(thousands).join('')
-  if (decimal !== '.') result = result.split(decimal).join('.')
-  return result
-}
-
-/** Re-renders an already-masked value when the currency (and thus its separators) changes. */
-function reformatMasked(masked: string, oldCurrency: string, newCurrency: string) {
-  if (!masked) return masked
-  const plain = parseFloat(fromMasked(masked, oldCurrency))
-  if (isNaN(plain)) return masked
-  return toMasked(String(Math.round(plain * 100)), newCurrency)
-}
-
-const BUDGET_CATEGORY_LABELS: Record<BudgetCategoryType, string> = {
-  airfare: 'Passagem aérea',
-  bus: 'Ônibus',
-  boat: 'Barco',
-  ferry: 'Balsa',
-  rideshare: 'Uber/táxi',
-  lodging: 'Estadia',
-  food: 'Alimentação',
-  equipment: 'Equipamento',
-  visa_documentation: 'Visto/documentação',
-  insurance: 'Seguro viagem',
-  training: 'Treinamento',
-  shipping: 'Envio de carga',
-  other: 'Outros',
-}
-
-const SUPPORT_TYPES = [
-  { value: 'financial',   emoji: '💰', label: 'Apoio financeiro',    desc: 'Doação mensal ou pontual' },
-  { value: 'prayer',      emoji: '🙏', label: 'Oração',              desc: 'Compromisso de orar regularmente' },
-  { value: 'ambassador',  emoji: '📣', label: 'Divulgação',           desc: 'Compartilhar o projeto e trazer novos apoiadores' },
-  { value: 'volunteer',   emoji: '🤝', label: 'Voluntário',          desc: 'Apoio pessoal ou com habilidades' },
-  { value: 'ongoing',     emoji: '🔄', label: 'Ministério contínuo', desc: 'Sem meta específica, apoio de longo prazo' },
+// Assunto do projeto (ortogonal ao goal_type acima, que é o TIPO DE APOIO
+// pedido) — sinal de afinidade usado pelo ranking do feed, sem UI pública.
+const PROJECT_CATEGORIES = [
+  { value: 'children',                emoji: '🧒', label: 'Crianças' },
+  { value: 'health',                  emoji: '🩺', label: 'Saúde' },
+  { value: 'education',               emoji: '📚', label: 'Educação' },
+  { value: 'evangelism',              emoji: '✝️', label: 'Evangelismo' },
+  { value: 'community_development',   emoji: '🏘️', label: 'Desenvolvimento comunitário' },
+  { value: 'disaster_relief',         emoji: '🆘', label: 'Desastres/emergência' },
+  { value: 'other',                   emoji: '✨', label: 'Outro' },
 ] as const
-
-function uniqueFileName(ext: string) {
-  return `${crypto.randomUUID()}.${ext}`
-}
-
-function parsePosition(pos: string): { x: number; y: number } {
-  const [x, y] = pos.replace(/%/g, '').split(' ').map(Number)
-  return { x: isNaN(x) ? 50 : x, y: isNaN(y) ? 50 : y }
-}
 
 interface Props {
   highlight?: Highlight & { milestones?: Milestone[]; budgetCategories?: ProjectBudgetCategory[] }
@@ -99,6 +43,9 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
   const [goalTypes, setGoalTypes] = useState<string[]>(
     Array.isArray(highlight?.goal_type) ? highlight.goal_type : ['financial']
   )
+  const [categories, setCategories] = useState<string[]>(
+    Array.isArray(highlight?.category) ? highlight.category : []
+  )
   const initialCurrency = highlight?.currency ?? 'BRL'
   const [goalAmount, setGoalAmount] = useState(
     highlight?.goal_amount ? toMasked(String(Math.round(highlight.goal_amount * 100)), initialCurrency) : ''
@@ -107,8 +54,8 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
     toMasked(String(Math.round((highlight?.current_amount ?? 0) * 100)), initialCurrency)
   )
   const [currency, setCurrency] = useState(initialCurrency)
-  const [coverPreview, setCoverPreview] = useState<string>(highlight?.cover_url ?? '')
   const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [coverPreview, setCoverPreview] = useState<string>(highlight?.cover_url ?? '')
   const [position, setPosition] = useState<{ x: number; y: number }>(
     parsePosition(highlight?.cover_position ?? '50% 50%')
   )
@@ -119,97 +66,25 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
   const [status, setStatus] = useState<'active' | 'hidden' | 'completed'>(
     (highlight?.status as 'active' | 'hidden' | 'completed') ?? 'active'
   )
-  const [milestones, setMilestones] = useState<Array<{ id?: string; title: string; is_completed: boolean }>>(
-    highlight?.milestones ?? []
-  )
-  const [newMilestone, setNewMilestone] = useState('')
+  const [milestones, setMilestones] = useState<MilestoneDraft[]>(highlight?.milestones ?? [])
 
   const [budgetMode, setBudgetMode] = useState<'single' | 'detailed'>(
     (highlight?.budgetCategories?.length ?? 0) > 0 ? 'detailed' : 'single'
   )
-  const [budgetCategories, setBudgetCategories] = useState<Array<{ category_type: BudgetCategoryType; custom_label: string; target_amount: string }>>(
+  const [budgetCategories, setBudgetCategories] = useState<BudgetCategoryDraft[]>(
     (highlight?.budgetCategories ?? []).map(b => ({
       category_type: b.category_type,
       custom_label: b.custom_label ?? '',
       target_amount: toMasked(String(Math.round(b.target_amount * 100)), initialCurrency),
     }))
   )
-  const [newBudgetCategoryType, setNewBudgetCategoryType] = useState<BudgetCategoryType>('airfare')
-
-  function addBudgetCategory() {
-    setBudgetCategories(prev => [...prev, { category_type: newBudgetCategoryType, custom_label: '', target_amount: '' }])
-  }
-  function removeBudgetCategory(idx: number) {
-    setBudgetCategories(prev => prev.filter((_, i) => i !== idx))
-  }
-  function updateBudgetCategory(idx: number, patch: Partial<{ category_type: BudgetCategoryType; custom_label: string; target_amount: string }>) {
-    setBudgetCategories(prev => prev.map((b, i) => i === idx ? { ...b, ...patch } : b))
-  }
   const budgetTotal = budgetCategories.reduce((sum, b) => sum + (parseFloat(fromMasked(b.target_amount, currency)) || 0), 0)
 
-  // Drag state (refs to avoid re-renders during drag)
-  const dragging = useRef(false)
-  const dragStart = useRef({ mouseX: 0, mouseY: 0, posX: 50, posY: 50 })
-  const previewRef = useRef<HTMLDivElement>(null)
-
-  const onDragMove = useCallback((clientX: number, clientY: number) => {
-    if (!dragging.current || !previewRef.current) return
-    const rect = previewRef.current.getBoundingClientRect()
-    const dx = ((clientX - dragStart.current.mouseX) / rect.width) * 100
-    const dy = ((clientY - dragStart.current.mouseY) / rect.height) * 100
-    const x = Math.min(100, Math.max(0, dragStart.current.posX - dx))
-    const y = Math.min(100, Math.max(0, dragStart.current.posY - dy))
-    setPosition({ x, y })
-  }, [])
-
-  const onDragEnd = useCallback(() => { dragging.current = false }, [])
-
-  useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => onDragMove(e.clientX, e.clientY)
-    const onTouchMove = (e: TouchEvent) => { e.preventDefault(); onDragMove(e.touches[0].clientX, e.touches[0].clientY) }
-    window.addEventListener('mousemove', onMouseMove)
-    window.addEventListener('mouseup', onDragEnd)
-    window.addEventListener('touchmove', onTouchMove, { passive: false })
-    window.addEventListener('touchend', onDragEnd)
-    return () => {
-      window.removeEventListener('mousemove', onMouseMove)
-      window.removeEventListener('mouseup', onDragEnd)
-      window.removeEventListener('touchmove', onTouchMove)
-      window.removeEventListener('touchend', onDragEnd)
-    }
-  }, [onDragMove, onDragEnd])
-
-  function startDrag(clientX: number, clientY: number) {
-    dragging.current = true
-    dragStart.current = { mouseX: clientX, mouseY: clientY, posX: position.x, posY: position.y }
-  }
-
-  async function handleCoverSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const compressed = await compressImage(file)
-    setCoverFile(compressed)
-    setCoverPreview(URL.createObjectURL(compressed))
-    setPosition({ x: 50, y: 50 })
-  }
-
-  function addMilestone() {
-    const t = newMilestone.trim()
-    if (!t) return
-    setMilestones(prev => [...prev, { title: t, is_completed: false }])
-    setNewMilestone('')
-  }
-
-  function removeMilestone(idx: number) {
-    setMilestones(prev => prev.filter((_, i) => i !== idx))
-  }
-
-  function toggleMilestone(idx: number) {
-    setMilestones(prev => prev.map((m, i) => i === idx ? { ...m, is_completed: !m.is_completed } : m))
-  }
-
-  function slugify(text: string) {
-    return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+  function handleCurrencyChange(newCurrency: string) {
+    setGoalAmount(prev => reformatMasked(prev, currency, newCurrency))
+    setCurrentAmount(prev => reformatMasked(prev, currency, newCurrency))
+    setBudgetCategories(prev => prev.map(b => ({ ...b, target_amount: reformatMasked(b.target_amount, currency, newCurrency) })))
+    setCurrency(newCurrency)
   }
 
   function handleSave(e: React.FormEvent<HTMLFormElement>) {
@@ -243,6 +118,7 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
             title: title.trim(),
             description: description.trim(),
             goalTypes,
+            category: categories,
             goalAmount: isDetailedBudget ? budgetTotal : (hasFinancial && goalAmount ? parseFloat(fromMasked(goalAmount, currency)) : null),
             currentAmount: hasFinancial ? (parseFloat(fromMasked(currentAmount, currency)) || 0) : 0,
             currency,
@@ -293,58 +169,17 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
               <Label>Capa</Label>
               <span className="text-xs text-muted-foreground">1200 × 630 px recomendado</span>
             </div>
-
-            <div
-              ref={previewRef}
-              className="relative h-48 rounded-xl bg-muted overflow-hidden border border-dashed select-none"
-              style={{ cursor: coverPreview ? 'grab' : 'default' }}
-              onMouseDown={coverPreview ? (e) => { e.preventDefault(); startDrag(e.clientX, e.clientY) } : undefined}
-              onTouchStart={coverPreview ? (e) => startDrag(e.touches[0].clientX, e.touches[0].clientY) : undefined}
-            >
-              {coverPreview ? (
-                <>
-                  <Image
-                    src={coverPreview}
-                    alt="capa"
-                    fill
-                    draggable={false}
-                    className="object-cover pointer-events-none"
-                    style={{ objectPosition: `${position.x}% ${position.y}%` }}
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                    <div className="bg-black/50 text-white text-xs px-2.5 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-sm">
-                      <Move className="h-3.5 w-3.5" />
-                      Arraste para reposicionar
-                    </div>
-                  </div>
-                  <label className="absolute bottom-2 right-2 cursor-pointer">
-                    <div className="bg-black/60 text-white text-xs px-2 py-1 rounded-lg hover:bg-black/80 transition-colors">
-                      Trocar
-                    </div>
-                    <input type="file" accept="image/*" className="hidden" onChange={handleCoverSelect} />
-                  </label>
-                </>
-              ) : (
-                <label className="absolute inset-0 flex flex-col items-center justify-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
-                  <ImagePlus className="h-7 w-7" />
-                  <span className="text-sm">Clique para adicionar capa</span>
-                  <input type="file" accept="image/*" className="hidden" onChange={handleCoverSelect} />
-                </label>
-              )}
-            </div>
-
+            <CoverEditor
+              initialUrl={coverPreview}
+              initialPosition={position}
+              onChange={(file, previewUrl, pos) => {
+                if (file) setCoverFile(file)
+                setCoverPreview(previewUrl)
+                setPosition(pos)
+              }}
+            />
             {coverPreview && (
               <div className="flex items-center gap-3 pt-1">
-                <div className="relative h-12 w-12 rounded-xl overflow-hidden bg-muted shrink-0">
-                  <Image
-                    src={coverPreview}
-                    alt="thumb"
-                    fill
-                    draggable={false}
-                    className="object-cover pointer-events-none"
-                    style={{ objectPosition: `${position.x}% ${position.y}%` }}
-                  />
-                </div>
                 <p className="text-xs text-muted-foreground">Prévia do card (como aparece na lista de projetos)</p>
               </div>
             )}
@@ -374,32 +209,30 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
           <div className="space-y-2">
             <Label>Como os parceiros podem ajudar?</Label>
             <p className="text-xs text-muted-foreground">Selecione uma ou mais formas de apoio para este projeto.</p>
-            <div className="space-y-2 pt-1">
-              {SUPPORT_TYPES.map(({ value, emoji, label, desc }) => {
-                const selected = goalTypes.includes(value)
+            <SupportTypesPicker selected={goalTypes} onChange={setGoalTypes} />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Categoria do projeto</Label>
+            <p className="text-xs text-muted-foreground">Ajuda a mostrar este projeto para parceiros com afinidade pelo assunto. Opcional.</p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {PROJECT_CATEGORIES.map(({ value, emoji, label }) => {
+                const selected = categories.includes(value)
                 return (
                   <button
                     key={value}
                     type="button"
-                    onClick={() => setGoalTypes(prev =>
-                      prev.includes(value) ? prev.filter(t => t !== value) : [...prev, value]
+                    onClick={() => setCategories(prev =>
+                      prev.includes(value) ? prev.filter(c => c !== value) : [...prev, value]
                     )}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-colors ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs transition-colors ${
                       selected
-                        ? 'border-primary bg-primary/8 text-foreground'
+                        ? 'border-primary bg-primary/8 text-foreground font-medium'
                         : 'border-border text-muted-foreground hover:border-foreground hover:text-foreground'
                     }`}
                   >
-                    <span className="text-lg shrink-0">{emoji}</span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium leading-tight">{label}</p>
-                      <p className="text-xs opacity-70">{desc}</p>
-                    </div>
-                    <div className={`ml-auto h-4 w-4 rounded border shrink-0 flex items-center justify-center transition-colors ${
-                      selected ? 'bg-primary border-primary' : 'border-input'
-                    }`}>
-                      {selected && <svg className="h-2.5 w-2.5 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-                    </div>
+                    <span>{emoji}</span>
+                    {label}
                   </button>
                 )
               })}
@@ -414,13 +247,7 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
                   <select
                     id="currency"
                     value={currency}
-                    onChange={(e) => {
-                      const newCurrency = e.target.value
-                      setGoalAmount(prev => reformatMasked(prev, currency, newCurrency))
-                      setCurrentAmount(prev => reformatMasked(prev, currency, newCurrency))
-                      setBudgetCategories(prev => prev.map(b => ({ ...b, target_amount: reformatMasked(b.target_amount, currency, newCurrency) })))
-                      setCurrency(newCurrency)
-                    }}
+                    onChange={(e) => handleCurrencyChange(e.target.value)}
                     className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                   >
                     {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -452,71 +279,13 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
                 )}
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Orçamento detalhado por categoria</Label>
-                  <button
-                    type="button"
-                    onClick={() => setBudgetMode(m => m === 'single' ? 'detailed' : 'single')}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    {budgetMode === 'single' ? 'Detalhar por categoria' : 'Usar meta única'}
-                  </button>
-                </div>
-
-                {budgetMode === 'detailed' && (
-                  <div className="space-y-2 rounded-xl border p-3">
-                    {budgetCategories.map((b, i) => (
-                      <div key={i} className="flex gap-2 items-start">
-                        <select
-                          value={b.category_type}
-                          onChange={(e) => updateBudgetCategory(i, { category_type: e.target.value as BudgetCategoryType })}
-                          className="h-8 rounded-lg border border-input bg-transparent px-2 text-xs outline-none focus-visible:border-ring flex-1 min-w-0"
-                        >
-                          {Object.entries(BUDGET_CATEGORY_LABELS).map(([value, label]) => (
-                            <option key={value} value={value}>{label}</option>
-                          ))}
-                        </select>
-                        {b.category_type === 'other' && (
-                          <Input
-                            value={b.custom_label}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateBudgetCategory(i, { custom_label: e.target.value })}
-                            placeholder="Qual?"
-                            className="h-8 text-xs flex-1"
-                          />
-                        )}
-                        <Input
-                          inputMode="numeric"
-                          value={b.target_amount}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateBudgetCategory(i, { target_amount: toMasked(e.target.value, currency) })}
-                          placeholder="Valor"
-                          className="h-8 text-xs w-24 shrink-0"
-                        />
-                        <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeBudgetCategory(i)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    ))}
-                    <div className="flex gap-2 pt-1">
-                      <select
-                        value={newBudgetCategoryType}
-                        onChange={(e) => setNewBudgetCategoryType(e.target.value as BudgetCategoryType)}
-                        className="h-8 flex-1 rounded-lg border border-input bg-transparent px-2 text-xs outline-none focus-visible:border-ring"
-                      >
-                        {Object.entries(BUDGET_CATEGORY_LABELS).map(([value, label]) => (
-                          <option key={value} value={value}>{label}</option>
-                        ))}
-                      </select>
-                      <Button type="button" variant="outline" size="sm" onClick={addBudgetCategory} className="gap-1.5">
-                        <Plus className="h-3.5 w-3.5" /> Adicionar
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground pt-1">
-                      Meta total (soma das categorias): <span className="font-medium text-foreground">{budgetTotal.toLocaleString('pt-BR', { style: 'currency', currency })}</span>
-                    </p>
-                  </div>
-                )}
-              </div>
+              <BudgetCategoriesEditor
+                currency={currency}
+                mode={budgetMode}
+                onModeChange={setBudgetMode}
+                categories={budgetCategories}
+                onChange={setBudgetCategories}
+              />
             </div>
           )}
         </div>
@@ -576,35 +345,7 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
           {/* Marcos */}
           <div className="space-y-3">
             <Label>Marcos do projeto</Label>
-            {milestones.length > 0 && (
-              <ul className="space-y-1.5">
-                {milestones.map((m, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm">
-                    <button type="button" onClick={() => toggleMilestone(i)} className="shrink-0 text-muted-foreground hover:text-primary transition-colors">
-                      {m.is_completed
-                        ? <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        : <Circle className="h-4 w-4" />
-                      }
-                    </button>
-                    <span className={m.is_completed ? 'line-through text-muted-foreground' : ''}>{m.title}</span>
-                    <button type="button" onClick={() => removeMilestone(i)} className="ml-auto shrink-0 text-muted-foreground hover:text-destructive transition-colors">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <div className="flex gap-2">
-              <Input
-                value={newMilestone}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewMilestone(e.target.value)}
-                placeholder="Ex: Fundação concluída"
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addMilestone() } }}
-              />
-              <Button type="button" variant="outline" size="icon" onClick={addMilestone}>
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
+            <MilestonesEditor milestones={milestones} onChange={setMilestones} />
           </div>
         </div>
       </div>

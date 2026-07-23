@@ -8,7 +8,15 @@ import { usePendingAction } from '@/hooks/use-pending-action'
 import { followProfile, unfollowProfile } from '@/app/dashboard/feed/actions'
 import { cn } from '@/lib/utils'
 
-export function FollowButton({ profileId, initiallyFollowing }: { profileId: string; initiallyFollowing: boolean }) {
+export function FollowButton({
+  profileId,
+  initiallyFollowing,
+  followsViewer = false,
+}: {
+  profileId: string
+  initiallyFollowing: boolean
+  followsViewer?: boolean
+}) {
   const t = useTranslations('Feed')
   const router = useRouter()
   const [following, setFollowing] = useState(initiallyFollowing)
@@ -32,7 +40,7 @@ export function FollowButton({ profileId, initiallyFollowing }: { profileId: str
       onClick={toggle}
       className={cn('shrink-0', following && 'text-muted-foreground')}
     >
-      {following ? t('following') : t('follow')}
+      {following ? t('following') : followsViewer ? t('followBack') : t('follow')}
     </Button>
   )
 }
