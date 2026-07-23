@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslations } from 'next-intl'
 import { getInitials } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -44,7 +45,12 @@ export function AccountMenuDrawer({ profile }: Props) {
         <Menu className="h-4 w-4" />
       </button>
 
-      {open && (
+      {open && createPortal(
+        // Portal direto pro <body>: o wrapper de ProfileTabs usa
+        // backdrop-blur (filter), que cria containing block pra
+        // descendentes position:fixed — sem o portal, essa gaveta
+        // renderiza espremida dentro da faixa fina da barra de abas
+        // em vez de cobrir a tela inteira.
         <div className="md:hidden fixed inset-0 z-50 flex flex-col">
           <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
           <div className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl max-h-[85vh] flex flex-col">
@@ -112,7 +118,8 @@ export function AccountMenuDrawer({ profile }: Props) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   )

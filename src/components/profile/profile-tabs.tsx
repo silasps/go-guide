@@ -71,7 +71,6 @@ export function ProfileTabs({ username, hasTrajectory, isMissionary, canEdit, vi
     { href: `${base}/historia`, label: t('tabHistory'), exact: false },
     { href: `${base}/projetos`, label: t('tabProjects'), exact: false },
     ...(hasTrajectory ? [{ href: `${base}/trajetoria`, label: t('tabTrajectory'), exact: false }] : []),
-    ...(isMissionary ? [{ href: `${base}/seguidores`, label: t('tabFollowers'), exact: false }] : []),
   ]
 
   return (

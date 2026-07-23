@@ -56,11 +56,9 @@ export function DashboardSidebar({ profile, accessibleProfiles }: { profile: Pro
 
   return (
     <aside className="hidden md:flex flex-col w-60 border-r bg-card shrink-0">
-      <div className="flex items-center gap-2 px-4 py-5 border-b">
-        <div className="h-7 w-7 rounded-md flex items-center justify-center" style={{ backgroundColor: profile.accent_color }}>
-          <span className="text-white text-xs font-bold">M</span>
-        </div>
-        <span className="font-semibold text-sm">go→guide</span>
+      <div className="flex items-center px-4 py-5 border-b">
+        <Image src="/logo.png" alt="Go guide" width={110} height={52} className="h-7 w-auto dark:hidden" priority />
+        <Image src="/logo-white.png" alt="Go guide" width={110} height={52} className="h-7 w-auto hidden dark:block" priority />
       </div>
 
       <div className="px-4 py-3 border-b">
