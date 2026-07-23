@@ -8,11 +8,9 @@ import { useEffect, useState } from 'react'
 // do HTML já renderizado no servidor (não depende de JS pra aparecer), e se
 // auto-remove assim que o React hidrata no cliente.
 //
-// Duas fases: (1) a marca "GO" pisca por um instante, (2) as pernas entram
-// em loop de passo. Os 3 frames de perna gerados saíram quase idênticos
-// (a ferramenta de imagem não variou a pose como pedido), então a sensação
-// de "andando pra frente" vem do quique de CSS (sempre no mesmo sentido,
-// sem ir-e-voltar) — os frames só somam uma leve vibração de traço vivo.
+// Duas fases: (1) a marca "GO" pisca por um instante, (2) a figura entra
+// em loop de passo, alternando 3 poses de passada reais (não só o quique
+// de CSS) pra dar sensação de "andando pra frente".
 const WALK_FRAMES = ['/splash/walk-1.png', '/splash/walk-2.png', '/splash/walk-3.png']
 const FRAME_MS = 260
 const BLINK_PHASE_MS = 900
@@ -65,8 +63,8 @@ export function SplashScreen() {
         <img
           src={WALK_FRAMES[frame]}
           alt=""
-          width={96}
-          height={83}
+          width={176}
+          height={179}
           className="h-20 w-auto animate-[splash-step_0.52s_ease-in-out_infinite]"
         />
       )}
