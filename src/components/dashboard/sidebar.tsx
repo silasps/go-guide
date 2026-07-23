@@ -159,12 +159,12 @@ export function MobileBottomNav({ profile }: { profile: Profile }) {
             key={href}
             href={href}
             className={cn(
-              'flex-1 flex flex-col items-center justify-center gap-0.5 text-xs transition-colors',
+              'flex-1 flex flex-col items-center justify-center gap-0.5 text-[11px] transition-colors',
               active ? 'text-primary' : 'text-muted-foreground'
             )}
           >
-            <Icon className={cn('h-5 w-5', active && 'fill-primary/10')} />
-            <span>{label}</span>
+            <Icon className={cn('h-5 w-5 shrink-0', active && 'fill-primary/10')} />
+            <span className="text-center leading-tight line-clamp-2 px-0.5 min-h-[2.2em]">{label}</span>
           </Link>
         )
       })}
@@ -173,13 +173,13 @@ export function MobileBottomNav({ profile }: { profile: Profile }) {
           última aba do rodapé). */}
       <Link
         href={`/${profile.username}`}
-        className="flex-1 flex flex-col items-center justify-center gap-0.5 text-xs text-muted-foreground"
+        className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[11px] text-muted-foreground"
       >
-        <Avatar className="h-5 w-5">
+        <Avatar className="h-5 w-5 shrink-0">
           <AvatarImage src={profile.avatar_url ?? ''} alt={profile.display_name} />
           <AvatarFallback className="text-[9px]">{getInitials(profile.display_name)}</AvatarFallback>
         </Avatar>
-        <span>{t('profileTab')}</span>
+        <span className="text-center leading-tight line-clamp-2 px-0.5 min-h-[2.2em]">{t('profileTab')}</span>
       </Link>
     </nav>
   )

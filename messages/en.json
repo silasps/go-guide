@@ -254,7 +254,10 @@
     "profileUpdated": "Profile updated!",
     "aiCreditsInsufficient": "Insufficient AI credits.",
     "viewPlans": "View plans",
-    "translateError": "Error translating. Please try again."
+    "translateError": "Error translating. Please try again.",
+    "coverPhoto": "Cover photo",
+    "editCover": "Edit cover",
+    "coverHint": "Shown on your profile card in missionary discovery · JPG, PNG or WebP · max 5MB"
   },
   "PaymentMethods": {
     "intro": "This information is shown on your public profile so partners know how to support your mission. The money goes straight to you — the platform doesn't take a cut.",

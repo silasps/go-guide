@@ -35,6 +35,9 @@ export function ProfileForm({ profile, onSaved }: Props) {
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [rawAvatarFile, setRawAvatarFile] = useState<File | null>(null)
   const [cropDialogOpen, setCropDialogOpen] = useState(false)
+  const [coverPreview, setCoverPreview] = useState<string | null>(profile.cover_url)
+  const [coverFile, setCoverFile] = useState<File | null>(null)
+  const coverInputRef = useRef<HTMLInputElement>(null)
   const [displayName, setDisplayName] = useState(profile.display_name)
   const [accountType, setAccountType] = useState(profile.account_type)
   const { bioPlaceholder, bioHint, displayNamePlaceholder } = useAccountTypeCopy(accountType)
@@ -105,6 +108,15 @@ export function ProfileForm({ profile, onSaved }: Props) {
     setRawAvatarFile(null)
   }
 
+  async function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    const compressed = await compressImage(file)
+    setCoverFile(compressed)
+    setCoverPreview(URL.createObjectURL(compressed))
+  }
+
   function handleUsernameChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '')
     setUsername(value)
@@ -154,6 +166,20 @@ export function ProfileForm({ profile, onSaved }: Props) {
         avatar_url = `${urlData.publicUrl}?t=${Date.now()}`
       }
 
+      let cover_url = profile.cover_url
+      if (coverFile) {
+        const path = `${profile.user_id}/cover.webp`
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(path, coverFile, { upsert: true, contentType: 'image/webp' })
+        if (uploadError) {
+          toast.error(t('errorUploadPhoto'))
+          return
+        }
+        const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
+        cover_url = `${urlData.publicUrl}?t=${Date.now()}`
+      }
+
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -174,6 +200,7 @@ export function ProfileForm({ profile, onSaved }: Props) {
           show_location: showLocation,
           mission_start_date: missionStartDate || null,
           avatar_url,
+          cover_url,
           website_url: websiteUrl || null,
           instagram_url: instagramUrl || null,
           youtube_url: youtubeUrl || null,
@@ -203,6 +230,37 @@ export function ProfileForm({ profile, onSaved }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* Capa — aparece como fundo do card na grade de descoberta de missionários */}
+      <div className="space-y-2">
+        <Label>{t('coverPhoto')}</Label>
+        <div className="relative aspect-[21/9] w-full rounded-xl overflow-hidden bg-muted">
+          {coverPreview ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={coverPreview} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div
+              className="h-full w-full"
+              style={{ background: `linear-gradient(135deg, ${profile.accent_color}, color-mix(in oklch, ${profile.accent_color}, black 35%))` }}
+            />
+          )}
+          <button
+            onClick={() => coverInputRef.current?.click()}
+            className="absolute bottom-2 right-2 h-9 w-9 rounded-full bg-background/90 backdrop-blur ring-1 ring-foreground/10 flex items-center justify-center hover:bg-background transition-colors shadow-md"
+            aria-label={t('editCover')}
+          >
+            <Camera className="h-4 w-4" />
+          </button>
+          <input
+            ref={coverInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleCoverChange}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground">{t('coverHint')}</p>
+      </div>
+
       {/* Avatar — Instagram-style: centered with tap-to-edit */}
       <div className="flex flex-col items-center gap-2 pb-2 border-b">
         <div className="relative">

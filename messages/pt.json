@@ -254,7 +254,10 @@
     "profileUpdated": "Perfil atualizado!",
     "aiCreditsInsufficient": "Créditos de IA insuficientes.",
     "viewPlans": "Ver planos",
-    "translateError": "Erro ao traduzir. Tente novamente."
+    "translateError": "Erro ao traduzir. Tente novamente.",
+    "coverPhoto": "Foto de capa",
+    "editCover": "Editar capa",
+    "coverHint": "Aparece no card do seu perfil na descoberta de missionários · JPG, PNG ou WebP · máx 5MB"
   },
   "PaymentMethods": {
     "intro": "Essas informações são exibidas no seu perfil público para que parceiros possam apoiar sua missão. O dinheiro vai direto para você — a plataforma não intermedia.",
