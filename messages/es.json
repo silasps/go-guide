@@ -542,7 +542,9 @@
     "profileTab": "Perfil",
     "search": "Buscar",
     "roleBadgePartner": "Apoyador",
-    "roleBadgeMissionary": "Misionero"
+    "roleBadgeMissionary": "Misionero",
+    "myProjectsShort": "Proyectos",
+    "myGivingShort": "Donaciones"
   },
   "CreateContent": {
     "ariaLabel": "Crear contenido",

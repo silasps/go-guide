@@ -54,8 +54,8 @@ export function useBottomNavItems(role: UserRole) {
     return [
       { href: '/dashboard', label: t('home'), icon: Home, exact: true },
       { href: '/dashboard/mensagens', label: t('messages'), icon: MessageSquare, exact: false },
-      { href: '/dashboard/meus-projetos', label: t('myProjects'), icon: FolderOpen, exact: false },
-      { href: '/dashboard/financeiro-parceiro', label: t('myGiving'), icon: Wallet, exact: false },
+      { href: '/dashboard/meus-projetos', label: t('myProjectsShort'), icon: FolderOpen, exact: false },
+      { href: '/dashboard/financeiro-parceiro', label: t('myGivingShort'), icon: Wallet, exact: false },
     ]
   }
   return [
