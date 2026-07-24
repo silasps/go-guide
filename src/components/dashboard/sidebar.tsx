@@ -138,9 +138,8 @@ export function DashboardSidebar({ profile, accessibleProfiles }: { profile: Pro
 
 export function MobileHeader() {
   return (
-    <div className="flex items-center gap-2 md:hidden">
-      <Image src="/icon-mark.png" alt="Go guide" width={24} height={24} className="h-6 w-6 rounded-md" priority />
-      <span className="font-semibold text-sm">Go guide</span>
+    <div className="flex items-center md:hidden">
+      <Image src="/logo-pill.png" alt="Go guide" width={245} height={96} className="h-7 w-auto" priority />
     </div>
   )
 }
