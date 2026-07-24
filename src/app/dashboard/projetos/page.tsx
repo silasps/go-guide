@@ -23,9 +23,9 @@ export default async function ProjetosPage() {
           <h1 className="text-xl font-semibold">Projetos</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Missões, obras e campanhas em andamento</p>
         </div>
-        <Link href="/dashboard/projetos/novo" className={cn(buttonVariants(), 'gap-2 shrink-0')}>
+        <Link href="/dashboard/projetos/novo" className={cn(buttonVariants(), 'hidden md:inline-flex gap-2 shrink-0')}>
           <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Novo projeto</span>
+          Novo projeto
         </Link>
       </div>
       <HighlightsList highlights={highlights ?? []} basePath="/dashboard/projetos" username={profile!.username} />

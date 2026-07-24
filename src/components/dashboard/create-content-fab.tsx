@@ -27,7 +27,7 @@ export function CreateContentFab({ role }: Props) {
       <DropdownMenu>
         <DropdownMenuTrigger
           aria-label={t('ariaLabel')}
-          className="h-14 w-14 rounded-full bg-foreground text-background shadow-lg flex items-center justify-center"
+          className="h-14 w-14 rounded-full bg-primary text-primary-foreground hover:bg-primary/80 shadow-lg flex items-center justify-center"
         >
           <Plus className="h-6 w-6" />
         </DropdownMenuTrigger>
