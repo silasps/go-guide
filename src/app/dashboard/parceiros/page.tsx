@@ -6,21 +6,16 @@ import { AddPartnerButton } from '@/components/partners/add-partner-button'
 
 export default async function ParceirosPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const profile = await getActiveProfile()
+  const [{ data: { user } }, profile] = await Promise.all([
+    supabase.auth.getUser(),
+    getActiveProfile(),
+  ])
 
-  await markNotificationTypesRead(supabase, user!.id, ['new_partner'])
-
-  const { data: partners } = await supabase
-    .from('partners')
-    .select('*')
-    .eq('profile_id', profile!.id)
-    .order('joined_at', { ascending: false })
-
-  const { data: grants } = await supabase
-    .from('partner_visibility_grants')
-    .select('partner_id, section')
-    .eq('profile_id', profile!.id)
+  const [, { data: partners }, { data: grants }] = await Promise.all([
+    markNotificationTypesRead(supabase, user!.id, ['new_partner']),
+    supabase.from('partners').select('*').eq('profile_id', profile!.id).order('joined_at', { ascending: false }),
+    supabase.from('partner_visibility_grants').select('partner_id, section').eq('profile_id', profile!.id),
+  ])
 
   const grantsByPartner: Record<string, string[]> = {}
   for (const g of grants ?? []) {

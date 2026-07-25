@@ -5,6 +5,18 @@ const PROTECTED_ROUTES = ['/dashboard']
 const AUTH_ROUTES = ['/login', '/cadastro', '/recuperar-senha']
 
 export async function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+  const isProtected = PROTECTED_ROUTES.some((r) => pathname.startsWith(r))
+  const isAuthRoute = AUTH_ROUTES.some((r) => pathname.startsWith(r))
+
+  // Páginas públicas (perfis, marketing) não precisam do usuário logado, então
+  // pulamos o round-trip de auth ao Supabase — ele só é necessário para decidir
+  // redirects de rotas protegidas/de auth. Isso evita atrasar o TTFB de toda
+  // visita pública com uma chamada de rede que ninguém vai usar.
+  if (!isProtected && !isAuthRoute) {
+    return NextResponse.next({ request })
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -31,10 +43,6 @@ export async function proxy(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-
-  const pathname = request.nextUrl.pathname
-  const isProtected = PROTECTED_ROUTES.some((r) => pathname.startsWith(r))
-  const isAuthRoute = AUTH_ROUTES.some((r) => pathname.startsWith(r))
 
   if (isProtected && !user) {
     const url = request.nextUrl.clone()

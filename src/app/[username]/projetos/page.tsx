@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { cn, formatCurrency } from '@/lib/utils'
+import { getProfile } from '@/lib/profile/get-profile'
 import { CheckCircle2 } from 'lucide-react'
 
 interface Props { params: Promise<{ username: string }> }
@@ -16,16 +17,11 @@ const TYPE_LABEL: Record<string, string> = {
 
 export default async function ProjetosPublicosPage({ params }: Props) {
   const { username } = await params
-  const supabase = await createClient()
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, display_name, avatar_url, accent_color, privacy_mode')
-    .eq('username', username)
-    .single()
+  const profile = await getProfile(username)
 
   if (!profile || profile.privacy_mode === 'stealth') notFound()
 
+  const supabase = await createClient()
   const { data: projects } = await supabase
     .from('highlights')
     .select('*')

@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getTranslations, getLocale } from 'next-intl/server'
@@ -8,6 +9,8 @@ import { ProjectsSection } from '@/components/profile/projects-section'
 import { ProfileCTA } from '@/components/profile/profile-cta'
 import { ProfileOwnerActions } from '@/components/profile/profile-owner-actions'
 import { PublicationsFeed } from '@/components/profile/publications-feed'
+import { SkCardGrid, SkFeedPosts } from '@/components/ui/skeleton'
+import { getProfile } from '@/lib/profile/get-profile'
 import { getProfileViewerContext } from '@/lib/profile/viewer-context'
 import { getFollowCounts } from '@/app/dashboard/feed/follows-list-actions'
 
@@ -46,19 +49,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProfilePage({ params }: Props) {
   const { username } = await params
-  const supabase = await createClient()
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('username', username)
-    .single()
+  const profile = await getProfile(username)
 
   if (!profile) notFound()
 
   const { canEdit } = await getProfileViewerContext(username)
 
   if (profile.privacy_mode === 'private' && !canEdit) {
+    const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return <PrivateProfileScreen name={profile.display_name} />
     const { data: partner } = await supabase
@@ -70,29 +68,19 @@ export default async function ProfilePage({ params }: Props) {
     if (!partner) return <PrivateProfileScreen name={profile.display_name} />
   }
 
-  const { data: projects } = await supabase
-    .from('highlights')
-    .select('*')
-    .eq('profile_id', profile.id)
-    .eq('status', 'active')
-    .order('order_index')
-
-  const { count: completedCount } = await supabase
-    .from('highlights')
-    .select('id', { count: 'exact', head: true })
-    .eq('profile_id', profile.id)
-    .eq('status', 'completed')
-
-  const { data: posts, count: postsCount } = await supabase
-    .from('posts')
-    .select('*, highlight:highlights(title, slug, cover_url)', { count: 'exact' })
-    .eq('profile_id', profile.id)
-    .eq('is_draft', false)
-    .order('published_at', { ascending: false })
-    .limit(20)
-
-  const visitorLocale = (await getLocale()) as Locale
-  const followCounts = profile.user_role === 'missionary' ? await getFollowCounts(profile.id) : null
+  // Contagens do header são queries count-only baratas, resolvidas em
+  // paralelo — não derivamos mais de projects.length/posts completos, isso
+  // deixa o header pronto sem esperar as listas inteiras (que agora
+  // streamam depois, ver ProjectsSectionAsync/PublicationsFeedAsync abaixo).
+  const supabase = await createClient()
+  const [{ count: projectsCount }, { count: completedCount }, { count: postsCount }, followCounts, visitorLocale] =
+    await Promise.all([
+      supabase.from('highlights').select('id', { count: 'exact', head: true }).eq('profile_id', profile.id).eq('status', 'active'),
+      supabase.from('highlights').select('id', { count: 'exact', head: true }).eq('profile_id', profile.id).eq('status', 'completed'),
+      supabase.from('posts').select('id', { count: 'exact', head: true }).eq('profile_id', profile.id).eq('is_draft', false),
+      profile.user_role === 'missionary' ? getFollowCounts(profile.id) : Promise.resolve(null),
+      getLocale() as Promise<Locale>,
+    ])
 
   return (
     <div className="min-h-screen bg-background">
@@ -100,7 +88,7 @@ export default async function ProfilePage({ params }: Props) {
         <ProfileHeader
           profile={profile}
           postsCount={postsCount ?? 0}
-          projectsCount={projects?.length ?? 0}
+          projectsCount={projectsCount ?? 0}
           achievementsCount={completedCount ?? 0}
           followersCount={followCounts?.followers}
           followingCount={followCounts?.following}
@@ -110,15 +98,42 @@ export default async function ProfilePage({ params }: Props) {
         ) : (
           <ProfileCTA username={profile.username} hasTrajectory={(completedCount ?? 0) > 0} />
         )}
-        {projects && projects.length > 0 && (
-          <ProjectsSection projects={projects} username={profile.username} accentColor={profile.accent_color} />
-        )}
-        {posts && posts.length > 0 && (
-          <PublicationsFeed posts={posts} username={profile.username} visitorLocale={visitorLocale} />
-        )}
+        <Suspense fallback={<SkCardGrid n={3} />}>
+          <ProjectsSectionAsync profileId={profile.id} username={profile.username} accentColor={profile.accent_color} />
+        </Suspense>
+        <Suspense fallback={<SkFeedPosts />}>
+          <PublicationsFeedAsync profileId={profile.id} username={profile.username} visitorLocale={visitorLocale} />
+        </Suspense>
       </div>
     </div>
   )
+}
+
+async function ProjectsSectionAsync({ profileId, username, accentColor }: { profileId: string; username: string; accentColor: string }) {
+  const supabase = await createClient()
+  const { data: projects } = await supabase
+    .from('highlights')
+    .select('*')
+    .eq('profile_id', profileId)
+    .eq('status', 'active')
+    .order('order_index')
+
+  if (!projects || projects.length === 0) return null
+  return <ProjectsSection projects={projects} username={username} accentColor={accentColor} />
+}
+
+async function PublicationsFeedAsync({ profileId, username, visitorLocale }: { profileId: string; username: string; visitorLocale: Locale }) {
+  const supabase = await createClient()
+  const { data: posts } = await supabase
+    .from('posts')
+    .select('*, highlight:highlights(title, slug, cover_url)')
+    .eq('profile_id', profileId)
+    .eq('is_draft', false)
+    .order('published_at', { ascending: false })
+    .limit(20)
+
+  if (!posts || posts.length === 0) return null
+  return <PublicationsFeed posts={posts} username={username} visitorLocale={visitorLocale} />
 }
 
 async function PrivateProfileScreen({ name }: { name: string }) {

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { TrajectoryTimeline } from '@/components/profile/trajectory-timeline'
+import { getProfile } from '@/lib/profile/get-profile'
 import type { Metadata } from 'next'
 
 interface Props { params: Promise<{ username: string }> }
@@ -12,16 +13,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function TrajetoriaPage({ params }: Props) {
   const { username } = await params
-  const supabase = await createClient()
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, display_name, privacy_mode, mission_start_date')
-    .eq('username', username)
-    .single()
+  const profile = await getProfile(username)
 
   if (!profile || profile.privacy_mode === 'stealth') notFound()
 
+  const supabase = await createClient()
   const { data: projects } = await supabase
     .from('highlights')
     .select('id, slug, title, description, cover_url, cover_position, goal_amount, current_amount, currency, completed_at')

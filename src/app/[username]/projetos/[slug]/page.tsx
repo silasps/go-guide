@@ -25,6 +25,7 @@ import { MilestonesEditSection } from '@/components/highlights/milestones-edit-s
 import { LetterEditSection } from '@/components/highlights/letter-edit-section'
 import { DatesStatusEditSection } from '@/components/highlights/dates-status-edit-section'
 import type { HighlightSnapshot } from '@/components/highlights/section-types'
+import { getProfile } from '@/lib/profile/get-profile'
 
 interface Props {
   params: Promise<{ username: string; slug: string }>
@@ -34,11 +35,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username, slug } = await params
   const supabase = await createClient()
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, display_name, privacy_mode')
-    .eq('username', username)
-    .single()
+  const profile = await getProfile(username)
 
   if (!profile) return { title: 'Projeto não encontrado' }
 
@@ -110,17 +107,12 @@ const SUPPORT_TYPES = [
 
 export default async function ProjetoPublicoPage({ params }: Props) {
   const { username, slug } = await params
-  const supabase = await createClient()
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, display_name, avatar_url, privacy_mode')
-    .eq('username', username)
-    .single()
+  const profile = await getProfile(username)
 
   if (!profile) notFound()
   if (profile.privacy_mode === 'stealth') notFound()
 
+  const supabase = await createClient()
   const { canEdit } = await getProfileViewerContext(username)
 
   const { data: paymentMethods } = await supabase

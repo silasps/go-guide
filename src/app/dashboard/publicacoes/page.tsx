@@ -6,16 +6,15 @@ import { NewPostButton } from '@/components/dashboard/new-post-button'
 
 export default async function PublicacoesPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const profile = await getActiveProfile()
+  const [{ data: { user } }, profile] = await Promise.all([
+    supabase.auth.getUser(),
+    getActiveProfile(),
+  ])
 
-  await markNotificationTypesRead(supabase, user!.id, ['new_post', 'highlight_update'])
-
-  const { data: posts } = await supabase
-    .from('posts')
-    .select('*')
-    .eq('profile_id', profile!.id)
-    .order('created_at', { ascending: false })
+  const [, { data: posts }] = await Promise.all([
+    markNotificationTypesRead(supabase, user!.id, ['new_post', 'highlight_update']),
+    supabase.from('posts').select('*').eq('profile_id', profile!.id).order('created_at', { ascending: false }),
+  ])
 
   return (
     <div className="space-y-6">

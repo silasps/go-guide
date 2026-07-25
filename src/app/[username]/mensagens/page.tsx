@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { E2EEGate } from '@/components/messages/e2ee-gate'
 import { MessageThread } from '@/components/messages/message-thread'
+import { getProfile } from '@/lib/profile/get-profile'
 import { getProfileViewerContext } from '@/lib/profile/viewer-context'
 import Link from 'next/link'
 
@@ -16,11 +17,7 @@ export default async function PartnerMensagensPage({ params }: Props) {
   const { canEdit } = await getProfileViewerContext(username)
   if (canEdit) redirect(`/${username}`)
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, user_id, display_name, privacy_mode')
-    .eq('username', username)
-    .single()
+  const profile = await getProfile(username)
   if (!profile || profile.privacy_mode === 'stealth') notFound()
 
   return (

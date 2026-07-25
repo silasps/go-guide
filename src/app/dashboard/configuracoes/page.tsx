@@ -5,26 +5,13 @@ import { getTranslations } from 'next-intl/server'
 
 export default async function ConfiguracoesPage() {
   const supabase = await createClient()
-  const profile = await getActiveProfile()
-  const t = await getTranslations('SettingsPage')
+  const [profile, t] = await Promise.all([getActiveProfile(), getTranslations('SettingsPage')])
 
-  const { data: managers } = await supabase
-    .from('profile_managers')
-    .select('*')
-    .eq('profile_id', profile!.id)
-    .order('created_at')
-
-  const { data: paymentMethods } = await supabase
-    .from('payment_methods')
-    .select('*')
-    .eq('profile_id', profile!.id)
-    .order('sort_order')
-
-  const { data: financialAccounts } = await supabase
-    .from('financial_accounts')
-    .select('*')
-    .eq('profile_id', profile!.id)
-    .order('created_at')
+  const [{ data: managers }, { data: paymentMethods }, { data: financialAccounts }] = await Promise.all([
+    supabase.from('profile_managers').select('*').eq('profile_id', profile!.id).order('created_at'),
+    supabase.from('payment_methods').select('*').eq('profile_id', profile!.id).order('sort_order'),
+    supabase.from('financial_accounts').select('*').eq('profile_id', profile!.id).order('created_at'),
+  ])
 
   return (
     <div className="max-w-2xl">

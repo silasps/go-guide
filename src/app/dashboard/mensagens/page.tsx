@@ -4,19 +4,21 @@ import { ConversationList } from '@/components/messages/conversation-list'
 
 export default async function MensagensPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const profile = await getActiveProfile()
+  const [{ data: { user } }, profile] = await Promise.all([
+    supabase.auth.getUser(),
+    getActiveProfile(),
+  ])
 
   // Nem toda mensagem tem profile_id = meu perfil: se eu mandei mensagem pra outro
   // missionário como parceiro, a conversa pertence ao profile_id DELE. Por isso aqui
   // busca por participação (sender/recipient), não por dono do perfil.
-  const { data: messages } = await supabase
-    .from('messages')
-    .select('sender_id, recipient_id, created_at')
-    .or(`sender_id.eq.${user!.id},recipient_id.eq.${user!.id}`)
-    .order('created_at', { ascending: false })
-
-  const { data: partners } = await supabase.from('partners').select('user_id, name').eq('profile_id', profile!.id).not('user_id', 'is', null)
+  const [{ data: messages }, { data: partners }] = await Promise.all([
+    supabase.from('messages')
+      .select('sender_id, recipient_id, created_at')
+      .or(`sender_id.eq.${user!.id},recipient_id.eq.${user!.id}`)
+      .order('created_at', { ascending: false }),
+    supabase.from('partners').select('user_id, name').eq('profile_id', profile!.id).not('user_id', 'is', null),
+  ])
   const nameByUserId = new Map((partners ?? []).map(p => [p.user_id as string, p.name]))
 
   const seen = new Map<string, string>()

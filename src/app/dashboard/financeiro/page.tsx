@@ -10,29 +10,23 @@ import { Plus } from 'lucide-react'
 
 export default async function FinanceiroPage() {
   const supabase = await createClient()
-  const profile = await getActiveProfile()
-
-  const { data: accounts } = await supabase
-    .from('financial_accounts')
-    .select('*')
-    .order('created_at', { ascending: true })
+  const [profile, { data: accounts }] = await Promise.all([
+    getActiveProfile(),
+    supabase.from('financial_accounts').select('*').order('created_at', { ascending: true }),
+  ])
 
   const startOfMonth = new Date()
   startOfMonth.setDate(1)
   startOfMonth.setHours(0, 0, 0, 0)
 
-  const { data: monthTransactions } = await supabase
-    .from('transactions')
-    .select('*')
-    .eq('profile_id', profile!.id)
-    .gte('date', startOfMonth.toISOString().slice(0, 10))
-
-  const { data: recent } = await supabase
-    .from('transactions')
-    .select('*, category:transaction_categories!transactions_category_id_fkey(*), partner:partners(name)')
-    .eq('profile_id', profile!.id)
-    .order('date', { ascending: false })
-    .limit(8)
+  const [{ data: monthTransactions }, { data: recent }] = await Promise.all([
+    supabase.from('transactions').select('*').eq('profile_id', profile!.id).gte('date', startOfMonth.toISOString().slice(0, 10)),
+    supabase.from('transactions')
+      .select('*, category:transaction_categories!transactions_category_id_fkey(*), partner:partners(name)')
+      .eq('profile_id', profile!.id)
+      .order('date', { ascending: false })
+      .limit(8),
+  ])
 
   if (!accounts || accounts.length === 0) {
     return (

@@ -1,45 +1,25 @@
+import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { HistoryView } from '@/components/profile/history-view'
 import { ProfileHeader } from '@/components/profile/profile-header'
+import { SkList } from '@/components/ui/skeleton'
+import { getProfile } from '@/lib/profile/get-profile'
 
 interface Props { params: Promise<{ username: string }> }
 
 export default async function HistoriaPage({ params }: Props) {
   const { username } = await params
-  const supabase = await createClient()
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('username', username)
-    .single()
+  const profile = await getProfile(username)
 
   if (!profile || profile.privacy_mode === 'stealth') notFound()
 
-  const { data: blocks } = await supabase
-    .from('history_blocks')
-    .select('*')
-    .eq('profile_id', profile.id)
-    .order('order_index')
-
-  const { count: postsCount } = await supabase
-    .from('posts')
-    .select('id', { count: 'exact', head: true })
-    .eq('profile_id', profile.id)
-    .eq('is_draft', false)
-
-  const { count: projectsCount } = await supabase
-    .from('highlights')
-    .select('id', { count: 'exact', head: true })
-    .eq('profile_id', profile.id)
-    .eq('status', 'active')
-
-  const { count: achievementsCount } = await supabase
-    .from('highlights')
-    .select('id', { count: 'exact', head: true })
-    .eq('profile_id', profile.id)
-    .eq('status', 'completed')
+  const supabase = await createClient()
+  const [{ count: postsCount }, { count: projectsCount }, { count: achievementsCount }] = await Promise.all([
+    supabase.from('posts').select('id', { count: 'exact', head: true }).eq('profile_id', profile.id).eq('is_draft', false),
+    supabase.from('highlights').select('id', { count: 'exact', head: true }).eq('profile_id', profile.id).eq('status', 'active'),
+    supabase.from('highlights').select('id', { count: 'exact', head: true }).eq('profile_id', profile.id).eq('status', 'completed'),
+  ])
 
   return (
     <div className="min-h-screen bg-background">
@@ -50,8 +30,21 @@ export default async function HistoriaPage({ params }: Props) {
           projectsCount={projectsCount ?? 0}
           achievementsCount={achievementsCount ?? 0}
         />
-        <HistoryView blocks={blocks ?? []} />
+        <Suspense fallback={<SkList n={3} />}>
+          <HistoryBlocksAsync profileId={profile.id} />
+        </Suspense>
       </div>
     </div>
   )
+}
+
+async function HistoryBlocksAsync({ profileId }: { profileId: string }) {
+  const supabase = await createClient()
+  const { data: blocks } = await supabase
+    .from('history_blocks')
+    .select('*')
+    .eq('profile_id', profileId)
+    .order('order_index')
+
+  return <HistoryView blocks={blocks ?? []} />
 }

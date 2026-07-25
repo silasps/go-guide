@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getTranslations } from 'next-intl/server'
 import type { Metadata } from 'next'
 import { cn } from '@/lib/utils'
+import { getProfile } from '@/lib/profile/get-profile'
 import { getProfileViewerContext } from '@/lib/profile/viewer-context'
 import { FollowsList } from '@/components/profile/follows-list'
 import {
@@ -33,11 +34,7 @@ export default async function SeguidoresPage({ params, searchParams }: Props) {
   const supabase = await createClient()
   const t = await getTranslations('FollowsList')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, display_name, privacy_mode, user_role')
-    .eq('username', username)
-    .maybeSingle()
+  const profile = await getProfile(username)
 
   if (!profile || profile.user_role !== 'missionary' || profile.privacy_mode === 'stealth') notFound()
 

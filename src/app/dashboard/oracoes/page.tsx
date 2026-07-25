@@ -7,16 +7,15 @@ import { E2EEGate } from '@/components/messages/e2ee-gate'
 
 export default async function OracoesPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const profile = await getActiveProfile()
+  const [{ data: { user } }, profile] = await Promise.all([
+    supabase.auth.getUser(),
+    getActiveProfile(),
+  ])
 
-  await markNotificationTypesRead(supabase, user!.id, ['new_prayer_request', 'prayer_reply', 'prayer_answered'])
-
-  const { data: requests } = await supabase
-    .from('prayer_requests')
-    .select('*')
-    .eq('profile_id', profile!.id)
-    .order('created_at', { ascending: false })
+  const [, { data: requests }] = await Promise.all([
+    markNotificationTypesRead(supabase, user!.id, ['new_prayer_request', 'prayer_reply', 'prayer_answered']),
+    supabase.from('prayer_requests').select('*').eq('profile_id', profile!.id).order('created_at', { ascending: false }),
+  ])
 
   const hasPrivate = (requests ?? []).some(r => r.is_private)
 

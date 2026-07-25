@@ -1,18 +1,12 @@
 import { notFound } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import { PrayerRequestForm } from '@/components/prayer/prayer-request-form'
+import { getProfile } from '@/lib/profile/get-profile'
 
 interface Props { params: Promise<{ username: string }> }
 
 export default async function OracaoPage({ params }: Props) {
   const { username } = await params
-  const supabase = await createClient()
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, user_id, display_name, privacy_mode')
-    .eq('username', username)
-    .single()
+  const profile = await getProfile(username)
 
   if (!profile || profile.privacy_mode === 'stealth') notFound()
 

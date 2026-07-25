@@ -16,7 +16,12 @@ import { ThemeToggle } from '@/components/theme-toggle'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // getTranslations não depende do usuário — roda em paralelo com o gate de
+  // autenticação em vez de esperar ele terminar pra só então começar.
+  const [{ data: { user } }, t] = await Promise.all([
+    supabase.auth.getUser(),
+    getTranslations('DashboardNav'),
+  ])
 
   if (!user) redirect('/login')
 
@@ -33,7 +38,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const superAdmin = isSuperAdmin(user.email)
   const previewRole = superAdmin ? await getPreviewRole() : null
   const effectiveProfile = previewRole ? { ...profile, user_role: previewRole } : profile
-  const t = await getTranslations('DashboardNav')
 
   return (
     <PostComposerProvider

@@ -50,6 +50,7 @@ export async function ProfileHeader({ profile, postsCount, projectsCount, achiev
               alt={displayName}
               width={80}
               height={80}
+              preload
               className="rounded-full object-cover ring-2 ring-border"
               style={{ width: 80, height: 80 }}
             />

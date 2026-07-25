@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import { PartnershipWizard } from '@/components/partners/partnership-wizard'
+import { getProfile } from '@/lib/profile/get-profile'
 import { PledgePaymentMethod } from '@/types/database'
 
 const VALID_CHOICES = ['financial_once', 'financial_once_general', 'financial_ongoing', 'prayer', 'ambassador', 'volunteer'] as const
@@ -15,32 +16,19 @@ export default async function ParceriaPage({ params, searchParams }: Props) {
   const { username } = await params
   const { highlight_id, choice } = await searchParams
   const initialChoice = VALID_CHOICES.find(c => c === choice)
-  const supabase = await createClient()
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, display_name, privacy_mode, mission_start_date')
-    .eq('username', username)
-    .single()
-
+  const profile = await getProfile(username)
   if (!profile || profile.privacy_mode === 'stealth') notFound()
 
-  const t = await getTranslations('PaymentMethods')
-  const [{ data: methods }, { data: { user } }] = await Promise.all([
+  const supabase = await createClient()
+  const [t, { data: methods }, { data: { user } }, { data: highlight }] = await Promise.all([
+    getTranslations('PaymentMethods'),
     supabase.from('payment_methods').select('*').eq('profile_id', profile.id).eq('is_active', true).order('sort_order'),
     supabase.auth.getUser(),
+    highlight_id
+      ? supabase.from('highlights').select('id, title, currency').eq('id', highlight_id).eq('profile_id', profile.id).single()
+      : Promise.resolve({ data: null as { id: string; title: string; currency: string } | null }),
   ])
-
-  let highlight: { id: string; title: string; currency: string } | null = null
-  if (highlight_id) {
-    const { data } = await supabase
-      .from('highlights')
-      .select('id, title, currency')
-      .eq('id', highlight_id)
-      .eq('profile_id', profile.id)
-      .single()
-    highlight = data
-  }
 
   const stripeAvailable = (methods ?? []).some(m => m.type === 'stripe')
   const manualMethods = (methods ?? []).filter(m => m.type !== 'stripe')
