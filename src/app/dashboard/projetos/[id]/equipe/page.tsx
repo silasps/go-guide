@@ -2,10 +2,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveProfile } from '@/lib/profile/active-profile'
 import { ProjectTeamPanel } from '@/components/highlights/project-team-panel'
-import Link from 'next/link'
-import { buttonVariants } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-import { ArrowLeft } from 'lucide-react'
+import { BackButton } from '@/components/ui/back-button'
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -23,9 +20,7 @@ export default async function ProjectTeamPage({ params }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Link href={`/dashboard/projetos/${id}`} className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }))}>
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
+        <BackButton href={`/dashboard/projetos/${id}`} label="Voltar" />
         <div>
           <h1 className="text-xl font-semibold">Equipe — {highlight.title}</h1>
           <p className="text-muted-foreground text-sm">Quem participa deste projeto e o financeiro compartilhado</p>

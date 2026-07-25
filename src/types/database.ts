@@ -3,6 +3,7 @@ export type ProfileAccountType = 'individual' | 'family' | 'organization'
 export type Locale = 'pt' | 'en' | 'es'
 export type Plan = 'free' | 'pro' | 'mission'
 export type PostType = 'text' | 'image' | 'video' | 'carousel'
+export type MediaAspectRatio = 'original' | '1:1' | '4:5' | '16:9'
 export type PartnerType = 'financial' | 'prayer' | 'both' | 'ambassador'
 export type AccountType = 'checking' | 'savings' | 'credit'
 export type TransactionType = 'income' | 'expense' | 'transfer'
@@ -77,6 +78,8 @@ export interface Post {
   type: PostType
   content: string | null
   media_urls: string[]
+  media_aspect_ratio: MediaAspectRatio
+  location: string | null
   published_at: string | null
   scheduled_at: string | null
   is_draft: boolean
@@ -86,6 +89,35 @@ export interface Post {
   translations: Partial<Record<Locale, ContentTranslation>>
   created_at: string
   updated_at: string
+}
+
+export interface PostTag {
+  id: string
+  post_id: string
+  media_index: number
+  tagged_profile_id: string
+  position_x: number
+  position_y: number
+  created_by_user_id: string
+  created_at: string
+}
+
+export interface PostTagWithProfile extends PostTag {
+  profile: Pick<Profile, 'id' | 'username' | 'display_name'>
+}
+
+export interface PostComment {
+  id: string
+  post_id: string
+  profile_id: string
+  content: string
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+}
+
+export interface PostCommentWithProfile extends PostComment {
+  profile: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url'>
 }
 
 export interface Highlight {
@@ -433,6 +465,10 @@ export interface WhatsappConfig {
 export interface PostWithProfile extends Post {
   profile: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url' | 'accent_color'>
   highlight: Pick<Highlight, 'title' | 'slug' | 'category' | 'cover_url'> | null
+  tags: PostTagWithProfile[]
+  like_count: number
+  comment_count: number
+  viewer_has_liked: boolean
 }
 
 export type StoryPost = Pick<Post, 'id' | 'content' | 'media_urls' | 'type' | 'published_at' | 'original_locale' | 'translations'>

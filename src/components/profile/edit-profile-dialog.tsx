@@ -6,7 +6,8 @@ import { Profile } from '@/types/database'
 import { ProfileForm } from '@/components/dashboard/settings/profile-form'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Pencil, ArrowLeft } from 'lucide-react'
+import { BackButton } from '@/components/ui/back-button'
+import { Pencil } from 'lucide-react'
 
 interface Props {
   profile: Profile
@@ -36,13 +37,7 @@ export function EditProfileDialog({ profile }: Props) {
         {/* Cabeçalho: seta voltar + título centralizado, estilo Instagram —
             substitui o X de fechar padrão do Dialog só nesta tela. */}
         <div className="grid grid-cols-[2rem_1fr_2rem] items-center gap-2 px-4 py-3 border-b shrink-0 md:border-b-0 md:px-0 md:pt-0 md:pb-2">
-          <button
-            onClick={() => setOpen(false)}
-            aria-label={t('closeEdit')}
-            className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
+          <BackButton onClick={() => setOpen(false)} label={t('closeEdit')} />
           <DialogTitle className="text-center text-base">{t('editProfile')}</DialogTitle>
           <div />
         </div>

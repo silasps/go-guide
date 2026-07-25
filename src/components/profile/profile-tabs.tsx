@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { LanguageSwitcher } from '@/components/marketing/language-switcher'
 import { AccountMenuDrawer, type DrawerProfile } from '@/components/dashboard/account-menu-drawer'
-import { ArrowLeft } from 'lucide-react'
+import { BackButton } from '@/components/ui/back-button'
 
 interface Props {
   username: string
@@ -15,32 +15,6 @@ interface Props {
   canEdit: boolean
   viewerUserId: string | null
   ownerProfile: DrawerProfile | null
-}
-
-function BackToDashboard({ label }: { label: string }) {
-  return (
-    <Link
-      href="/dashboard"
-      aria-label={label}
-      title={label}
-      className="shrink-0 h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-    >
-      <ArrowLeft className="h-4 w-4" />
-    </Link>
-  )
-}
-
-function BackToProfile({ username, label }: { username: string; label: string }) {
-  return (
-    <Link
-      href={`/${username}`}
-      aria-label={label}
-      title={label}
-      className="h-8 w-8 flex items-center justify-center rounded-full bg-background/90 backdrop-blur ring-1 ring-foreground/10 shadow-sm text-muted-foreground hover:text-foreground transition-colors"
-    >
-      <ArrowLeft className="h-4 w-4" />
-    </Link>
-  )
 }
 
 // Fluxos de ação/conversão (oração, parceria, mensagem) e a tela de um
@@ -55,13 +29,34 @@ export function ProfileTabs({ username, hasTrajectory, isMissionary, canEdit, vi
   const t = useTranslations('PublicProfile')
   const base = `/${username}`
 
-  const hiddenOn = [`${base}/mensagens`, `${base}/oracao`, `${base}/parceria`]
   const isProjectDetail = pathname.startsWith(`${base}/projetos/`)
-  if (hiddenOn.includes(pathname) || isProjectDetail) {
+  if (isProjectDetail) {
+    // Foto de capa em tela cheia: botão fica fixo no canto, como em
+    // visualizadores de foto (Instagram), com sombra pra ficar legível
+    // sobre qualquer imagem por baixo.
     return (
       <div className="fixed top-3 inset-x-3 z-50 flex items-center justify-between">
-        <BackToProfile username={username} label={t('backToProfile')} />
+        <BackButton href={base} label={t('backToProfile')} className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]" />
         <LanguageSwitcher compact className="bg-background/90 backdrop-blur rounded-full ring-1 ring-foreground/10 shadow-sm px-2 py-1" />
+      </div>
+    )
+  }
+
+  const contentMaxWidth: Record<string, string> = {
+    [`${base}/mensagens`]: 'max-w-lg',
+    [`${base}/oracao`]: 'max-w-md',
+    [`${base}/parceria`]: 'max-w-md',
+  }
+  if (pathname in contentMaxWidth) {
+    // Alinha o botão de voltar com a coluna de conteúdo centralizada da
+    // página, em vez de grudar no canto esquerdo da tela (feedback direto
+    // do usuário).
+    return (
+      <div className="fixed top-3 inset-x-0 z-50 px-4">
+        <div className={cn('mx-auto flex items-center justify-between', contentMaxWidth[pathname])}>
+          <BackButton href={base} label={t('backToProfile')} />
+          <LanguageSwitcher compact />
+        </div>
       </div>
     )
   }
@@ -80,7 +75,7 @@ export function ProfileTabs({ username, hasTrajectory, isMissionary, canEdit, vi
   return (
     <div className="sticky top-0 z-40 bg-background/90 backdrop-blur border-b">
       <div className="max-w-xl mx-auto flex items-center gap-1">
-        {viewerUserId && <BackToDashboard label={t('backToDashboard')} />}
+        {viewerUserId && <BackButton href="/dashboard" label={t('backToDashboard')} className="shrink-0" />}
         <nav className="flex-1 flex overflow-x-auto scrollbar-hide">
           {tabs.map(({ href, label, exact }) => {
             const active = exact ? pathname === href : pathname.startsWith(href)

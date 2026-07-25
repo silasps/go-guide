@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { PostWithProfile, ProjectStory, StoryPost } from '@/types/database'
 import { scorePost, AffinitySignals } from '@/lib/feed/rank'
+import { enrichWithEngagement } from '@/lib/posts/enrich-with-engagement'
 
 const PAGE_SIZE = 15
 const STORY_POSTS_PER_PROJECT = 10
@@ -50,6 +51,9 @@ export async function getFeedPage(cursor: string | null): Promise<{
 
   const { data: posts } = await query
   const list = (posts ?? []) as unknown as PostWithProfile[]
+
+  const engagement = await enrichWithEngagement(supabase, list.map((p) => p.id), user.id)
+  for (const post of list) Object.assign(post, engagement.get(post.id))
 
   const signals: AffinitySignals = { followedProfileIds, pledgedProfileIds, activeRecurringProfileIds, affinityCategories }
   const ranked = [...list].sort((a, b) => scorePost(b, signals) - scorePost(a, signals))

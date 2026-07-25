@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import type { Locale } from '@/i18n/config'
 import { PostWithProfile } from '@/types/database'
 import { getFeedPage } from '@/app/dashboard/feed/actions'
-import { FeedPostCard } from './feed-post-card'
+import { PostCard } from '@/components/shared/post-card'
 import { Button } from '@/components/ui/button'
 import { usePendingAction } from '@/hooks/use-pending-action'
 
@@ -32,7 +32,7 @@ export function FeedList({ initialPosts, initialCursor, visitorLocale }: Props) 
   return (
     <div className="space-y-4">
       {posts.map((post) => (
-        <FeedPostCard key={post.id} post={post} visitorLocale={visitorLocale} />
+        <PostCard key={post.id} post={post} visitorLocale={visitorLocale} />
       ))}
 
       {cursor && (

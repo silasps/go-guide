@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
-import type { HighlightStatus, Locale, PostType } from '@/types/database'
+import type { HighlightStatus, Locale, MediaAspectRatio, PostType } from '@/types/database'
 
 function serviceClient() {
   return createSupabaseClient(
@@ -42,9 +42,13 @@ export async function savePost(input: {
   type: PostType
   content: string
   mediaUrls: string[]
+  mediaAspectRatio?: MediaAspectRatio
+  location?: string | null
   isDraft: boolean
+  scheduledAt?: string | null
   projectId?: string | null
   translations: Partial<Record<Locale, { content: string; source: 'ai' | 'human' }>>
+  tags?: { mediaIndex: number; taggedProfileId: string; x: number; y: number }[]
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -72,29 +76,59 @@ export async function savePost(input: {
       ])
   )
 
+  // Agendado = não é rascunho, tem data futura e ainda não foi publicado.
+  // O cron de /api/cron/publish-scheduled-posts promove para published_at
+  // quando a hora chega — aqui só guardamos a intenção.
+  const isScheduled = !input.isDraft && !!input.scheduledAt && new Date(input.scheduledAt) > new Date()
+
   const payload = {
     profile_id: input.profileId,
     created_by_user_id: user.id,
     type: input.type,
     content: input.content.trim() || null,
     media_urls: input.mediaUrls,
+    media_aspect_ratio: input.mediaAspectRatio ?? '4:5',
+    location: input.location?.trim() || null,
     is_draft: input.isDraft,
-    published_at: input.isDraft ? null : new Date().toISOString(),
+    published_at: input.isDraft || isScheduled ? null : new Date().toISOString(),
+    scheduled_at: isScheduled ? input.scheduledAt : null,
     project_id: input.projectId ?? null,
     translations,
   }
 
-  if (input.postId) {
-    const { error } = await service.from('posts').update(payload).eq('id', input.postId)
+  let postId = input.postId
+  if (postId) {
+    const { error } = await service.from('posts').update(payload).eq('id', postId)
     if (error) throw new Error(error.message)
   } else {
-    const { error } = await service
+    const { data, error } = await service
       .from('posts')
       .insert({ ...payload, original_locale: input.originalLocale })
+      .select('id')
+      .single()
     if (error) throw new Error(error.message)
+    postId = data.id
+  }
+
+  if (input.tags) {
+    await service.from('post_tags').delete().eq('post_id', postId)
+    if (input.tags.length) {
+      const { error } = await service.from('post_tags').insert(
+        input.tags.map((tag) => ({
+          post_id: postId,
+          media_index: tag.mediaIndex,
+          tagged_profile_id: tag.taggedProfileId,
+          position_x: tag.x,
+          position_y: tag.y,
+          created_by_user_id: user.id,
+        }))
+      )
+      if (error) throw new Error(error.message)
+    }
   }
 
   revalidatePath('/dashboard/publicacoes')
+  revalidatePath('/dashboard/feed')
 }
 
 export async function getLinkableProjects(profileId: string): Promise<{

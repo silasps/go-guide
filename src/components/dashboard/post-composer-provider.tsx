@@ -1,9 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, type ReactNode } from 'react'
-import { useTranslations } from 'next-intl'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { PostEditor } from '@/components/dashboard/post-editor'
+import { PostComposerModal } from '@/components/dashboard/post-composer/post-composer-modal'
 import { Post } from '@/types/database'
 import type { Locale } from '@/i18n/config'
 
@@ -29,8 +27,7 @@ interface Props {
   children: ReactNode
 }
 
-export function PostComposerProvider({ profileId, userId, displayName, avatarUrl, originalLocale, children }: Props) {
-  const t = useTranslations('PostComposer')
+export function PostComposerProvider({ profileId, userId, originalLocale, children }: Props) {
   const [isOpen, setIsOpen] = useState(false)
   const [editingPost, setEditingPost] = useState<Post | undefined>(undefined)
 
@@ -47,25 +44,18 @@ export function PostComposerProvider({ profileId, userId, displayName, avatarUrl
   return (
     <ComposerContext.Provider value={{ openComposer, closeComposer }}>
       {children}
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>{editingPost ? t('titleEdit') : t('title')}</DialogTitle>
-          </DialogHeader>
-          {isOpen && (
-            <PostEditor
-              key={editingPost?.id ?? 'new'}
-              post={editingPost}
-              profileId={profileId}
-              userId={userId}
-              originalLocale={originalLocale}
-              displayName={displayName}
-              avatarUrl={avatarUrl}
-              onSaved={closeComposer}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {isOpen && (
+        <PostComposerModal
+          key={editingPost?.id ?? 'new'}
+          open={isOpen}
+          onOpenChange={(next) => (next ? setIsOpen(true) : closeComposer())}
+          post={editingPost}
+          profileId={profileId}
+          userId={userId}
+          originalLocale={originalLocale}
+          onSaved={closeComposer}
+        />
+      )}
     </ComposerContext.Provider>
   )
 }

@@ -8,7 +8,9 @@ import { ProfileHeader } from '@/components/profile/profile-header'
 import { ProjectsSection } from '@/components/profile/projects-section'
 import { ProfileCTA } from '@/components/profile/profile-cta'
 import { ProfileOwnerActions } from '@/components/profile/profile-owner-actions'
-import { PublicationsFeed } from '@/components/profile/publications-feed'
+import { PostCard } from '@/components/shared/post-card'
+import { enrichWithEngagement } from '@/lib/posts/enrich-with-engagement'
+import type { PostWithProfile, Profile } from '@/types/database'
 import { SkCardGrid, SkFeedPosts } from '@/components/ui/skeleton'
 import { getProfile } from '@/lib/profile/get-profile'
 import { getProfileViewerContext } from '@/lib/profile/viewer-context'
@@ -102,7 +104,7 @@ export default async function ProfilePage({ params }: Props) {
           <ProjectsSectionAsync profileId={profile.id} username={profile.username} accentColor={profile.accent_color} />
         </Suspense>
         <Suspense fallback={<SkFeedPosts />}>
-          <PublicationsFeedAsync profileId={profile.id} username={profile.username} visitorLocale={visitorLocale} />
+          <PublicationsFeedAsync profile={profile} visitorLocale={visitorLocale} />
         </Suspense>
       </div>
     </div>
@@ -122,18 +124,37 @@ async function ProjectsSectionAsync({ profileId, username, accentColor }: { prof
   return <ProjectsSection projects={projects} username={username} accentColor={accentColor} />
 }
 
-async function PublicationsFeedAsync({ profileId, username, visitorLocale }: { profileId: string; username: string; visitorLocale: Locale }) {
+async function PublicationsFeedAsync({ profile, visitorLocale }: { profile: Profile; visitorLocale: Locale }) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const t = await getTranslations({ locale: visitorLocale, namespace: 'PublicProfile' })
   const { data: posts } = await supabase
     .from('posts')
-    .select('*, highlight:highlights(title, slug, cover_url)')
-    .eq('profile_id', profileId)
+    .select('*, highlight:highlights(title, slug, category, cover_url)')
+    .eq('profile_id', profile.id)
     .eq('is_draft', false)
     .order('published_at', { ascending: false })
     .limit(20)
 
   if (!posts || posts.length === 0) return null
-  return <PublicationsFeed posts={posts} username={username} visitorLocale={visitorLocale} />
+
+  const engagement = await enrichWithEngagement(supabase, posts.map((p) => p.id), user?.id)
+  const postsWithProfile = posts.map((post) => ({
+    ...post,
+    profile: { id: profile.id, username: profile.username, display_name: profile.display_name, avatar_url: profile.avatar_url, accent_color: profile.accent_color },
+    ...engagement.get(post.id)!,
+  })) as unknown as PostWithProfile[]
+
+  return (
+    <div className="space-y-3">
+      <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">{t('statPosts')}</h2>
+      <div className="space-y-4">
+        {postsWithProfile.map((post) => (
+          <PostCard key={post.id} post={post} visitorLocale={visitorLocale} />
+        ))}
+      </div>
+    </div>
+  )
 }
 
 async function PrivateProfileScreen({ name }: { name: string }) {
