@@ -19,7 +19,7 @@ import { SupportTypesPicker } from './support-types-picker'
 
 // Assunto do projeto (ortogonal ao goal_type acima, que é o TIPO DE APOIO
 // pedido) — sinal de afinidade usado pelo ranking do feed, sem UI pública.
-const PROJECT_CATEGORIES = [
+export const PROJECT_CATEGORIES = [
   { value: 'children',                emoji: '🧒', label: 'Crianças' },
   { value: 'health',                  emoji: '🩺', label: 'Saúde' },
   { value: 'education',               emoji: '📚', label: 'Educação' },

@@ -8,6 +8,7 @@ import { compressImage } from '@/lib/media/compress'
 import { bakeImage } from '@/lib/media/bake-image'
 import { savePost } from '@/app/dashboard/publicacoes/actions'
 import { usePendingAction } from '@/hooks/use-pending-action'
+import { useProjectComposer } from '@/components/highlights/project-composer/project-composer-provider'
 import type { MediaAspectRatio, Post, PostType } from '@/types/database'
 import type { Locale } from '@/i18n/config'
 import type { ComposerStep, MediaDraft, TagDraft } from './types'
@@ -23,6 +24,7 @@ interface Options {
 
 export function usePostComposer({ post, profileId, userId, originalLocale, onSaved }: Options) {
   const router = useRouter()
+  const { openProjectComposer } = useProjectComposer()
   const effectiveOriginalLocale: Locale = post?.original_locale ?? originalLocale
 
   const [step, setStep] = useState<ComposerStep>(post ? 'details' : 'type')
@@ -84,7 +86,10 @@ export function usePostComposer({ post, profileId, userId, originalLocale, onSav
   }
 
   function pickProject() {
-    router.push('/dashboard/projetos/novo')
+    // Fecha o composer de post e abre o de projeto no lugar — mesmo fluxo
+    // fullscreen em etapas, sem navegar pra uma página separada.
+    onSaved()
+    openProjectComposer()
   }
 
   function removeExistingUrl(index: number) {

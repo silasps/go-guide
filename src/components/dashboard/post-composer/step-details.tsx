@@ -110,9 +110,9 @@ export function StepDetails({ composer, profileId }: Props) {
             role="switch"
             aria-checked={scheduleEnabled}
             onClick={() => setScheduleEnabled(!scheduleEnabled)}
-            className={`h-5 w-9 rounded-full transition-colors relative ${scheduleEnabled ? 'bg-primary' : 'bg-muted'}`}
+            className={`h-5 w-9 shrink-0 flex items-center rounded-full p-0.5 transition-colors ${scheduleEnabled ? 'bg-primary justify-end' : 'bg-muted justify-start'}`}
           >
-            <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${scheduleEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+            <span className="h-4 w-4 rounded-full bg-white transition-transform" />
           </button>
         </label>
         {scheduleEnabled && (

@@ -73,8 +73,15 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
           ASPECT_RATIO_CLASS[aspect] || 'aspect-[4/5]'
         )}
         style={{ cursor: 'grab', touchAction: 'none' }}
-        onMouseDown={(e) => { e.preventDefault(); startDrag(e.clientX, e.clientY) }}
-        onTouchStart={(e) => startDrag(e.touches[0].clientX, e.touches[0].clientY)}
+        onMouseDown={(e) => {
+          if ((e.target as HTMLElement).closest('button, input')) return
+          e.preventDefault()
+          startDrag(e.clientX, e.clientY)
+        }}
+        onTouchStart={(e) => {
+          if ((e.target as HTMLElement).closest('button, input')) return
+          startDrag(e.touches[0].clientX, e.touches[0].clientY)
+        }}
       >
         <Image
           src={media.previewUrl}
@@ -110,6 +117,7 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
         {showZoom && (
           <div
             className="absolute bottom-3 left-14 right-3 bg-black/60 rounded-full px-3 py-2 backdrop-blur-sm"
+            style={{ touchAction: 'manipulation' }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
           >

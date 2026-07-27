@@ -12,6 +12,7 @@ import { CreateContentFab } from '@/components/dashboard/create-content-fab'
 import { NotificationsBell } from '@/components/dashboard/notifications-bell'
 import { SuperadminRoleSwitcher } from '@/components/dashboard/superadmin-role-switcher'
 import { PostComposerProvider } from '@/components/dashboard/post-composer-provider'
+import { ProjectComposerProvider } from '@/components/highlights/project-composer/project-composer-provider'
 import { ThemeToggle } from '@/components/theme-toggle'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -40,6 +41,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const effectiveProfile = previewRole ? { ...profile, user_role: previewRole } : profile
 
   return (
+    <ProjectComposerProvider profileId={effectiveProfile.id}>
     <PostComposerProvider
       profileId={effectiveProfile.id}
       userId={user.id}
@@ -81,5 +83,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
         {superAdmin && <SuperadminRoleSwitcher effectiveRole={effectiveProfile.user_role} isPreviewing={previewRole !== null} />}
       </div>
     </PostComposerProvider>
+    </ProjectComposerProvider>
   )
 }

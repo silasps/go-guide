@@ -1,10 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getActiveProfile } from '@/lib/profile/active-profile'
-import Link from 'next/link'
-import { buttonVariants } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-import { Plus } from 'lucide-react'
 import { HighlightsList } from '@/components/highlights/highlights-list'
+import { NewProjectButton } from '@/components/highlights/project-composer/new-project-triggers'
 
 export default async function ProjetosPage() {
   const supabase = await createClient()
@@ -23,10 +20,7 @@ export default async function ProjetosPage() {
           <h1 className="text-xl font-semibold">Projetos</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Missões, obras e campanhas em andamento</p>
         </div>
-        <Link href="/dashboard/projetos/novo" className={cn(buttonVariants(), 'hidden md:inline-flex gap-2 shrink-0')}>
-          <Plus className="h-4 w-4" />
-          Novo projeto
-        </Link>
+        <NewProjectButton label="Novo projeto" className="hidden md:inline-flex shrink-0" />
       </div>
       <HighlightsList highlights={highlights ?? []} basePath="/dashboard/projetos" username={profile!.username} />
     </div>

@@ -11,7 +11,9 @@ export interface MediaAdjustments {
 
 export const DEFAULT_ADJUSTMENTS: MediaAdjustments = { brightness: 100, contrast: 100, saturate: 100, hueRotate: 0 }
 
-export type FilterPresetId = 'none' | 'vivid' | 'warm' | 'cool' | 'mono' | 'fade'
+export type FilterPresetId =
+  | 'none' | 'vivid' | 'warm' | 'cool' | 'mono' | 'fade'
+  | 'crisp' | 'muted' | 'dramatic' | 'golden' | 'noir' | 'dreamy'
 
 export const FILTER_PRESETS: { id: FilterPresetId; filter: string }[] = [
   { id: 'none', filter: '' },
@@ -20,6 +22,12 @@ export const FILTER_PRESETS: { id: FilterPresetId; filter: string }[] = [
   { id: 'cool', filter: 'hue-rotate(-8deg) saturate(1.1) contrast(1.05)' },
   { id: 'mono', filter: 'grayscale(1) contrast(1.1)' },
   { id: 'fade', filter: 'contrast(0.9) saturate(0.85) brightness(1.05)' },
+  { id: 'crisp', filter: 'contrast(1.2) saturate(1.1) brightness(1.02)' },
+  { id: 'muted', filter: 'saturate(0.6) contrast(0.95) brightness(1.03)' },
+  { id: 'dramatic', filter: 'contrast(1.3) brightness(0.92) saturate(1.15)' },
+  { id: 'golden', filter: 'sepia(0.35) saturate(1.4) hue-rotate(-5deg) brightness(1.05)' },
+  { id: 'noir', filter: 'grayscale(1) contrast(1.35) brightness(0.95)' },
+  { id: 'dreamy', filter: 'brightness(1.08) contrast(0.88) saturate(0.85)' },
 ]
 
 export interface MediaDraft {

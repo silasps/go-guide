@@ -2,10 +2,11 @@ import { createClient } from '@/lib/supabase/server'
 import { getActiveProfile } from '@/lib/profile/active-profile'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Users, FileText, Heart, Sparkles, FolderOpen, ArrowRight } from 'lucide-react'
+import { Users, FileText, Heart, Sparkles, ArrowRight } from 'lucide-react'
 import { SetupChecklistBanner } from '@/components/dashboard/setup-checklist-banner'
 import { BirthdayReminders } from '@/components/dashboard/birthday-reminders'
 import { NewPostQuickAction, NewPostEmptyCta } from '@/components/dashboard/new-post-triggers'
+import { NewProjectQuickAction } from '@/components/highlights/project-composer/new-project-triggers'
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -104,18 +105,7 @@ export default async function DashboardPage() {
             </CardHeader>
             <CardContent className="pt-0 space-y-2">
               <NewPostQuickAction label={t('newPost')} description={t('newPostDesc')} />
-              <Link
-                href="/dashboard/projetos/novo"
-                className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted transition-colors group"
-              >
-                <div className="p-1.5 bg-muted rounded-md shrink-0 group-hover:bg-background transition-colors">
-                  <FolderOpen className="h-3.5 w-3.5 text-muted-foreground" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium leading-tight">{t('newProject')}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{t('newProjectDesc')}</p>
-                </div>
-              </Link>
+              <NewProjectQuickAction label={t('newProject')} description={t('newProjectDesc')} />
             </CardContent>
           </Card>
 
