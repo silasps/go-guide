@@ -3,32 +3,31 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { Copy, Play } from 'lucide-react'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { PostWithProfile } from '@/types/database'
 import type { Locale } from '@/i18n/config'
 import { resolveLocalizedText } from '@/lib/i18n/resolve-content-locale'
-import { PostCard } from '@/components/shared/post-card'
+import { PostDetailViewer } from '@/components/shared/post-detail-viewer'
 
 interface Props {
   posts: PostWithProfile[]
   visitorLocale: Locale
 }
 
-/** Grade 3 colunas estilo Instagram — prioriza a imagem, sem legenda/ações
- *  visíveis aqui. Clicar abre o post completo (PostCard) num lightbox, sem
- *  precisar de uma rota de permalink dedicada. */
+/** Grade 3 colunas 16:9 estilo Instagram — prioriza a imagem, sem legenda
+ *  /ações visíveis aqui. Clicar abre o visualizador em tela cheia
+ *  (PostDetailViewer), que deixa arrastar pro post anterior/próximo. */
 export function ProfilePostsGrid({ posts, visitorLocale }: Props) {
-  const [openPost, setOpenPost] = useState<PostWithProfile | null>(null)
+  const [openIndex, setOpenIndex] = useState<number | null>(null)
 
   return (
     <>
       <div className="grid grid-cols-3 gap-0.5">
-        {posts.map((post) => (
+        {posts.map((post, i) => (
           <button
             key={post.id}
             type="button"
-            onClick={() => setOpenPost(post)}
-            className="relative aspect-square bg-muted overflow-hidden"
+            onClick={() => setOpenIndex(i)}
+            className="relative aspect-video bg-muted overflow-hidden"
           >
             <GridThumbnail post={post} visitorLocale={visitorLocale} />
             {post.type === 'carousel' && <Copy className="absolute top-1.5 right-1.5 h-4 w-4 text-white drop-shadow" />}
@@ -37,12 +36,13 @@ export function ProfilePostsGrid({ posts, visitorLocale }: Props) {
         ))}
       </div>
 
-      <Dialog open={!!openPost} onOpenChange={(next) => !next && setOpenPost(null)}>
-        <DialogContent className="sm:max-w-md p-0 gap-0 overflow-y-auto max-h-[85vh]">
-          <DialogTitle className="sr-only">{openPost ? resolveLocalizedText(openPost.content, openPost.original_locale, openPost.translations, visitorLocale).text ?? '' : ''}</DialogTitle>
-          {openPost && <PostCard post={openPost} visitorLocale={visitorLocale} />}
-        </DialogContent>
-      </Dialog>
+      <PostDetailViewer
+        posts={posts}
+        initialIndex={openIndex ?? 0}
+        visitorLocale={visitorLocale}
+        open={openIndex !== null}
+        onOpenChange={(next) => !next && setOpenIndex(null)}
+      />
     </>
   )
 }

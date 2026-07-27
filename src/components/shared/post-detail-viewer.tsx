@@ -25,7 +25,9 @@ export function PostDetailViewer({ posts, initialIndex, visitorLocale, open, onO
   const touchStartX = useRef<number | null>(null)
 
   useEffect(() => {
-    if (open) setIndex(initialIndex)
+    if (!open) return
+    const id = setTimeout(() => setIndex(initialIndex), 0)
+    return () => clearTimeout(id)
   }, [open, initialIndex])
 
   function goNext() { setIndex((i) => Math.min(posts.length - 1, i + 1)) }

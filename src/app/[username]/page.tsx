@@ -8,7 +8,7 @@ import { ProfileHeader } from '@/components/profile/profile-header'
 import { ProjectsSection } from '@/components/profile/projects-section'
 import { ProfileCTA } from '@/components/profile/profile-cta'
 import { ProfileOwnerActions } from '@/components/profile/profile-owner-actions'
-import { ProfilePostsGrid } from '@/components/shared/profile-posts-grid'
+import { ProfileContentTabs } from '@/components/profile/profile-content-tabs'
 import { enrichWithEngagement } from '@/lib/posts/enrich-with-engagement'
 import type { PostWithProfile, Profile } from '@/types/database'
 import { SkCardGrid, SkFeedPosts } from '@/components/ui/skeleton'
@@ -104,7 +104,7 @@ export default async function ProfilePage({ params }: Props) {
           <ProjectsSectionAsync profileId={profile.id} username={profile.username} accentColor={profile.accent_color} />
         </Suspense>
         <Suspense fallback={<SkFeedPosts />}>
-          <PublicationsFeedAsync profile={profile} visitorLocale={visitorLocale} />
+          <ProfileContentAsync profile={profile} visitorLocale={visitorLocale} />
         </Suspense>
       </div>
     </div>
@@ -124,17 +124,27 @@ async function ProjectsSectionAsync({ profileId, username, accentColor }: { prof
   return <ProjectsSection projects={projects} username={username} accentColor={accentColor} />
 }
 
-async function PublicationsFeedAsync({ profile, visitorLocale }: { profile: Profile; visitorLocale: Locale }) {
+async function ProfileContentAsync({ profile, visitorLocale }: { profile: Profile; visitorLocale: Locale }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const t = await getTranslations('PublicProfile')
-  const { data: posts } = await supabase
-    .from('posts')
-    .select('*, highlight:highlights(title, slug, category, cover_url)')
-    .eq('profile_id', profile.id)
-    .eq('is_draft', false)
-    .order('published_at', { ascending: false })
-    .limit(20)
+  const isMissionary = profile.user_role === 'missionary'
+
+  const [{ data: posts }, { data: projects }, { data: historyBlocks }] = await Promise.all([
+    supabase
+      .from('posts')
+      .select('*, highlight:highlights(title, slug, category, cover_url)')
+      .eq('profile_id', profile.id)
+      .eq('is_draft', false)
+      .order('published_at', { ascending: false })
+      .limit(20),
+    isMissionary
+      ? supabase.from('highlights').select('*').eq('profile_id', profile.id).eq('status', 'active').order('order_index')
+      : Promise.resolve({ data: [] }),
+    isMissionary
+      ? supabase.from('history_blocks').select('*').eq('profile_id', profile.id).order('order_index')
+      : Promise.resolve({ data: [] }),
+  ])
 
   if (!posts || posts.length === 0) return null
 
@@ -148,7 +158,16 @@ async function PublicationsFeedAsync({ profile, visitorLocale }: { profile: Prof
   return (
     <div className="space-y-3">
       <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">{t('postsHeading')}</h2>
-      <ProfilePostsGrid posts={postsWithProfile} visitorLocale={visitorLocale} />
+      <ProfileContentTabs
+        posts={postsWithProfile}
+        projects={projects ?? []}
+        historyBlocks={historyBlocks ?? []}
+        username={profile.username}
+        accentColor={profile.accent_color}
+        visitorLocale={visitorLocale}
+        showProjects={isMissionary && (projects ?? []).length > 0}
+        showHistory={isMissionary && (historyBlocks ?? []).length > 0}
+      />
     </div>
   )
 }
