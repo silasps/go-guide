@@ -11,8 +11,9 @@ import { usePendingAction } from '@/hooks/use-pending-action'
 import { useProjectComposer } from '@/components/highlights/project-composer/project-composer-provider'
 import type { MediaAspectRatio, Post, PostType } from '@/types/database'
 import type { Locale } from '@/i18n/config'
-import type { ComposerStep, MediaDraft, TagDraft } from './types'
-import { resolveCssFilter } from './types'
+import type { ComposerStep, TagDraft } from './types'
+import type { MediaDraft } from '@/components/shared/media-editor/types'
+import { resolveCssFilter } from '@/components/shared/media-editor/types'
 
 interface Options {
   post?: Post

@@ -8,7 +8,7 @@ import type { Locale } from '@/i18n/config'
 import { usePostComposer } from './use-post-composer'
 import { StepTypePicker } from './step-type-picker'
 import { StepMediaSelect } from './step-media-select'
-import { StepAdjust } from './step-adjust'
+import { StepAdjust } from '@/components/shared/media-editor/step-adjust'
 import { StepDetails } from './step-details'
 
 interface Props {

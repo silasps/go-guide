@@ -6,7 +6,8 @@ import { useTranslations } from 'next-intl'
 import { UserRound, X } from 'lucide-react'
 import { searchTaggableProfiles, type TaggableProfile } from '@/app/dashboard/publicacoes/tag-search-actions'
 import { getInitials } from '@/lib/utils'
-import { ASPECT_RATIO_CLASS, resolveCssFilter, type MediaDraft, type TagDraft } from './types'
+import { ASPECT_RATIO_CLASS, resolveCssFilter, type MediaDraft } from '@/components/shared/media-editor/types'
+import type { TagDraft } from './types'
 import type { MediaAspectRatio } from '@/types/database'
 
 const DEBOUNCE_MS = 300

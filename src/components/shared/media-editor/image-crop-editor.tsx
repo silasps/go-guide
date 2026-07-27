@@ -20,7 +20,7 @@ interface Props {
 }
 
 export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChange, onZoomChange }: Props) {
-  const t = useTranslations('PostComposer')
+  const t = useTranslations('MediaEditor')
   const [isDragging, setIsDragging] = useState(false)
   const [showZoom, setShowZoom] = useState(false)
 

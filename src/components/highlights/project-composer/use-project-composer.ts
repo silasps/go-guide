@@ -7,11 +7,16 @@ import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
 import { toast } from 'sonner'
 import { fromMasked, reformatMasked, CURRENCIES } from '@/lib/currency-mask'
-import { parsePosition, uniqueFileName } from '@/components/highlights/cover-editor'
+import { uniqueFileName } from '@/components/highlights/cover-editor'
+import { compressImage } from '@/lib/media/compress'
+import { bakeImage } from '@/lib/media/bake-image'
+import { resolveCssFilter, type MediaDraft } from '@/components/shared/media-editor/types'
 import type { MilestoneDraft } from '@/components/highlights/milestones-editor'
 import type { BudgetCategoryDraft } from '@/components/highlights/budget-categories-editor'
+import { GOAL_TYPE_OPTIONS } from '@/components/highlights/support-types-picker'
+import type { MediaAspectRatio } from '@/types/database'
 
-export type ProjectComposerStep = 'cover' | 'goal' | 'story'
+export type ProjectComposerStep = 'cover' | 'adjust' | 'goal' | 'story'
 
 interface Options {
   profileId: string
@@ -29,13 +34,14 @@ export function useProjectComposer({ profileId, onSaved }: Options) {
   const [step, setStep] = useState<ProjectComposerStep>('cover')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [goalTypes, setGoalTypes] = useState<string[]>(['financial'])
+  // Todas as formas de apoio já marcadas por padrão — o missionário desmarca
+  // as que não se aplicam, em vez de precisar lembrar de marcar cada uma.
+  const [goalTypes, setGoalTypes] = useState<string[]>(GOAL_TYPE_OPTIONS.map((o) => o.value))
   const [categories, setCategories] = useState<string[]>([])
   const [currency, setCurrency] = useState(CURRENCIES[0])
   const [goalAmount, setGoalAmount] = useState('')
-  const [coverFile, setCoverFile] = useState<File | null>(null)
-  const [coverPreview, setCoverPreview] = useState('')
-  const [position, setPosition] = useState<{ x: number; y: number }>(parsePosition('50% 50%'))
+  const [coverMedia, setCoverMedia] = useState<MediaDraft | null>(null)
+  const [coverAspect, setCoverAspect] = useState<MediaAspectRatio>('16:9')
   const [tripStartDate, setTripStartDate] = useState('')
   const [fundingDeadline, setFundingDeadline] = useState('')
   const [scripture, setScripture] = useState('')
@@ -53,7 +59,7 @@ export function useProjectComposer({ profileId, onSaved }: Options) {
     setCurrency(newCurrency)
   }
 
-  const hasUnsavedContent = title.trim().length > 0 || description.trim().length > 0 || !!coverFile
+  const hasUnsavedContent = title.trim().length > 0 || description.trim().length > 0 || !!coverMedia
 
   function requestClose(close: () => void) {
     if (hasUnsavedContent) setDiscardConfirmOpen(true)
@@ -69,14 +75,26 @@ export function useProjectComposer({ profileId, onSaved }: Options) {
         const { data: { user: currentUser } } = await supabase.auth.getUser()
         let cover_url: string | null = null
 
-        if (coverFile) {
+        if (coverMedia) {
+          // Mesmo pipeline do composer de post: recorte/zoom/filtro escolhidos
+          // na tela já saem "assados" no arquivo final (canvas), então não
+          // precisa guardar crop separado — cover_position fica sempre centro.
+          const baked = await bakeImage({
+            previewUrl: coverMedia.previewUrl,
+            fileName: coverMedia.file.name,
+            position: coverMedia.position,
+            zoom: coverMedia.zoom,
+            aspect: coverAspect,
+            cssFilter: resolveCssFilter(coverMedia),
+          })
+          const compressed = await compressImage(baked)
           const path = `${currentUser!.id}/highlights/${uniqueFileName('webp')}`
-          const { error } = await supabase.storage.from('media').upload(path, coverFile, { upsert: true })
+          const { error } = await supabase.storage.from('media').upload(path, compressed, { upsert: true })
           if (error) throw error
           cover_url = supabase.storage.from('media').getPublicUrl(path).data.publicUrl
         }
 
-        const cover_position = `${Math.round(position.x)}% ${Math.round(position.y)}%`
+        const cover_position = '50% 50%'
         const types = goalTypes.length > 0 ? goalTypes : ['ongoing']
         const hasFinancial = types.includes('financial')
         const isDetailedBudget = hasFinancial && budgetMode === 'detailed'
@@ -135,12 +153,8 @@ export function useProjectComposer({ profileId, onSaved }: Options) {
     categories, setCategories,
     currency, handleCurrencyChange,
     goalAmount, setGoalAmount,
-    coverFile, coverPreview, position,
-    setCover: (file: File | null, previewUrl: string, pos: { x: number; y: number }) => {
-      if (file) setCoverFile(file)
-      setCoverPreview(previewUrl)
-      setPosition(pos)
-    },
+    coverMedia, setCoverMedia,
+    coverAspect, setCoverAspect,
     tripStartDate, setTripStartDate,
     fundingDeadline, setFundingDeadline,
     scripture, setScripture,

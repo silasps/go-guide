@@ -25,7 +25,7 @@ const SLIDERS: { key: keyof MediaAdjustments; min: number; max: number }[] = [
 ]
 
 export function StepAdjust({ mediaFiles, activeIndex, onActiveIndexChange, aspect, onChange }: Props) {
-  const t = useTranslations('PostComposer')
+  const t = useTranslations('MediaEditor')
   const [tab, setTab] = useState<Tab>('filters')
   const active = mediaFiles[activeIndex]
   if (!active) return null

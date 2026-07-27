@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { getMediaType, validateVideo, validateVideoDuration } from '@/lib/media/compress'
 import type { MediaAspectRatio } from '@/types/database'
-import { createMediaDraft, type MediaDraft } from './types'
-import { ImageCropEditor } from './image-crop-editor'
+import { createMediaDraft, type MediaDraft } from '@/components/shared/media-editor/types'
+import { ImageCropEditor } from '@/components/shared/media-editor/image-crop-editor'
 
 const MAX_MEDIA = 10
 
