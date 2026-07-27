@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { LanguageSwitcher } from '@/components/marketing/language-switcher'
 import { AccountMenuDrawer, type DrawerProfile } from '@/components/dashboard/account-menu-drawer'
 import { BackButton } from '@/components/ui/back-button'
+import { User, BookOpen, FolderOpen, Trophy } from 'lucide-react'
 
 interface Props {
   username: string
@@ -66,30 +67,35 @@ export function ProfileTabs({ username, hasTrajectory, isMissionary, canEdit, vi
   // sentido a aba de Perfil mesmo, senão parece que ele também "é" um
   // missionário (feedback direto do usuário).
   const tabs = [
-    { href: base, label: t('tabProfile'), exact: true },
-    ...(isMissionary ? [{ href: `${base}/historia`, label: t('tabHistory'), exact: false }] : []),
-    ...(isMissionary ? [{ href: `${base}/projetos`, label: t('tabProjects'), exact: false }] : []),
-    ...(isMissionary && hasTrajectory ? [{ href: `${base}/trajetoria`, label: t('tabTrajectory'), exact: false }] : []),
+    { href: base, label: t('tabProfile'), exact: true, Icon: User },
+    ...(isMissionary ? [{ href: `${base}/historia`, label: t('tabHistory'), exact: false, Icon: BookOpen }] : []),
+    ...(isMissionary ? [{ href: `${base}/projetos`, label: t('tabProjects'), exact: false, Icon: FolderOpen }] : []),
+    ...(isMissionary && hasTrajectory ? [{ href: `${base}/trajetoria`, label: t('tabTrajectory'), exact: false, Icon: Trophy }] : []),
   ]
 
   return (
     <div className="sticky top-0 z-40 bg-background/90 backdrop-blur border-b">
       <div className="max-w-xl mx-auto flex items-center gap-1">
-        {viewerUserId && <BackButton href="/dashboard" label={t('backToDashboard')} className="shrink-0" />}
+        <BackButton
+          href={viewerUserId ? '/dashboard' : '/'}
+          label={viewerUserId ? t('backToDashboard') : t('backToHome')}
+          className="shrink-0"
+        />
         <nav className="flex-1 flex overflow-x-auto scrollbar-hide">
-          {tabs.map(({ href, label, exact }) => {
+          {tabs.map(({ href, label, exact, Icon }) => {
             const active = exact ? pathname === href : pathname.startsWith(href)
             return (
               <Link
                 key={href}
                 href={href}
                 className={cn(
-                  'flex-1 text-center px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors',
+                  'flex-1 flex items-center justify-center gap-1.5 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors',
                   active
                     ? 'border-foreground text-foreground'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
                 )}
               >
+                <Icon className="h-3.5 w-3.5 shrink-0" />
                 {label}
               </Link>
             )

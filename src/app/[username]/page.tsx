@@ -8,7 +8,7 @@ import { ProfileHeader } from '@/components/profile/profile-header'
 import { ProjectsSection } from '@/components/profile/projects-section'
 import { ProfileCTA } from '@/components/profile/profile-cta'
 import { ProfileOwnerActions } from '@/components/profile/profile-owner-actions'
-import { PostCard } from '@/components/shared/post-card'
+import { ProfilePostsGrid } from '@/components/shared/profile-posts-grid'
 import { enrichWithEngagement } from '@/lib/posts/enrich-with-engagement'
 import type { PostWithProfile, Profile } from '@/types/database'
 import { SkCardGrid, SkFeedPosts } from '@/components/ui/skeleton'
@@ -127,7 +127,7 @@ async function ProjectsSectionAsync({ profileId, username, accentColor }: { prof
 async function PublicationsFeedAsync({ profile, visitorLocale }: { profile: Profile; visitorLocale: Locale }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const t = await getTranslations({ locale: visitorLocale, namespace: 'PublicProfile' })
+  const t = await getTranslations('PublicProfile')
   const { data: posts } = await supabase
     .from('posts')
     .select('*, highlight:highlights(title, slug, category, cover_url)')
@@ -147,12 +147,8 @@ async function PublicationsFeedAsync({ profile, visitorLocale }: { profile: Prof
 
   return (
     <div className="space-y-3">
-      <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">{t('statPosts')}</h2>
-      <div className="space-y-4">
-        {postsWithProfile.map((post) => (
-          <PostCard key={post.id} post={post} visitorLocale={visitorLocale} />
-        ))}
-      </div>
+      <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">{t('postsHeading')}</h2>
+      <ProfilePostsGrid posts={postsWithProfile} visitorLocale={visitorLocale} />
     </div>
   )
 }

@@ -45,7 +45,7 @@ export default async function ProjetosPublicosPage({ params }: Props) {
         {active.length > 0 && (
           <section className="space-y-4">
             <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Em andamento</h2>
-            <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
               {active.map(p => <ProjectCard key={p.id} p={p} username={username} accentColor={profile.accent_color} />)}
             </div>
           </section>
@@ -58,7 +58,7 @@ export default async function ProjetosPublicosPage({ params }: Props) {
               <CheckCircle2 className="h-4 w-4 text-green-500" />
               Concluídos
             </h2>
-            <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
               {completed.map(p => <ProjectCard key={p.id} p={p} username={username} accentColor={profile.accent_color} completed />)}
             </div>
           </section>
@@ -86,31 +86,40 @@ function ProjectCard({ p, username, accentColor, completed = false }: {
     <Link
       href={`/${username}/projetos/${slug}`}
       className={cn(
-        'flex gap-4 p-4 rounded-2xl border bg-card hover:bg-muted/50 transition-colors group',
+        'flex flex-col rounded-2xl border bg-card overflow-hidden hover:bg-muted/50 transition-colors group',
         completed && 'opacity-70'
       )}
     >
-      <div className="shrink-0 h-16 w-16 rounded-xl overflow-hidden bg-muted">
+      <div className="relative aspect-[4/3] bg-muted">
         {p.cover_url ? (
-          <Image src={p.cover_url} alt={p.title} width={64} height={64} className="object-cover h-full w-full" style={{ objectPosition: p.cover_position ?? '50% 50%' }} />
+          <Image
+            src={p.cover_url}
+            alt={p.title}
+            fill
+            sizes="50vw"
+            className="object-cover group-hover:scale-105 transition-transform"
+            style={{ objectPosition: p.cover_position ?? '50% 50%' }}
+          />
         ) : (
-          <div className="h-full w-full flex items-center justify-center text-2xl" style={{ backgroundColor: accentColor + '20' }}>🌍</div>
+          <div className="h-full w-full flex items-center justify-center text-3xl" style={{ backgroundColor: accentColor + '20' }}>🌍</div>
+        )}
+        {completed && (
+          <div className="absolute top-2 right-2 bg-background/90 backdrop-blur rounded-full p-1">
+            <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+          </div>
         )}
       </div>
-      <div className="flex-1 min-w-0 space-y-1.5">
-        <div className="flex items-start justify-between gap-2">
-          <p className="font-medium text-sm leading-snug">{p.title}</p>
-          {completed && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />}
-        </div>
+      <div className="flex-1 p-3 space-y-1.5">
+        <p className="font-medium text-sm leading-snug line-clamp-2">{p.title}</p>
         <div className="flex flex-wrap gap-1">
-          {types.map(t => (
-            <Badge key={t} variant="secondary" className="text-xs px-1.5 py-0">{TYPE_LABEL[t] ?? t}</Badge>
+          {types.slice(0, 2).map(t => (
+            <Badge key={t} variant="secondary" className="text-[10px] px-1.5 py-0">{TYPE_LABEL[t] ?? t}</Badge>
           ))}
         </div>
         {pct !== null && types.includes('financial') && (
           <div className="space-y-0.5">
             <Progress value={pct} className="h-1.5" />
-            <p className="text-xs text-muted-foreground">{formatCurrency(p.current_amount, p.currency)} / {formatCurrency(p.goal_amount!, p.currency)} · {pct.toFixed(0)}%</p>
+            <p className="text-xs text-muted-foreground">{pct.toFixed(0)}% · {formatCurrency(p.current_amount, p.currency)}</p>
           </div>
         )}
       </div>
