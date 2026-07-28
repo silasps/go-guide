@@ -17,7 +17,7 @@ export function ProjectsGrid({ projects, username, accentColor }: Props) {
       {projects.map((p) => {
         const slug = p.slug ?? p.id
         return (
-          <Link key={p.id} href={`/${username}/projetos/${slug}`} className="relative aspect-square bg-muted overflow-hidden group">
+          <Link key={p.id} href={`/${username}/projetos/${slug}`} className="relative aspect-[4/5] bg-muted overflow-hidden group">
             {p.cover_url ? (
               <Image
                 src={p.cover_url}

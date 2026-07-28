@@ -27,7 +27,7 @@ export function ProfilePostsGrid({ posts, visitorLocale }: Props) {
             key={post.id}
             type="button"
             onClick={() => setOpenIndex(i)}
-            className="relative aspect-square bg-muted overflow-hidden"
+            className="relative aspect-[4/5] bg-muted overflow-hidden"
           >
             <GridThumbnail post={post} visitorLocale={visitorLocale} />
             {post.type === 'carousel' && <Copy className="absolute top-1.5 right-1.5 h-4 w-4 text-white drop-shadow" />}
