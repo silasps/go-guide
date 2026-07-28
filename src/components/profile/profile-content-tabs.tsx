@@ -44,7 +44,7 @@ export function ProfileContentTabs({ posts, projects, historyBlocks, username, a
 
   return (
     <div className="space-y-3">
-      <div className="flex border-y">
+      <div className="flex border-y -mx-4">
         {tabs.map(({ id, Icon }) => (
           <button
             key={id}

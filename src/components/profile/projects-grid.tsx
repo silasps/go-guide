@@ -13,11 +13,11 @@ interface Props {
  *  que um projeto é conteúdo rico demais pro visualizador arrastável. */
 export function ProjectsGrid({ projects, username, accentColor }: Props) {
   return (
-    <div className="grid grid-cols-3 gap-0.5">
+    <div className="grid grid-cols-3 gap-0.5 -mx-4">
       {projects.map((p) => {
         const slug = p.slug ?? p.id
         return (
-          <Link key={p.id} href={`/${username}/projetos/${slug}`} className="relative aspect-video bg-muted overflow-hidden group">
+          <Link key={p.id} href={`/${username}/projetos/${slug}`} className="relative aspect-square bg-muted overflow-hidden group">
             {p.cover_url ? (
               <Image
                 src={p.cover_url}

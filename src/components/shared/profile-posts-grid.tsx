@@ -13,21 +13,21 @@ interface Props {
   visitorLocale: Locale
 }
 
-/** Grade 3 colunas 16:9 estilo Instagram — prioriza a imagem, sem legenda
- *  /ações visíveis aqui. Clicar abre o visualizador em tela cheia
+/** Grade 3 colunas quadrada, de ponta a ponta (cancela o padding da página),
+ *  igual ao grid do Instagram. Clicar abre o visualizador em tela cheia
  *  (PostDetailViewer), que deixa arrastar pro post anterior/próximo. */
 export function ProfilePostsGrid({ posts, visitorLocale }: Props) {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
 
   return (
     <>
-      <div className="grid grid-cols-3 gap-0.5">
+      <div className="grid grid-cols-3 gap-0.5 -mx-4">
         {posts.map((post, i) => (
           <button
             key={post.id}
             type="button"
             onClick={() => setOpenIndex(i)}
-            className="relative aspect-video bg-muted overflow-hidden"
+            className="relative aspect-square bg-muted overflow-hidden"
           >
             <GridThumbnail post={post} visitorLocale={visitorLocale} />
             {post.type === 'carousel' && <Copy className="absolute top-1.5 right-1.5 h-4 w-4 text-white drop-shadow" />}
