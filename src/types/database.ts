@@ -110,6 +110,7 @@ export interface PostComment {
   id: string
   post_id: string
   profile_id: string
+  parent_comment_id: string | null
   content: string
   created_at: string
   updated_at: string
@@ -118,6 +119,8 @@ export interface PostComment {
 
 export interface PostCommentWithProfile extends PostComment {
   profile: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url'>
+  like_count: number
+  viewer_has_liked: boolean
 }
 
 export interface Highlight {

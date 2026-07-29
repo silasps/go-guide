@@ -10,6 +10,7 @@ import { AccessibleProfile } from '@/lib/profile/active-profile'
 import { setActiveProfile, becomeMissionary } from '@/app/dashboard/actions'
 import { useNav, useBottomNavItems, useSignOut } from '@/hooks/use-dashboard-nav'
 import { usePendingAction } from '@/hooks/use-pending-action'
+import { NewPostButton } from '@/components/dashboard/new-post-button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -84,6 +85,12 @@ export function DashboardSidebar({ profile, accessibleProfiles }: { profile: Pro
           <AccountSwitcher profile={profile} accessibleProfiles={accessibleProfiles} />
         </div>
       </div>
+
+      {profile.user_role !== 'partner' && (
+        <div className="px-2 pt-3">
+          <NewPostButton className="w-full justify-center" />
+        </div>
+      )}
 
       <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
         {nav.map(({ href, label, icon: Icon, exact }) => {

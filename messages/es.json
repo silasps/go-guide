@@ -700,7 +700,18 @@
     "linkCopied": "¡Enlace copiado!",
     "commentPlaceholder": "Agrega un comentario...",
     "commentError": "No se pudo comentar ahora.",
-    "noComments": "Aún no hay comentarios."
+    "noComments": "Aún no hay comentarios.",
+    "postActions": "Más opciones",
+    "editPost": "Editar",
+    "archivePost": "Archivar",
+    "deletePost": "Eliminar",
+    "postArchived": "Publicación archivada.",
+    "postDeleted": "Publicación eliminada.",
+    "deleteConfirm": "¿Eliminar esta publicación? Esta acción no se puede deshacer.",
+    "postActionError": "No se pudo completar la acción.",
+    "reply": "Responder",
+    "replyingTo": "Respondiendo a {name}",
+    "cancelReply": "Cancelar respuesta"
   },
   "BecomeMissionary": {
     "cardTitle": "Compartir mi propia misión",

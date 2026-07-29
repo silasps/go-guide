@@ -11,12 +11,13 @@ import { PostDetailViewer } from '@/components/shared/post-detail-viewer'
 interface Props {
   posts: PostWithProfile[]
   visitorLocale: Locale
+  canEdit?: boolean
 }
 
 /** Grade 3 colunas quadrada, de ponta a ponta (cancela o padding da página),
  *  igual ao grid do Instagram. Clicar abre o visualizador em tela cheia
  *  (PostDetailViewer), que deixa arrastar pro post anterior/próximo. */
-export function ProfilePostsGrid({ posts, visitorLocale }: Props) {
+export function ProfilePostsGrid({ posts, visitorLocale, canEdit = false }: Props) {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
 
   return (
@@ -40,6 +41,7 @@ export function ProfilePostsGrid({ posts, visitorLocale }: Props) {
         posts={posts}
         initialIndex={openIndex ?? 0}
         visitorLocale={visitorLocale}
+        canEdit={canEdit}
         open={openIndex !== null}
         onOpenChange={(next) => !next && setOpenIndex(null)}
       />

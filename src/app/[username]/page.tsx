@@ -104,7 +104,7 @@ export default async function ProfilePage({ params }: Props) {
           <ProjectsSectionAsync profileId={profile.id} username={profile.username} accentColor={profile.accent_color} />
         </Suspense>
         <Suspense fallback={<SkFeedPosts />}>
-          <ProfileContentAsync profile={profile} visitorLocale={visitorLocale} />
+          <ProfileContentAsync profile={profile} visitorLocale={visitorLocale} canEdit={canEdit} />
         </Suspense>
       </div>
     </div>
@@ -124,7 +124,7 @@ async function ProjectsSectionAsync({ profileId, username, accentColor }: { prof
   return <ProjectsSection projects={projects} username={username} accentColor={accentColor} />
 }
 
-async function ProfileContentAsync({ profile, visitorLocale }: { profile: Profile; visitorLocale: Locale }) {
+async function ProfileContentAsync({ profile, visitorLocale, canEdit }: { profile: Profile; visitorLocale: Locale; canEdit: boolean }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const t = await getTranslations('PublicProfile')
@@ -167,6 +167,7 @@ async function ProfileContentAsync({ profile, visitorLocale }: { profile: Profil
         visitorLocale={visitorLocale}
         showProjects={isMissionary && (projects ?? []).length > 0}
         showHistory={isMissionary && (historyBlocks ?? []).length > 0}
+        canEdit={canEdit}
       />
     </div>
   )

@@ -10,6 +10,7 @@ import {
   Users,
   Heart,
   Wallet,
+  DollarSign,
   Sparkles,
   Settings,
   MessageSquare,
@@ -42,7 +43,7 @@ export function useNav(role: UserRole) {
     { href: '/dashboard/parceiros', label: t('partners'), icon: Users, exact: false },
     { href: '/dashboard/oracoes', label: t('prayers'), icon: Heart, exact: false },
     { href: '/dashboard/mensagens', label: t('messages'), icon: MessageSquare, exact: false },
-    { href: '/dashboard/financeiro', label: t('finance'), icon: Wallet, exact: false },
+    { href: '/dashboard/financeiro', label: t('finance'), icon: DollarSign, exact: false },
     { href: '/dashboard/ia', label: t('aiCopilot'), icon: Sparkles, exact: false },
     { href: '/dashboard/configuracoes', label: t('settings'), icon: Settings, exact: false },
   ]
@@ -60,9 +61,8 @@ export function useBottomNavItems(role: UserRole) {
   }
   return [
     { href: '/dashboard', label: t('home'), icon: Home, exact: true },
-    { href: '/dashboard/projetos', label: t('projects'), icon: FolderOpen, exact: false },
+    { href: '/dashboard/financeiro', label: t('finance'), icon: DollarSign, exact: false },
     { href: '/dashboard/parceiros', label: t('partners'), icon: Users, exact: false },
-    { href: '/dashboard/publicacoes', label: t('postsShort'), icon: FileText, exact: false },
   ]
 }
 

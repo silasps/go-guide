@@ -11,6 +11,7 @@ interface Props {
   posts: PostWithProfile[]
   initialIndex: number
   visitorLocale: Locale
+  canEdit?: boolean
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -20,7 +21,7 @@ const SWIPE_THRESHOLD = 50
 /** Visualizador de post em tela cheia, estilo Instagram: abre no post
  *  clicado e arrasta (touch) ou usa as setas (desktop) pra ver o anterior
  *  /próximo da mesma lista, sem precisar de uma rota de permalink. */
-export function PostDetailViewer({ posts, initialIndex, visitorLocale, open, onOpenChange }: Props) {
+export function PostDetailViewer({ posts, initialIndex, visitorLocale, canEdit = false, open, onOpenChange }: Props) {
   const [index, setIndex] = useState(initialIndex)
   const touchStartX = useRef<number | null>(null)
 
@@ -67,7 +68,7 @@ export function PostDetailViewer({ posts, initialIndex, visitorLocale, open, onO
           onTouchEnd={onTouchEnd}
         >
           <div key={post.id} className="w-full sm:max-w-md">
-            <PostCard post={post} visitorLocale={visitorLocale} />
+            <PostCard post={post} visitorLocale={visitorLocale} canEdit={canEdit} />
           </div>
         </div>
 
