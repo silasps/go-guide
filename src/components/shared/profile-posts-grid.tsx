@@ -12,13 +12,21 @@ interface Props {
   posts: PostWithProfile[]
   visitorLocale: Locale
   canEdit?: boolean
+  /** Vem do link da notificação de comentário (?post=&comments=1) — abre
+   *  esse post direto, com os comentários já abertos, sem precisar clicar. */
+  deepLinkPostId?: string
+  deepLinkComments?: boolean
 }
 
 /** Grade 3 colunas quadrada, de ponta a ponta (cancela o padding da página),
  *  igual ao grid do Instagram. Clicar abre o visualizador em tela cheia
  *  (PostDetailViewer), que deixa arrastar pro post anterior/próximo. */
-export function ProfilePostsGrid({ posts, visitorLocale, canEdit = false }: Props) {
-  const [openIndex, setOpenIndex] = useState<number | null>(null)
+export function ProfilePostsGrid({ posts, visitorLocale, canEdit = false, deepLinkPostId, deepLinkComments = false }: Props) {
+  const [openIndex, setOpenIndex] = useState<number | null>(() => {
+    if (!deepLinkPostId) return null
+    const i = posts.findIndex((p) => p.id === deepLinkPostId)
+    return i === -1 ? null : i
+  })
 
   return (
     <>
@@ -42,6 +50,7 @@ export function ProfilePostsGrid({ posts, visitorLocale, canEdit = false }: Prop
         initialIndex={openIndex ?? 0}
         visitorLocale={visitorLocale}
         canEdit={canEdit}
+        initialCommentsOpen={deepLinkComments}
         open={openIndex !== null}
         onOpenChange={(next) => !next && setOpenIndex(null)}
       />

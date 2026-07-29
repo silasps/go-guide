@@ -16,7 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { PostProjectLink } from '@/components/shared/post-project-link'
 import { PostCommentsSheet } from '@/components/shared/post-comments-sheet'
-import { toggleLike } from '@/app/dashboard/publicacoes/social-actions'
+import { toggleLike, recordShare } from '@/app/dashboard/publicacoes/social-actions'
 
 const ASPECT_CLASS: Record<string, string> = {
   original: '',
@@ -29,9 +29,12 @@ interface Props {
   post: PostWithProfile
   visitorLocale: Locale
   canEdit?: boolean
+  /** Abre a folha de comentários já expandida ao montar — usado pelo link
+   *  do sino de notificação de comentário. */
+  autoOpenComments?: boolean
 }
 
-export function PostCard({ post, visitorLocale, canEdit = false }: Props) {
+export function PostCard({ post, visitorLocale, canEdit = false, autoOpenComments = false }: Props) {
   const t = useTranslations('Feed')
   const router = useRouter()
   const { text } = resolveLocalizedText(post.content, post.original_locale, post.translations, visitorLocale)
@@ -40,8 +43,9 @@ export function PostCard({ post, visitorLocale, canEdit = false }: Props) {
   const [likeCount, setLikeCount] = useState(post.like_count)
   const [expanded, setExpanded] = useState(false)
   const [showTags, setShowTags] = useState(false)
-  const [commentsOpen, setCommentsOpen] = useState(false)
+  const [commentsOpen, setCommentsOpen] = useState(autoOpenComments)
   const [commentCount, setCommentCount] = useState(post.comment_count)
+  const [shareCount, setShareCount] = useState(post.share_count)
   const [activeSlide, setActiveSlide] = useState(0)
   const [showLikeBurst, setShowLikeBurst] = useState(false)
   const [removed, setRemoved] = useState(false)
@@ -79,13 +83,22 @@ export function PostCard({ post, visitorLocale, canEdit = false }: Props) {
     like()
   }
 
+  function trackShare() {
+    setShareCount((c) => c + 1)
+    recordShare(post.id).catch(() => {})
+  }
+
   async function handleShare() {
     const url = `${window.location.origin}/${post.profile.username}`
     if (navigator.share) {
-      try { await navigator.share({ title: post.profile.display_name, url }) } catch { /* usuário cancelou */ }
+      try {
+        await navigator.share({ title: post.profile.display_name, url })
+        trackShare()
+      } catch { /* usuário cancelou */ }
       return
     }
     await navigator.clipboard.writeText(url)
+    trackShare()
     toast.success(t('linkCopied'))
   }
 
@@ -191,6 +204,7 @@ export function PostCard({ post, visitorLocale, canEdit = false }: Props) {
           </button>
           <button type="button" onClick={handleShare} className="flex items-center gap-1.5 text-sm" aria-label={t('share')}>
             <Share2 className="h-5 w-5" />
+            {shareCount > 0 && <span>{shareCount}</span>}
           </button>
         </div>
 

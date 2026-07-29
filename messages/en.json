@@ -852,7 +852,8 @@
     "areaPrayers": "{count, plural, one {# prayer update} other {# prayer updates}}",
     "areaPartners": "{count, plural, one {# new partner} other {# new partners}}",
     "areaFinancial": "{count, plural, one {# financial update} other {# financial updates}}",
-    "areaContent": "{count, plural, one {# content update} other {# content updates}}"
+    "areaContent": "{count, plural, one {# content update} other {# content updates}}",
+    "areaComments": "{count, plural, one {# new comment} other {# new comments}}"
   },
   "Onboarding": {
     "welcomeTitle": "Welcome to go→guide",

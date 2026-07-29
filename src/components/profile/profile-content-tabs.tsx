@@ -23,13 +23,15 @@ interface Props {
   showProjects: boolean
   showHistory: boolean
   canEdit: boolean
+  deepLinkPostId?: string
+  deepLinkComments?: boolean
 }
 
 /** Seletor inline estilo Instagram (só ícones) que troca o conteúdo abaixo
  *  sem navegar — as bolinhas de destaque dos projetos continuam existindo
  *  acima disso, como outro ponto de acesso; este seletor é sobre o que
  *  aparece na "grade" principal do perfil. */
-export function ProfileContentTabs({ posts, projects, historyBlocks, username, accentColor, visitorLocale, showProjects, showHistory, canEdit }: Props) {
+export function ProfileContentTabs({ posts, projects, historyBlocks, username, accentColor, visitorLocale, showProjects, showHistory, canEdit, deepLinkPostId, deepLinkComments }: Props) {
   const t = useTranslations('PublicProfile')
   const [tab, setTab] = useState<Tab>('posts')
 
@@ -40,7 +42,9 @@ export function ProfileContentTabs({ posts, projects, historyBlocks, username, a
   ]
 
   if (tabs.length <= 1) {
-    return posts.length ? <ProfilePostsGrid posts={posts} visitorLocale={visitorLocale} canEdit={canEdit} /> : null
+    return posts.length ? (
+      <ProfilePostsGrid posts={posts} visitorLocale={visitorLocale} canEdit={canEdit} deepLinkPostId={deepLinkPostId} deepLinkComments={deepLinkComments} />
+    ) : null
   }
 
   return (
@@ -61,7 +65,9 @@ export function ProfileContentTabs({ posts, projects, historyBlocks, username, a
         ))}
       </div>
 
-      {tab === 'posts' && (posts.length ? <ProfilePostsGrid posts={posts} visitorLocale={visitorLocale} canEdit={canEdit} /> : <EmptyState label={t('noContentYet')} />)}
+      {tab === 'posts' && (posts.length ? (
+        <ProfilePostsGrid posts={posts} visitorLocale={visitorLocale} canEdit={canEdit} deepLinkPostId={deepLinkPostId} deepLinkComments={deepLinkComments} />
+      ) : <EmptyState label={t('noContentYet')} />)}
       {tab === 'projects' && (projects.length ? <ProjectsGrid projects={projects} username={username} accentColor={accentColor} /> : <EmptyState label={t('noContentYet')} />)}
       {tab === 'history' && (historyBlocks.length ? <HistoryView blocks={historyBlocks} /> : <EmptyState label={t('noContentYet')} />)}
     </div>

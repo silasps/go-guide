@@ -12,6 +12,9 @@ interface Props {
   initialIndex: number
   visitorLocale: Locale
   canEdit?: boolean
+  /** Abre com os comentários já expandidos (link vindo do sino de
+   *  notificação) — só no post inicial, não persiste ao arrastar pros outros. */
+  initialCommentsOpen?: boolean
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -21,7 +24,7 @@ const SWIPE_THRESHOLD = 50
 /** Visualizador de post em tela cheia, estilo Instagram: abre no post
  *  clicado e arrasta (touch) ou usa as setas (desktop) pra ver o anterior
  *  /próximo da mesma lista, sem precisar de uma rota de permalink. */
-export function PostDetailViewer({ posts, initialIndex, visitorLocale, canEdit = false, open, onOpenChange }: Props) {
+export function PostDetailViewer({ posts, initialIndex, visitorLocale, canEdit = false, initialCommentsOpen = false, open, onOpenChange }: Props) {
   const [index, setIndex] = useState(initialIndex)
   const touchStartX = useRef<number | null>(null)
 
@@ -68,7 +71,12 @@ export function PostDetailViewer({ posts, initialIndex, visitorLocale, canEdit =
           onTouchEnd={onTouchEnd}
         >
           <div key={post.id} className="w-full sm:max-w-md">
-            <PostCard post={post} visitorLocale={visitorLocale} canEdit={canEdit} />
+            <PostCard
+              post={post}
+              visitorLocale={visitorLocale}
+              canEdit={canEdit}
+              autoOpenComments={initialCommentsOpen && index === initialIndex}
+            />
           </div>
         </div>
 

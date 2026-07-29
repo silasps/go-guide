@@ -18,6 +18,7 @@ import { getFollowCounts } from '@/app/dashboard/feed/follows-list-actions'
 
 interface Props {
   params: Promise<{ username: string }>
+  searchParams: Promise<{ post?: string; comments?: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -49,8 +50,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function ProfilePage({ params }: Props) {
+export default async function ProfilePage({ params, searchParams }: Props) {
   const { username } = await params
+  const { post: deepLinkPostId, comments: deepLinkComments } = await searchParams
   const profile = await getProfile(username)
 
   if (!profile) notFound()
@@ -104,7 +106,13 @@ export default async function ProfilePage({ params }: Props) {
           <ProjectsSectionAsync profileId={profile.id} username={profile.username} accentColor={profile.accent_color} />
         </Suspense>
         <Suspense fallback={<SkFeedPosts />}>
-          <ProfileContentAsync profile={profile} visitorLocale={visitorLocale} canEdit={canEdit} />
+          <ProfileContentAsync
+            profile={profile}
+            visitorLocale={visitorLocale}
+            canEdit={canEdit}
+            deepLinkPostId={deepLinkPostId}
+            deepLinkComments={deepLinkComments === '1'}
+          />
         </Suspense>
       </div>
     </div>
@@ -124,7 +132,7 @@ async function ProjectsSectionAsync({ profileId, username, accentColor }: { prof
   return <ProjectsSection projects={projects} username={username} accentColor={accentColor} />
 }
 
-async function ProfileContentAsync({ profile, visitorLocale, canEdit }: { profile: Profile; visitorLocale: Locale; canEdit: boolean }) {
+async function ProfileContentAsync({ profile, visitorLocale, canEdit, deepLinkPostId, deepLinkComments }: { profile: Profile; visitorLocale: Locale; canEdit: boolean; deepLinkPostId?: string; deepLinkComments: boolean }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const t = await getTranslations('PublicProfile')
@@ -168,6 +176,8 @@ async function ProfileContentAsync({ profile, visitorLocale, canEdit }: { profil
         showProjects={isMissionary && (projects ?? []).length > 0}
         showHistory={isMissionary && (historyBlocks ?? []).length > 0}
         canEdit={canEdit}
+        deepLinkPostId={deepLinkPostId}
+        deepLinkComments={deepLinkComments}
       />
     </div>
   )

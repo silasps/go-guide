@@ -852,7 +852,8 @@
     "areaPrayers": "{count, plural, one {# atualização em orações} other {# atualizações em orações}}",
     "areaPartners": "{count, plural, one {# novo parceiro} other {# novos parceiros}}",
     "areaFinancial": "{count, plural, one {# atualização financeira} other {# atualizações financeiras}}",
-    "areaContent": "{count, plural, one {# atualização de conteúdo} other {# atualizações de conteúdo}}"
+    "areaContent": "{count, plural, one {# atualização de conteúdo} other {# atualizações de conteúdo}}",
+    "areaComments": "{count, plural, one {# novo comentário} other {# novos comentários}}"
   },
   "Onboarding": {
     "welcomeTitle": "Bem-vindo ao go→guide",

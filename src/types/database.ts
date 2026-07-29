@@ -29,6 +29,7 @@ export type NotificationType =
   | 'new_pledge'
   | 'pledge_confirmed'
   | 'prayer_reply'
+  | 'new_comment'
 
 export type BudgetCategoryType =
   | 'airfare' | 'bus' | 'boat' | 'ferry' | 'rideshare' | 'lodging'
@@ -471,6 +472,7 @@ export interface PostWithProfile extends Post {
   tags: PostTagWithProfile[]
   like_count: number
   comment_count: number
+  share_count: number
   viewer_has_liked: boolean
 }
 

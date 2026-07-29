@@ -11,6 +11,17 @@ async function currentProfileId(supabase: Awaited<ReturnType<typeof createClient
   return profile.id
 }
 
+export async function recordShare(postId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  let profileId: string | null = null
+  if (user) {
+    const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', user.id).maybeSingle()
+    profileId = profile?.id ?? null
+  }
+  await supabase.from('post_shares').insert({ post_id: postId, profile_id: profileId })
+}
+
 export async function toggleLike(postId: string): Promise<{ liked: boolean }> {
   const supabase = await createClient()
   const profileId = await currentProfileId(supabase)
