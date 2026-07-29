@@ -95,6 +95,21 @@ export async function deleteComment(commentId: string) {
   revalidatePath('/dashboard/feed')
 }
 
+export async function updateComment(commentId: string, content: string) {
+  const trimmed = content.trim()
+  if (!trimmed) throw new Error('Comentário vazio')
+
+  const supabase = await createClient()
+  await currentProfileId(supabase)
+
+  const { error } = await supabase
+    .from('post_comments')
+    .update({ content: trimmed, updated_at: new Date().toISOString() })
+    .eq('id', commentId)
+  if (error) throw new Error(error.message)
+  revalidatePath('/dashboard/feed')
+}
+
 export async function getComments(postId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { getComments, addComment, toggleCommentLike } from '@/app/dashboard/publicacoes/social-actions'
+import { createClient } from '@/lib/supabase/client'
+import { getComments, addComment, toggleCommentLike, updateComment, deleteComment } from '@/app/dashboard/publicacoes/social-actions'
 import { getInitials, formatRelativeTime, cn } from '@/lib/utils'
 
 interface CommentProfile {
@@ -20,8 +21,10 @@ interface CommentProfile {
 
 interface CommentRow {
   id: string
+  profile_id: string
   content: string
   created_at: string
+  updated_at: string
   parent_comment_id: string | null
   like_count: number
   viewer_has_liked: boolean
@@ -38,9 +41,12 @@ interface Props {
 export function PostCommentsSheet({ open, onOpenChange, postId, onCommentAdded }: Props) {
   const t = useTranslations('Feed')
   const [comments, setComments] = useState<CommentRow[] | null>(null)
+  const [viewerProfileId, setViewerProfileId] = useState<string | null>(null)
   const [value, setValue] = useState('')
   const [sending, setSending] = useState(false)
-  const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(null)
+  const [replyTo, setReplyTo] = useState<{ rootId: string; name: string } | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState('')
 
   useEffect(() => {
     if (!open) return
@@ -48,7 +54,14 @@ export function PostCommentsSheet({ open, onOpenChange, postId, onCommentAdded }
     const id = setTimeout(() => {
       setComments(null)
       setReplyTo(null)
+      setEditingId(null)
       getComments(postId).then((data) => { if (!cancelled) setComments(data as unknown as CommentRow[]) })
+      const supabase = createClient()
+      supabase.auth.getUser().then(async ({ data: { user } }) => {
+        if (!user || cancelled) return
+        const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', user.id).maybeSingle()
+        if (!cancelled) setViewerProfileId(profile?.id ?? null)
+      })
     }, 0)
     return () => { cancelled = true; clearTimeout(id) }
   }, [open, postId])
@@ -58,7 +71,7 @@ export function PostCommentsSheet({ open, onOpenChange, postId, onCommentAdded }
     if (!trimmed) return
     setSending(true)
     try {
-      const comment = await addComment(postId, trimmed, replyTo?.id ?? null)
+      const comment = await addComment(postId, trimmed, replyTo?.rootId ?? null)
       setComments((prev) => [...(prev ?? []), comment as unknown as CommentRow])
       setValue('')
       setReplyTo(null)
@@ -67,6 +80,32 @@ export function PostCommentsSheet({ open, onOpenChange, postId, onCommentAdded }
       toast.error(t('commentError'))
     } finally {
       setSending(false)
+    }
+  }
+
+  async function handleSaveEdit(commentId: string) {
+    const trimmed = editValue.trim()
+    if (!trimmed) return
+    const previous = comments
+    setComments((prev) => prev?.map((c) => (c.id === commentId ? { ...c, content: trimmed } : c)) ?? null)
+    setEditingId(null)
+    try {
+      await updateComment(commentId, trimmed)
+    } catch {
+      setComments(previous ?? null)
+      toast.error(t('commentError'))
+    }
+  }
+
+  async function handleDeleteComment(commentId: string) {
+    if (!confirm(t('deleteCommentConfirm'))) return
+    const previous = comments
+    setComments((prev) => prev?.filter((c) => c.id !== commentId && c.parent_comment_id !== commentId) ?? null)
+    try {
+      await deleteComment(commentId)
+    } catch {
+      setComments(previous ?? null)
+      toast.error(t('commentError'))
     }
   }
 
@@ -93,8 +132,21 @@ export function PostCommentsSheet({ open, onOpenChange, postId, onCommentAdded }
     repliesByParent.set(c.parent_comment_id, list)
   }
 
-  function CommentItem({ comment, isReply = false }: { comment: CommentRow; isReply?: boolean }) {
+  function CommentItem({ comment, isReply = false, rootId }: { comment: CommentRow; isReply?: boolean; rootId: string }) {
     const profile = Array.isArray(comment.profile) ? comment.profile[0] : comment.profile
+    const isOwn = viewerProfileId && comment.profile_id === viewerProfileId
+    const isEditing = editingId === comment.id
+
+    if (isEditing) {
+      return (
+        <div className={cn('flex items-center gap-2', isReply && 'ml-8 mt-2.5')}>
+          <Input value={editValue} onChange={(e) => setEditValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit(comment.id) }} autoFocus />
+          <button type="button" onClick={() => handleSaveEdit(comment.id)} className="text-xs font-medium text-primary shrink-0">{t('save')}</button>
+          <button type="button" onClick={() => setEditingId(null)} className="text-xs text-muted-foreground shrink-0">{t('cancelReply')}</button>
+        </div>
+      )
+    }
+
     return (
       <div className={cn('flex items-start gap-2.5', isReply && 'ml-8 mt-2.5')}>
         <Avatar className="h-7 w-7 shrink-0">
@@ -107,12 +159,22 @@ export function PostCommentsSheet({ open, onOpenChange, postId, onCommentAdded }
             <p className="text-xs text-muted-foreground">{formatRelativeTime(comment.created_at)}</p>
             <button
               type="button"
-              onClick={() => setReplyTo({ id: comment.id, name: profile?.display_name ?? '' })}
+              onClick={() => { setReplyTo({ rootId, name: profile?.display_name ?? '' }); setValue('') }}
               className="text-xs text-muted-foreground font-medium hover:text-foreground"
             >
               {t('reply')}
             </button>
             {comment.like_count > 0 && <span className="text-xs text-muted-foreground">{comment.like_count}</span>}
+            {isOwn && (
+              <>
+                <button type="button" onClick={() => { setEditingId(comment.id); setEditValue(comment.content) }} className="text-xs text-muted-foreground font-medium hover:text-foreground">
+                  {t('editComment')}
+                </button>
+                <button type="button" onClick={() => handleDeleteComment(comment.id)} className="text-xs text-muted-foreground font-medium hover:text-destructive">
+                  {t('deleteComment')}
+                </button>
+              </>
+            )}
           </div>
         </div>
         <button type="button" onClick={() => handleLikeComment(comment.id)} className="shrink-0 mt-0.5" aria-label={t('like')}>
@@ -136,24 +198,40 @@ export function PostCommentsSheet({ open, onOpenChange, postId, onCommentAdded }
           ) : (
             topLevel.map((comment) => (
               <div key={comment.id}>
-                <CommentItem comment={comment} />
+                <CommentItem comment={comment} rootId={comment.id} />
                 {(repliesByParent.get(comment.id) ?? []).map((reply) => (
-                  <CommentItem key={reply.id} comment={reply} isReply />
+                  <CommentItem key={reply.id} comment={reply} isReply rootId={comment.id} />
                 ))}
+
+                {replyTo?.rootId === comment.id && (
+                  <div className="ml-8 mt-2.5 space-y-1">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      {t('replyingTo', { name: replyTo.name })}
+                      <button type="button" onClick={() => setReplyTo(null)} aria-label={t('cancelReply')}>
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={value}
+                        onChange={(e) => setValue(e.target.value)}
+                        placeholder={t('commentPlaceholder')}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleSend() }}
+                        autoFocus
+                      />
+                      <Button type="button" size="icon" onClick={handleSend} disabled={sending || !value.trim()}>
+                        {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))
           )}
         </div>
-        <div className="pt-2 border-t space-y-1.5">
-          {replyTo && (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              {t('replyingTo', { name: replyTo.name })}
-              <button type="button" onClick={() => setReplyTo(null)} aria-label={t('cancelReply')}>
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-          )}
-          <div className="flex items-center gap-2">
+
+        {!replyTo && (
+          <div className="pt-2 border-t flex items-center gap-2">
             <Input
               value={value}
               onChange={(e) => setValue(e.target.value)}
@@ -164,7 +242,7 @@ export function PostCommentsSheet({ open, onOpenChange, postId, onCommentAdded }
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </div>
-        </div>
+        )}
       </DialogContent>
     </Dialog>
   )

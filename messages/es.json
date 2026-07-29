@@ -711,7 +711,11 @@
     "postActionError": "No se pudo completar la acción.",
     "reply": "Responder",
     "replyingTo": "Respondiendo a {name}",
-    "cancelReply": "Cancelar respuesta"
+    "cancelReply": "Cancelar respuesta",
+    "save": "Guardar",
+    "editComment": "Editar",
+    "deleteComment": "Eliminar",
+    "deleteCommentConfirm": "¿Eliminar este comentario?"
   },
   "BecomeMissionary": {
     "cardTitle": "Compartir mi propia misión",

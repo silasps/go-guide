@@ -711,7 +711,11 @@
     "postActionError": "Não foi possível concluir a ação.",
     "reply": "Responder",
     "replyingTo": "Respondendo a {name}",
-    "cancelReply": "Cancelar resposta"
+    "cancelReply": "Cancelar resposta",
+    "save": "Salvar",
+    "editComment": "Editar",
+    "deleteComment": "Excluir",
+    "deleteCommentConfirm": "Excluir este comentário?"
   },
   "BecomeMissionary": {
     "cardTitle": "Divulgar minha própria missão",

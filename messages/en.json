@@ -711,7 +711,11 @@
     "postActionError": "Couldn't complete this action.",
     "reply": "Reply",
     "replyingTo": "Replying to {name}",
-    "cancelReply": "Cancel reply"
+    "cancelReply": "Cancel reply",
+    "save": "Save",
+    "editComment": "Edit",
+    "deleteComment": "Delete",
+    "deleteCommentConfirm": "Delete this comment?"
   },
   "BecomeMissionary": {
     "cardTitle": "Share my own mission",
