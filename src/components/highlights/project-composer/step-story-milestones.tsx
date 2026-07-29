@@ -25,13 +25,13 @@ export function StepStoryMilestones({ composer }: Props) {
   return (
     <div className="space-y-5 max-w-xl mx-auto">
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
+        <div className="space-y-2 min-w-0">
           <Label htmlFor="trip_start_date">{t('tripDateLabel')}</Label>
-          <Input id="trip_start_date" type="date" value={tripStartDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTripStartDate(e.target.value)} />
+          <Input id="trip_start_date" type="date" className="w-full max-w-full" value={tripStartDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTripStartDate(e.target.value)} />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 min-w-0">
           <Label htmlFor="funding_deadline">{t('deadlineLabel')}</Label>
-          <Input id="funding_deadline" type="date" value={fundingDeadline} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFundingDeadline(e.target.value)} />
+          <Input id="funding_deadline" type="date" className="w-full max-w-full" value={fundingDeadline} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFundingDeadline(e.target.value)} />
         </div>
       </div>
 

@@ -154,3 +154,37 @@ export async function getLinkableProjects(profileId: string): Promise<{
 
   return data ?? []
 }
+
+/** Sugestões de localização pro passo de detalhes do composer — sem
+ *  serviço externo de geocoding (custo/chave de API), só reaproveita
+ *  localizações que o próprio missionário já usou: a do perfil e as dos
+ *  últimos posts com localização preenchida. */
+export async function getLocationSuggestions(profileId: string): Promise<string[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Não autenticado')
+
+  const service = serviceClient()
+  await assertProfileAccess(service, profileId, user.id)
+
+  const [{ data: profile }, { data: posts }] = await Promise.all([
+    service.from('profiles').select('location').eq('id', profileId).maybeSingle(),
+    service
+      .from('posts')
+      .select('location')
+      .eq('profile_id', profileId)
+      .not('location', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(20),
+  ])
+
+  const seen = new Set<string>()
+  const suggestions: string[] = []
+  for (const loc of [profile?.location, ...(posts ?? []).map((p) => p.location)]) {
+    if (!loc || seen.has(loc)) continue
+    seen.add(loc)
+    suggestions.push(loc)
+    if (suggestions.length >= 5) break
+  }
+  return suggestions
+}

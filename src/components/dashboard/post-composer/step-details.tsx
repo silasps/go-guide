@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 import { MapPin, X, Loader2 } from 'lucide-react'
@@ -7,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LocaleContentTabs } from '@/components/dashboard/locale-content-tabs'
 import { PostEditorProjectPicker } from '@/components/dashboard/post-editor-project-picker'
+import { getLocationSuggestions } from '@/app/dashboard/publicacoes/actions'
 import type { usePostComposer } from './use-post-composer'
 import { TagPeoplePicker } from './tag-people-picker'
 
@@ -28,6 +30,11 @@ export function StepDetails({ composer, profileId }: Props) {
 
   const taggableMedia = mediaFiles[activeIndex]
   const absoluteMediaIndex = existingUrls.length + activeIndex
+
+  const [locationSuggestions, setLocationSuggestions] = useState<string[]>([])
+  useEffect(() => {
+    getLocationSuggestions(profileId).then(setLocationSuggestions).catch(() => {})
+  }, [profileId])
 
   return (
     <div className="space-y-5 max-w-xl mx-auto">
@@ -90,19 +97,35 @@ export function StepDetails({ composer, profileId }: Props) {
         </div>
       )}
 
-      <div className="flex items-center gap-2">
-        <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-        <Input
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          placeholder={t('locationPlaceholder')}
-          className="border-0 px-0 shadow-none focus-visible:ring-0"
-        />
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-2">
+          <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Input
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder={t('locationPlaceholder')}
+            className="border-0 px-0 shadow-none focus-visible:ring-0"
+          />
+        </div>
+        {locationSuggestions.filter((s) => s !== location).length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pl-6">
+            {locationSuggestions.filter((s) => s !== location).map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                onClick={() => setLocation(suggestion)}
+                className="text-xs px-2 py-1 rounded-full border text-muted-foreground hover:border-foreground hover:text-foreground transition-colors"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <PostEditorProjectPicker profileId={profileId} value={projectId} onChange={setProjectId} />
 
-      <div className="rounded-lg border p-3 space-y-2">
+      <div className="rounded-lg border p-3 space-y-2 overflow-hidden">
         <label className="flex items-center justify-between cursor-pointer">
           <span className="text-sm font-medium">{t('scheduleToggle')}</span>
           <button
@@ -118,6 +141,7 @@ export function StepDetails({ composer, profileId }: Props) {
         {scheduleEnabled && (
           <Input
             type="datetime-local"
+            className="w-full max-w-full"
             value={scheduledAt}
             min={new Date().toISOString().slice(0, 16)}
             onChange={(e) => setScheduledAt(e.target.value)}
