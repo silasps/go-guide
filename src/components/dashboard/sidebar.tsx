@@ -11,6 +11,7 @@ import { setActiveProfile, becomeMissionary } from '@/app/dashboard/actions'
 import { useNav, useBottomNavItems, useSignOut } from '@/hooks/use-dashboard-nav'
 import { usePendingAction } from '@/hooks/use-pending-action'
 import { NewPostButton } from '@/components/dashboard/new-post-button'
+import { useComposer } from '@/components/dashboard/post-composer-provider'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -26,6 +27,7 @@ import {
   Check,
   Compass,
   Loader2,
+  Plus,
 } from 'lucide-react'
 
 function AccountSwitcher({ profile, accessibleProfiles }: { profile: Profile; accessibleProfiles: AccessibleProfile[] }) {
@@ -55,6 +57,7 @@ function AccountSwitcher({ profile, accessibleProfiles }: { profile: Profile; ac
 export function DashboardSidebar({ profile, accessibleProfiles }: { profile: Profile; accessibleProfiles: AccessibleProfile[] }) {
   const t = useTranslations('DashboardNav')
   const tBecome = useTranslations('BecomeMissionary')
+  const tCreate = useTranslations('CreateContent')
   const pathname = usePathname()
   const handleSignOut = useSignOut()
   const nav = useNav(profile.user_role)
@@ -88,7 +91,7 @@ export function DashboardSidebar({ profile, accessibleProfiles }: { profile: Pro
 
       {profile.user_role !== 'partner' && (
         <div className="px-2 pt-3">
-          <NewPostButton className="w-full justify-center" />
+          <NewPostButton className="w-full justify-center" label={tCreate('ariaLabel')} />
         </div>
       )}
 
@@ -151,29 +154,56 @@ export function MobileHeader() {
   )
 }
 
+function BottomNavLink({ href, label, Icon, active }: { href: string; label: string; Icon: React.ComponentType<{ className?: string }>; active: boolean }) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'flex-1 flex flex-col items-center justify-center gap-0.5 text-[11px] transition-colors',
+        active ? 'text-primary' : 'text-muted-foreground'
+      )}
+    >
+      <Icon className={cn('h-5 w-5 shrink-0', active && 'fill-primary/10')} />
+      <span className="text-center leading-tight line-clamp-2 px-0.5 min-h-[2.2em]">{label}</span>
+    </Link>
+  )
+}
+
 export function MobileBottomNav({ profile }: { profile: Profile }) {
   const t = useTranslations('DashboardNav')
+  const tCreate = useTranslations('CreateContent')
   const pathname = usePathname()
   const bottomNavItems = useBottomNavItems(profile.user_role)
+  const { openComposer } = useComposer()
+
+  // "+" fica embutido na própria barra (não mais flutuando por cima da
+  // página) — no meio dos itens, pra ficar visualmente central.
+  const mid = Math.ceil(bottomNavItems.length / 2)
+  const firstHalf = bottomNavItems.slice(0, mid)
+  const secondHalf = bottomNavItems.slice(mid)
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card border-t flex items-stretch h-16">
-      {bottomNavItems.map(({ href, label, icon: Icon, exact }) => {
-        const active = exact ? pathname === href : pathname.startsWith(href)
-        return (
-          <Link
-            key={href}
-            href={href}
-            className={cn(
-              'flex-1 flex flex-col items-center justify-center gap-0.5 text-[11px] transition-colors',
-              active ? 'text-primary' : 'text-muted-foreground'
-            )}
-          >
-            <Icon className={cn('h-5 w-5 shrink-0', active && 'fill-primary/10')} />
-            <span className="text-center leading-tight line-clamp-2 px-0.5 min-h-[2.2em]">{label}</span>
-          </Link>
-        )
-      })}
+      {firstHalf.map(({ href, label, icon: Icon, exact }) => (
+        <BottomNavLink key={href} href={href} label={label} Icon={Icon} active={exact ? pathname === href : pathname.startsWith(href)} />
+      ))}
+
+      {profile.user_role !== 'partner' && (
+        <button
+          type="button"
+          onClick={() => openComposer()}
+          aria-label={tCreate('ariaLabel')}
+          className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[11px] text-muted-foreground"
+        >
+          <Plus className="h-5 w-5 shrink-0" />
+          <span className="text-center leading-tight line-clamp-2 px-0.5 min-h-[2.2em]">{tCreate('ariaLabel')}</span>
+        </button>
+      )}
+
+      {secondHalf.map(({ href, label, icon: Icon, exact }) => (
+        <BottomNavLink key={href} href={href} label={label} Icon={Icon} active={exact ? pathname === href : pathname.startsWith(href)} />
+      ))}
+
       {/* Miniatura do próprio perfil — abre /[username], onde o dono vê
           abas/edição/menu completo, igual ao Instagram (avatar sempre a
           última aba do rodapé). */}

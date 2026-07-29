@@ -6,14 +6,14 @@ import { useComposer } from '@/components/dashboard/post-composer-provider'
 import { cn } from '@/lib/utils'
 import { Plus } from 'lucide-react'
 
-export function NewPostButton({ className }: { className?: string }) {
+export function NewPostButton({ className, label }: { className?: string; label?: string }) {
   const t = useTranslations('DashboardOverview')
   const { openComposer } = useComposer()
 
   return (
     <Button onClick={() => openComposer()} className={cn('gap-2 shrink-0', className)}>
       <Plus className="h-4 w-4" />
-      <span className="hidden sm:inline">{t('newPost')}</span>
+      <span className="hidden sm:inline">{label ?? t('newPost')}</span>
     </Button>
   )
 }

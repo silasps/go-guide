@@ -8,7 +8,6 @@ import { getPreviewRole } from '@/lib/profile/role-preview'
 import { isSuperAdmin } from '@/lib/auth/superadmin'
 import { DashboardSidebar, MobileBottomNav, MobileHeader } from '@/components/dashboard/sidebar'
 import { HeaderSearch } from '@/components/dashboard/header-search'
-import { CreateContentFab } from '@/components/dashboard/create-content-fab'
 import { NotificationsBell } from '@/components/dashboard/notifications-bell'
 import { SuperadminRoleSwitcher } from '@/components/dashboard/superadmin-role-switcher'
 import { PostComposerProvider } from '@/components/dashboard/post-composer-provider'
@@ -79,7 +78,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
 
         <MobileBottomNav profile={effectiveProfile} />
-        <CreateContentFab role={effectiveProfile.user_role} />
         {superAdmin && <SuperadminRoleSwitcher effectiveRole={effectiveProfile.user_role} isPreviewing={previewRole !== null} />}
       </div>
     </PostComposerProvider>
