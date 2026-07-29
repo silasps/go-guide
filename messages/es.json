@@ -578,7 +578,7 @@
     "reset": "Restablecer"
   },
   "PostComposer": {
-    "title": "Nueva publicación",
+    "title": "Nuevo contenido",
     "titleEdit": "Editar publicación",
     "postingAs": "Publicando como {name}",
     "contentLabel": "Texto",
