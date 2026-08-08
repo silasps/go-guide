@@ -1,13 +1,13 @@
 import type { MediaAspectRatio } from '@/types/database'
 
-const ASPECT_RATIOS: Partial<Record<MediaAspectRatio, number>> = {
+export const ASPECT_RATIOS: Partial<Record<MediaAspectRatio, number>> = {
   '1:1': 1,
   '4:5': 4 / 5,
   '16:9': 16 / 9,
   '21:9': 21 / 9,
 }
 
-const RATIO_TOLERANCE = 0.02
+export const RATIO_TOLERANCE = 0.02
 
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -20,8 +20,9 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 
 /** Cor média da imagem (canvas reduzido a 10x10 e média dos pixels) — usada
  *  pra preencher a sobra quando a imagem inteira cabe sem cortar, em vez de
- *  uma cor de fundo desconexa da paleta da foto. */
-function averageColor(img: HTMLImageElement): string {
+ *  uma cor de fundo desconexa da paleta da foto. Exportada porque o editor de
+ *  recorte usa a mesma conta pra mostrar o preview igual ao resultado final. */
+export function averageColor(img: HTMLImageElement): string {
   const canvas = document.createElement('canvas')
   canvas.width = 10
   canvas.height = 10

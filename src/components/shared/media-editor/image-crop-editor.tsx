@@ -7,6 +7,7 @@ import { ZoomIn, Crop } from 'lucide-react'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import type { MediaAspectRatio } from '@/types/database'
+import { ASPECT_RATIOS, RATIO_TOLERANCE, averageColor } from '@/lib/media/bake-image'
 import { ASPECT_RATIO_CLASS, resolveCssFilter, type MediaDraft } from './types'
 
 const ASPECT_OPTIONS: MediaAspectRatio[] = ['original', '1:1', '4:5', '16:9']
@@ -22,14 +23,34 @@ interface Props {
   showAspectPicker?: boolean
 }
 
+function touchDistance(touches: { clientX: number; clientY: number }[] | { [i: number]: { clientX: number; clientY: number } }) {
+  const dx = touches[0].clientX - touches[1].clientX
+  const dy = touches[0].clientY - touches[1].clientY
+  return Math.hypot(dx, dy)
+}
+
 export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChange, onZoomChange, showAspectPicker = true }: Props) {
   const t = useTranslations('MediaEditor')
   const [isDragging, setIsDragging] = useState(false)
   const [showZoom, setShowZoom] = useState(false)
+  // Proporção natural da imagem + cor média — carregadas uma vez pra decidir
+  // se o preview deve mostrar "contido" (com sobra colorida) ou "cobrindo"
+  // (recortado), igual ao que bakeImage vai gerar de fato ao salvar.
+  const [imgInfo, setImgInfo] = useState<{ ratio: number; bgColor: string } | null>(null)
 
   const dragging = useRef(false)
   const dragStart = useRef({ mouseX: 0, mouseY: 0, posX: 50, posY: 50 })
+  const pinch = useRef<{ startDist: number; startZoom: number } | null>(null)
   const frameRef = useRef<HTMLDivElement>(null)
+
+  const targetRatio = ASPECT_RATIOS[aspect] ?? imgInfo?.ratio
+  const ratioMatches = !imgInfo || !targetRatio || Math.abs(imgInfo.ratio - targetRatio) / targetRatio < RATIO_TOLERANCE
+  const isContain = media.zoom === 1 && imgInfo !== null && !ratioMatches
+
+  function handleImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const img = e.currentTarget
+    setImgInfo({ ratio: img.naturalWidth / img.naturalHeight, bgColor: averageColor(img) })
+  }
 
   const onDragMove = useCallback((clientX: number, clientY: number) => {
     if (!dragging.current || !frameRef.current) return
@@ -43,12 +64,21 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
 
   const onDragEnd = useCallback(() => {
     dragging.current = false
+    pinch.current = null
     setIsDragging(false)
   }, [])
 
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => onDragMove(e.clientX, e.clientY)
-    const onTouchMove = (e: TouchEvent) => { e.preventDefault(); onDragMove(e.touches[0].clientX, e.touches[0].clientY) }
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault()
+      if (e.touches.length === 2 && pinch.current) {
+        const ratio = touchDistance(e.touches) / pinch.current.startDist
+        onZoomChange(Math.min(3, Math.max(1, pinch.current.startZoom * ratio)))
+        return
+      }
+      if (e.touches.length === 1) onDragMove(e.touches[0].clientX, e.touches[0].clientY)
+    }
     window.addEventListener('mousemove', onMouseMove)
     window.addEventListener('mouseup', onDragEnd)
     window.addEventListener('touchmove', onTouchMove, { passive: false })
@@ -59,9 +89,10 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
       window.removeEventListener('touchmove', onTouchMove)
       window.removeEventListener('touchend', onDragEnd)
     }
-  }, [onDragMove, onDragEnd])
+  }, [onDragMove, onDragEnd, onZoomChange])
 
   function startDrag(clientX: number, clientY: number) {
+    if (isContain) return
     dragging.current = true
     setIsDragging(true)
     dragStart.current = { mouseX: clientX, mouseY: clientY, posX: media.position.x, posY: media.position.y }
@@ -72,10 +103,11 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
       <div
         ref={frameRef}
         className={cn(
-          'relative w-full overflow-hidden rounded-lg bg-black select-none',
+          'relative w-full overflow-hidden rounded-lg select-none',
+          !isContain && 'bg-black',
           ASPECT_RATIO_CLASS[aspect] || 'aspect-[4/5]'
         )}
-        style={{ cursor: 'grab', touchAction: 'none' }}
+        style={{ cursor: isContain ? 'default' : 'grab', touchAction: 'none', backgroundColor: isContain ? imgInfo?.bgColor : undefined }}
         onMouseDown={(e) => {
           if ((e.target as HTMLElement).closest('button, input')) return
           e.preventDefault()
@@ -83,6 +115,10 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
         }}
         onTouchStart={(e) => {
           if ((e.target as HTMLElement).closest('button, input')) return
+          if (e.touches.length === 2) {
+            pinch.current = { startDist: touchDistance(e.touches), startZoom: media.zoom }
+            return
+          }
           startDrag(e.touches[0].clientX, e.touches[0].clientY)
         }}
       >
@@ -91,10 +127,11 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
           alt=""
           fill
           draggable={false}
-          className="object-cover pointer-events-none"
+          onLoad={handleImageLoad}
+          className={cn('pointer-events-none', isContain ? 'object-contain' : 'object-cover')}
           style={{
-            objectPosition: `${media.position.x}% ${media.position.y}%`,
-            transform: `scale(${media.zoom})`,
+            objectPosition: isContain ? '50% 50%' : `${media.position.x}% ${media.position.y}%`,
+            transform: isContain ? undefined : `scale(${media.zoom})`,
             filter: resolveCssFilter(media) || undefined,
           }}
         />
