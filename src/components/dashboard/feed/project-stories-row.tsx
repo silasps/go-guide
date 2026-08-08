@@ -55,9 +55,11 @@ export function ProjectStoriesRow({ stories }: Props) {
                 </div>
               </div>
             </div>
-            <p className="text-[11px] font-medium leading-tight text-center line-clamp-2">
-              {story.highlight.title}
-            </p>
+            <div className="h-[2.2em] w-full flex items-start justify-center">
+              <p className="text-[11px] font-medium leading-tight text-center line-clamp-2">
+                {story.highlight.title}
+              </p>
+            </div>
           </button>
         ))}
       </div>

@@ -57,8 +57,15 @@ export async function ProjectsSection({ projects, username, accentColor, visitor
                 </div>
               </div>
 
-              {/* Info principal próxima à bolinha */}
-              <p className="text-[11px] font-medium leading-tight text-center line-clamp-2">{title}</p>
+              {/* Info principal próxima à bolinha — bloco de altura fixa (2
+                  linhas) com o texto ancorado no topo, senão títulos de 1
+                  linha deixam a barra de progresso em alturas diferentes,
+                  desalinhando a fileira. min-h sozinho no <p> com line-clamp
+                  não é suficiente porque -webkit-box (usado pelo line-clamp)
+                  centraliza o texto verticalmente dentro da própria caixa. */}
+              <div className="h-[2.2em] w-full flex items-start justify-center">
+                <p className="text-[11px] font-medium leading-tight text-center line-clamp-2">{title}</p>
+              </div>
 
               {pct !== null && (
                 <div className="w-full space-y-0.5">

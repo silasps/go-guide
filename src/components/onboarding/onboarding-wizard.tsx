@@ -74,14 +74,14 @@ export function OnboardingWizard({ profile, hasPaymentMethod }: Props) {
   }
 
   function handleUsernameChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const value = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '')
+    const value = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '')
     setUsername(value)
     setUsernameStatus('idle')
 
     if (usernameTimer) clearTimeout(usernameTimer)
     if (value === profile.username || value.length < 3) return
 
-    if (!/^[a-z][a-z0-9_]{2,29}$/.test(value)) {
+    if (!/^[a-z][a-z0-9_-]{2,29}$/.test(value)) {
       setUsernameStatus('invalid')
       return
     }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback } from 'react'
+import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
@@ -11,14 +12,14 @@ import { ImageCropEditor } from '@/components/shared/media-editor/image-crop-edi
 import { Profile } from '@/types/database'
 import { AccountTypeSelector, useAccountTypeCopy } from '@/components/profile/account-type-selector'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { LocaleContentTabs } from '@/components/dashboard/locale-content-tabs'
 import { AvatarCropDialog } from '@/components/dashboard/settings/avatar-crop-dialog'
 import { toast } from 'sonner'
 import { Loader2, Camera, Check, X, Move } from 'lucide-react'
-import { getInitials } from '@/lib/utils'
+import { getInitials, cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import type { Locale } from '@/i18n/config'
 
@@ -129,14 +130,14 @@ export function ProfileForm({ profile, onSaved }: Props) {
   }
 
   function handleUsernameChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const value = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '')
+    const value = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '')
     setUsername(value)
     setUsernameStatus('idle')
 
     if (usernameTimer) clearTimeout(usernameTimer)
     if (value === profile.username || value.length < 3) return
 
-    if (!/^[a-z][a-z0-9_]{2,29}$/.test(value)) {
+    if (!/^[a-z][a-z0-9_-]{2,29}$/.test(value)) {
       setUsernameStatus('invalid')
       return
     }
@@ -236,8 +237,18 @@ export function ProfileForm({ profile, onSaved }: Props) {
       }
       toast.success(t('profileUpdated'))
       localStorage.removeItem('profile-banner-dismissed')
-      router.refresh()
       onSaved?.()
+      // Se o username mudou E a tela atual é a do próprio perfil público
+      // (caso do EditProfileDialog, aberto em cima de /{username}), a URL
+      // antiga vira 404 assim que a mudança é salva — redireciona pra URL
+      // nova em vez de só atualizar no lugar. Em Configurações (URL não
+      // depende do username) só dá refresh mesmo, sem navegar pra fora.
+      const usernameChanged = username !== profile.username
+      if (usernameChanged && window.location.pathname.startsWith(`/${profile.username}`)) {
+        router.push(`/${username}`)
+      } else {
+        router.refresh()
+      }
     })
   }
 
@@ -449,6 +460,18 @@ export function ProfileForm({ profile, onSaved }: Props) {
         />
         <p className="text-xs text-muted-foreground">{t('missionStartDateHint')}</p>
       </div>
+
+      {/* História — só existe pro papel missionário (mesma regra da aba
+          pública/História em ProfileTabs) */}
+      {profile.user_role === 'missionary' && (
+        <div className="space-y-2">
+          <Label>{t('historyLabel')}</Label>
+          <p className="text-xs text-muted-foreground">{t('historyHint')}</p>
+          <Link href="/dashboard/configuracoes/historia" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>
+            {t('editHistory')}
+          </Link>
+        </div>
+      )}
 
       {/* Redes sociais */}
       <div className="space-y-3">

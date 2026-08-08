@@ -74,18 +74,20 @@ export async function ProfileHeader({ profile, postsCount, projectsCount, achiev
         </div>
       </div>
 
-      {/* Seguidores/Seguindo — só para missionários, linha própria pra caber bem no mobile */}
+      {/* Seguidores/Seguindo — só para missionários, linha própria pra caber bem no mobile.
+          Dois Links separados (não um só cobrindo a linha toda) pra cada número abrir
+          direto na aba certa — "Seguindo" precisa do ?tab=seguindo. */}
       {showFollows && (
-        <Link href={`/${profile.username}/seguidores`} className="grid grid-cols-2 text-center rounded-xl border py-2">
-          <div>
+        <div className="grid grid-cols-2 text-center rounded-xl border py-2">
+          <Link href={`/${profile.username}/seguidores`}>
             <span className="text-sm font-semibold">{followersCount}</span>{' '}
             <span className="text-xs text-muted-foreground">{t('statsFollowers')}</span>
-          </div>
-          <div className="border-l">
+          </Link>
+          <Link href={`/${profile.username}/seguidores?tab=seguindo`} className="border-l">
             <span className="text-sm font-semibold">{followingCount}</span>{' '}
             <span className="text-xs text-muted-foreground">{t('statsFollowing')}</span>
-          </div>
-        </Link>
+          </Link>
+        </div>
       )}
 
       {/* Nome + localização */}

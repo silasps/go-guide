@@ -1,16 +1,18 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getLocale } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { buttonVariants } from '@/components/ui/button'
 import { cn, formatCurrency } from '@/lib/utils'
 import { getProfile } from '@/lib/profile/get-profile'
+import { getProfileViewerContext } from '@/lib/profile/viewer-context'
 import { resolveLocalizedText } from '@/lib/i18n/resolve-content-locale'
 import type { Locale } from '@/i18n/config'
 import type { Highlight } from '@/types/database'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Plus } from 'lucide-react'
 
 interface Props { params: Promise<{ username: string }> }
 
@@ -27,13 +29,17 @@ export default async function ProjetosPublicosPage({ params }: Props) {
 
   const visitorLocale = (await getLocale()) as Locale
   const supabase = await createClient()
-  const { data: projects } = await supabase
-    .from('highlights')
-    .select('*')
-    .eq('profile_id', profile.id)
-    .neq('status', 'hidden')
-    .order('status') // active antes de completed
-    .order('order_index')
+  const t = await getTranslations('PublicProfile')
+  const [{ data: projects }, { canEdit }] = await Promise.all([
+    supabase
+      .from('highlights')
+      .select('*')
+      .eq('profile_id', profile.id)
+      .neq('status', 'hidden')
+      .order('status') // active antes de completed
+      .order('order_index'),
+    getProfileViewerContext(username),
+  ])
 
   const active = projects?.filter(p => p.status === 'active') ?? []
   const completed = projects?.filter(p => p.status === 'completed') ?? []
@@ -41,9 +47,17 @@ export default async function ProjetosPublicosPage({ params }: Props) {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
-        <div>
-          <h1 className="text-2xl font-bold">Projetos</h1>
-          <p className="text-muted-foreground text-sm mt-1">Veja tudo o que {profile.display_name} está construindo e o que já foi realizado.</p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Projetos</h1>
+            <p className="text-muted-foreground text-sm mt-1">Veja tudo o que {profile.display_name} está construindo e o que já foi realizado.</p>
+          </div>
+          {canEdit && (
+            <Link href="/dashboard/projetos/novo" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5 shrink-0')}>
+              <Plus className="h-3.5 w-3.5" />
+              {t('createProject')}
+            </Link>
+          )}
         </div>
 
         {/* Projetos ativos */}
