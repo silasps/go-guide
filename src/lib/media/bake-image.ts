@@ -7,8 +7,6 @@ export const ASPECT_RATIOS: Partial<Record<MediaAspectRatio, number>> = {
   '21:9': 21 / 9,
 }
 
-export const RATIO_TOLERANCE = 0.02
-
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image()
@@ -39,11 +37,14 @@ export function averageColor(img: HTMLImageElement): string {
 /**
  * Reproduz em canvas o que o usuário viu na tela e "assa" o resultado — o
  * arquivo final já sai pronto, sem precisar guardar crop/filtro separado do
- * post. Sem zoom (zoom=1, o padrão): a imagem inteira é mantida — se a
- * proporção não bate com a escolhida, sobra vira preenchimento com a cor
- * média da própria foto (nunca corta nada sem o usuário pedir). Com zoom
- * (>1, escolha explícita de recortar): recorta pra preencher o quadro,
- * igual antes.
+ * post. `zoom` é contínuo a partir de 1 (foto inteira visível, sobra
+ * preenchida com a cor média dela) e `position` é um deslocamento livre nos
+ * dois eixos (`50` = centralizado, sem deslocamento), independente do
+ * zoom — mesma matemática do editor (`transform: translate(...) scale(...)`
+ * sobre um `object-fit: contain`): primeiro centraliza a imagem já escalada
+ * pelo zoom, depois desloca por um valor fixo em pixels do quadro (não
+ * afetado pela escala, do mesmo jeito que um `translate()` depois de um
+ * `scale()` em CSS).
  */
 export async function bakeImage(params: {
   previewUrl: string
@@ -59,47 +60,28 @@ export async function bakeImage(params: {
   const targetRatio = ASPECT_RATIOS[params.aspect] ?? iw / ih
   const naturalRatio = iw / ih
   const zoom = Math.max(1, params.zoom)
-  const ratioMatches = Math.abs(naturalRatio - targetRatio) / targetRatio < RATIO_TOLERANCE
+
+  const boxWidth = naturalRatio > targetRatio ? iw : ih * targetRatio
+  const boxHeight = naturalRatio > targetRatio ? iw / targetRatio : ih
 
   const canvas = document.createElement('canvas')
+  canvas.width = Math.round(boxWidth)
+  canvas.height = Math.round(boxHeight)
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('Canvas não suportado.')
 
-  if (zoom === 1 && !ratioMatches) {
-    // Contain: mantém a foto inteira, preenche a sobra com a cor média dela.
-    const boxWidth = naturalRatio > targetRatio ? iw : ih * targetRatio
-    const boxHeight = naturalRatio > targetRatio ? iw / targetRatio : ih
-    canvas.width = Math.round(boxWidth)
-    canvas.height = Math.round(boxHeight)
-    ctx.fillStyle = averageColor(img)
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    // Desloca dentro da sobra conforme a posição escolhida — o eixo sem
-    // folga (imagem já preenche exatamente aquela dimensão) não se move,
-    // mesma semântica de object-fit:contain + object-position no editor.
-    const dx = (canvas.width - iw) * (params.position.x / 100)
-    const dy = (canvas.height - ih) * (params.position.y / 100)
-    if (params.cssFilter) ctx.filter = params.cssFilter
-    ctx.drawImage(img, dx, dy, iw, ih)
-  } else {
-    // Cover: recorta a região escolhida (pan + zoom) pra preencher o quadro.
-    let cropWidth = iw
-    let cropHeight = ih
-    if (naturalRatio > targetRatio) {
-      cropWidth = ih * targetRatio
-    } else {
-      cropHeight = iw / targetRatio
-    }
-    cropWidth = cropWidth / zoom
-    cropHeight = cropHeight / zoom
+  ctx.fillStyle = averageColor(img)
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    const cropX = (iw - cropWidth) * (params.position.x / 100)
-    const cropY = (ih - cropHeight) * (params.position.y / 100)
+  const panX = ((params.position.x - 50) / 100) * canvas.width
+  const panY = ((params.position.y - 50) / 100) * canvas.height
+  const drawWidth = iw * zoom
+  const drawHeight = ih * zoom
+  const drawX = (canvas.width - drawWidth) / 2 + panX
+  const drawY = (canvas.height - drawHeight) / 2 + panY
 
-    canvas.width = Math.round(cropWidth)
-    canvas.height = Math.round(cropHeight)
-    if (params.cssFilter) ctx.filter = params.cssFilter
-    ctx.drawImage(img, cropX, cropY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height)
-  }
+  if (params.cssFilter) ctx.filter = params.cssFilter
+  ctx.drawImage(img, 0, 0, iw, ih, drawX, drawY, drawWidth, drawHeight)
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.95))
   if (!blob) throw new Error('Não foi possível gerar a imagem recortada.')
