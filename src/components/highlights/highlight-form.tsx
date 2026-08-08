@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
 import { Highlight, Milestone, ProjectBudgetCategory } from '@/types/database'
+import type { Locale } from '@/i18n/config'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -16,6 +17,19 @@ import { CoverEditor, parsePosition, uniqueFileName } from './cover-editor'
 import { MilestonesEditor, type MilestoneDraft } from './milestones-editor'
 import { BudgetCategoriesEditor, type BudgetCategoryDraft } from './budget-categories-editor'
 import { SupportTypesPicker } from './support-types-picker'
+import { LocaleContentTabs } from '@/components/dashboard/locale-content-tabs'
+
+function initialTranslations(translations: Partial<Record<Locale, { content: string }>> | undefined) {
+  const t: Partial<Record<Locale, string>> = {}
+  for (const [locale, v] of Object.entries(translations ?? {})) t[locale as Locale] = v.content
+  return t
+}
+
+function initialSources(translations: Partial<Record<Locale, { source: 'ai' | 'human' }>> | undefined) {
+  const s: Partial<Record<Locale, 'ai' | 'human'>> = {}
+  for (const [locale, v] of Object.entries(translations ?? {})) s[locale as Locale] = v.source
+  return s
+}
 
 // Assunto do projeto (ortogonal ao goal_type acima, que é o TIPO DE APOIO
 // pedido) — sinal de afinidade usado pelo ranking do feed, sem UI pública.
@@ -40,6 +54,38 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
   const { isPending: saving, run } = usePendingAction()
   const [title, setTitle] = useState(highlight?.title ?? '')
   const [description, setDescription] = useState(highlight?.description ?? '')
+  const [originalLocale] = useState<Locale>(highlight?.original_locale ?? 'pt')
+  const [titleTranslations, setTitleTranslations] = useState(() => initialTranslations(highlight?.title_translations))
+  const [titleSources, setTitleSources] = useState(() => initialSources(highlight?.title_translations))
+  const [descTranslations, setDescTranslations] = useState(() => initialTranslations(highlight?.description_translations))
+  const [descSources, setDescSources] = useState(() => initialSources(highlight?.description_translations))
+
+  async function translateField(
+    text: string, locale: Locale,
+    setTranslations: React.Dispatch<React.SetStateAction<Partial<Record<Locale, string>>>>,
+    setSources: React.Dispatch<React.SetStateAction<Partial<Record<Locale, 'ai' | 'human'>>>>
+  ) {
+    if (!text.trim()) return
+    try {
+      const res = await fetch('/api/ai/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profileId, sourceLocale: originalLocale, targetLocales: [locale], text }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error === 'insufficient_ai_credits' ? 'Créditos de IA insuficientes.' : 'Erro ao traduzir.')
+        return
+      }
+      const translated = data.translations?.[locale]
+      if (translated) {
+        setTranslations((prev) => ({ ...prev, [locale]: translated }))
+        setSources((prev) => ({ ...prev, [locale]: 'ai' }))
+      }
+    } catch {
+      toast.error('Erro ao traduzir.')
+    }
+  }
   const [goalTypes, setGoalTypes] = useState<string[]>(
     Array.isArray(highlight?.goal_type) ? highlight.goal_type : ['financial']
   )
@@ -109,6 +155,13 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
         const hasFinancial = types.includes('financial')
         const isDetailedBudget = hasFinancial && budgetMode === 'detailed'
 
+        const buildTranslations = (translations: Partial<Record<Locale, string>>, sources: Partial<Record<Locale, 'ai' | 'human'>>) =>
+          Object.fromEntries(
+            Object.entries(translations)
+              .filter(([locale, text]) => locale !== originalLocale && text?.trim())
+              .map(([locale, text]) => [locale, { content: text!.trim(), source: sources[locale as Locale] ?? 'human', translated_at: new Date().toISOString() }])
+          )
+
         const res = await fetch('/api/highlights', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -117,6 +170,9 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
             profileId,
             title: title.trim(),
             description: description.trim(),
+            originalLocale,
+            titleTranslations: buildTranslations(titleTranslations, titleSources),
+            descriptionTranslations: buildTranslations(descTranslations, descSources),
             goalTypes,
             category: categories,
             goalAmount: isDetailedBudget ? budgetTotal : (hasFinancial && goalAmount ? parseFloat(fromMasked(goalAmount, currency)) : null),
@@ -187,12 +243,30 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
 
           <div className="space-y-2">
             <Label htmlFor="title">Título *</Label>
-            <Input id="title" value={title} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)} placeholder="Ex: Construção da Base em Moçambique" required />
+            <LocaleContentTabs
+              originalLocale={originalLocale}
+              originalText={title}
+              onOriginalChange={setTitle}
+              translations={titleTranslations}
+              onTranslationChange={(locale, value) => { setTitleTranslations((prev) => ({ ...prev, [locale]: value })); setTitleSources((prev) => ({ ...prev, [locale]: 'human' })) }}
+              onTranslateWithAi={(locale) => translateField(title, locale, setTitleTranslations, setTitleSources)}
+              originalPlaceholder="Ex: Construção da Base em Moçambique"
+              rows={1}
+            />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="description">Descrição</Label>
-            <Textarea id="description" value={description} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)} placeholder="Descreva o projeto e seu impacto..." rows={3} />
+            <LocaleContentTabs
+              originalLocale={originalLocale}
+              originalText={description}
+              onOriginalChange={setDescription}
+              translations={descTranslations}
+              onTranslationChange={(locale, value) => { setDescTranslations((prev) => ({ ...prev, [locale]: value })); setDescSources((prev) => ({ ...prev, [locale]: 'human' })) }}
+              onTranslateWithAi={(locale) => translateField(description, locale, setDescTranslations, setDescSources)}
+              originalPlaceholder="Descreva o projeto e seu impacto..."
+              rows={3}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">

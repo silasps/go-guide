@@ -138,6 +138,8 @@ export default async function ProjetoPublicoPage({ params }: Props) {
   if (!project) notFound()
 
   const visitorLocale = (await getLocale()) as Locale
+  const localizedTitle = resolveLocalizedText(project.title, project.original_locale, project.title_translations, visitorLocale).text ?? project.title
+  const localizedDescription = resolveLocalizedText(project.description, project.original_locale, project.description_translations, visitorLocale).text
 
   const [{ data: milestones }, { data: updates }, { data: budgetCategories }, { data: pastProjects }, { count: supporterCount }] = await Promise.all([
     supabase.from('milestones').select('*').eq('highlight_id', project.id).order('order_index'),
@@ -145,7 +147,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
       .eq('profile_id', profile.id).eq('project_id', project.id).eq('is_draft', false)
       .order('published_at', { ascending: false }).limit(10),
     supabase.from('project_budget_progress').select('*').eq('highlight_id', project.id).order('order_index'),
-    supabase.from('highlights').select('id, slug, title, cover_url, cover_position')
+    supabase.from('highlights').select('id, slug, title, cover_url, cover_position, original_locale, title_translations')
       .eq('profile_id', profile.id).eq('status', 'completed').neq('id', project.id)
       .order('completed_at', { ascending: false }).limit(3),
     supabase.from('pledges').select('reporter_user_id, reporter_email', { count: 'exact', head: true })
@@ -197,7 +199,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
             {/* Hero: capa 16:9 + avatar sobreposto */}
             {project.cover_url && (
               <div className="relative aspect-video rounded-2xl overflow-hidden">
-                <Image src={project.cover_url} alt={project.title} fill className="object-cover" style={{ objectPosition: project.cover_position ?? '50% 50%' }} />
+                <Image src={project.cover_url} alt={localizedTitle} fill className="object-cover" style={{ objectPosition: project.cover_position ?? '50% 50%' }} />
                 <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-black/40 backdrop-blur-sm rounded-full pr-3 py-1">
                   <Avatar className="h-7 w-7 border-2 border-white/80">
                     <AvatarImage src={profile.avatar_url ?? ''} alt={profile.display_name} />
@@ -210,7 +212,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
 
             {/* Cabeçalho */}
             <div className="space-y-3 mt-3">
-              <h1 className="text-2xl font-bold">{project.title}</h1>
+              <h1 className="text-2xl font-bold">{localizedTitle}</h1>
               {project.scripture && (
                 <p className="text-sm italic text-muted-foreground border-l-2 border-primary/40 pl-3">{project.scripture}</p>
               )}
@@ -220,8 +222,8 @@ export default async function ProjetoPublicoPage({ params }: Props) {
 
         {(project.description || canEdit) && (
           <DescriptionEditSection {...sectionProps}>
-            {project.description
-              ? <p className="text-muted-foreground">{project.description}</p>
+            {localizedDescription
+              ? <p className="text-muted-foreground">{localizedDescription}</p>
               : (canEdit ? <p className="text-sm text-muted-foreground italic">Adicionar descrição...</p> : null)}
           </DescriptionEditSection>
         )}
@@ -436,16 +438,19 @@ export default async function ProjetoPublicoPage({ params }: Props) {
               <Link href={`/${username}/trajetoria`} className="text-xs text-primary hover:underline">Ver tudo</Link>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              {pastProjects.map(p => (
-                <Link key={p.id} href={`/${username}/projetos/${p.slug ?? p.id}`} className="space-y-1.5 group">
-                  <div className="relative aspect-square rounded-xl overflow-hidden bg-muted">
-                    {p.cover_url && (
-                      <Image src={p.cover_url} alt={p.title} fill className="object-cover group-hover:scale-105 transition-transform" style={{ objectPosition: p.cover_position ?? '50% 50%' }} />
-                    )}
-                  </div>
-                  <p className="text-xs font-medium line-clamp-2">{p.title}</p>
-                </Link>
-              ))}
+              {pastProjects.map(p => {
+                const pTitle = resolveLocalizedText(p.title, p.original_locale, p.title_translations, visitorLocale).text ?? p.title
+                return (
+                  <Link key={p.id} href={`/${username}/projetos/${p.slug ?? p.id}`} className="space-y-1.5 group">
+                    <div className="relative aspect-square rounded-xl overflow-hidden bg-muted">
+                      {p.cover_url && (
+                        <Image src={p.cover_url} alt={pTitle} fill className="object-cover group-hover:scale-105 transition-transform" style={{ objectPosition: p.cover_position ?? '50% 50%' }} />
+                      )}
+                    </div>
+                    <p className="text-xs font-medium line-clamp-2">{pTitle}</p>
+                  </Link>
+                )
+              })}
             </div>
           </div>
         )}

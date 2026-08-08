@@ -1,11 +1,15 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getLocale } from 'next-intl/server'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { cn, formatCurrency } from '@/lib/utils'
 import { getProfile } from '@/lib/profile/get-profile'
+import { resolveLocalizedText } from '@/lib/i18n/resolve-content-locale'
+import type { Locale } from '@/i18n/config'
+import type { Highlight } from '@/types/database'
 import { CheckCircle2 } from 'lucide-react'
 
 interface Props { params: Promise<{ username: string }> }
@@ -21,6 +25,7 @@ export default async function ProjetosPublicosPage({ params }: Props) {
 
   if (!profile || profile.privacy_mode === 'stealth') notFound()
 
+  const visitorLocale = (await getLocale()) as Locale
   const supabase = await createClient()
   const { data: projects } = await supabase
     .from('highlights')
@@ -46,7 +51,7 @@ export default async function ProjetosPublicosPage({ params }: Props) {
           <section className="space-y-4">
             <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Em andamento</h2>
             <div className="grid grid-cols-2 gap-3">
-              {active.map(p => <ProjectCard key={p.id} p={p} username={username} accentColor={profile.accent_color} />)}
+              {active.map(p => <ProjectCard key={p.id} p={p} username={username} accentColor={profile.accent_color} visitorLocale={visitorLocale} />)}
             </div>
           </section>
         )}
@@ -59,7 +64,7 @@ export default async function ProjetosPublicosPage({ params }: Props) {
               Concluídos
             </h2>
             <div className="grid grid-cols-2 gap-3">
-              {completed.map(p => <ProjectCard key={p.id} p={p} username={username} accentColor={profile.accent_color} completed />)}
+              {completed.map(p => <ProjectCard key={p.id} p={p} username={username} accentColor={profile.accent_color} visitorLocale={visitorLocale} completed />)}
             </div>
           </section>
         )}
@@ -72,15 +77,17 @@ export default async function ProjetosPublicosPage({ params }: Props) {
   )
 }
 
-function ProjectCard({ p, username, accentColor, completed = false }: {
-  p: { id: string; title: string; description: string | null; cover_url: string | null; cover_position: string; goal_type: string | string[]; goal_amount: number | null; current_amount: number; currency: string; slug: string | null }
+function ProjectCard({ p, username, accentColor, visitorLocale, completed = false }: {
+  p: Highlight
   username: string
   accentColor: string
+  visitorLocale: Locale
   completed?: boolean
 }) {
   const types: string[] = Array.isArray(p.goal_type) ? p.goal_type : [p.goal_type]
   const pct = p.goal_amount ? Math.min(100, (p.current_amount / p.goal_amount) * 100) : null
   const slug = p.slug ?? p.id
+  const title = resolveLocalizedText(p.title, p.original_locale, p.title_translations, visitorLocale).text ?? p.title
 
   return (
     <Link
@@ -94,7 +101,7 @@ function ProjectCard({ p, username, accentColor, completed = false }: {
         {p.cover_url ? (
           <Image
             src={p.cover_url}
-            alt={p.title}
+            alt={title}
             fill
             sizes="50vw"
             className="object-cover group-hover:scale-105 transition-transform"
@@ -110,7 +117,7 @@ function ProjectCard({ p, username, accentColor, completed = false }: {
         )}
       </div>
       <div className="flex-1 p-3 space-y-1.5">
-        <p className="font-medium text-sm leading-snug line-clamp-2">{p.title}</p>
+        <p className="font-medium text-sm leading-snug line-clamp-2">{title}</p>
         <div className="flex flex-wrap gap-1">
           {types.slice(0, 2).map(t => (
             <Badge key={t} variant="secondary" className="text-[10px] px-1.5 py-0">{TYPE_LABEL[t] ?? t}</Badge>

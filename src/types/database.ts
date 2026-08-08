@@ -146,6 +146,9 @@ export interface Highlight {
   trip_start_date: string | null
   funding_deadline: string | null
   completed_at: string | null
+  original_locale: Locale
+  title_translations: Partial<Record<Locale, ContentTranslation>>
+  description_translations: Partial<Record<Locale, ContentTranslation>>
   created_at: string
   updated_at: string
 }

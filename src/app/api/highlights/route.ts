@@ -75,7 +75,8 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json()
   const { highlightId, profileId, title, description, goalTypes, category, goalAmount, currentAmount,
-    currency, coverUrl, coverPosition, tripStartDate, fundingDeadline, scripture, letter, status, milestones, budgetCategories } = body
+    currency, coverUrl, coverPosition, tripStartDate, fundingDeadline, scripture, letter, status, milestones, budgetCategories,
+    originalLocale, titleTranslations, descriptionTranslations } = body
 
   try {
     await assertProfileAccess(profileId, user.id)
@@ -102,6 +103,9 @@ export async function POST(req: NextRequest) {
     letter: letter || null,
     status,
     slug: slugify(title),
+    original_locale: originalLocale ?? 'pt',
+    title_translations: titleTranslations ?? {},
+    description_translations: descriptionTranslations ?? {},
   }
 
   try {

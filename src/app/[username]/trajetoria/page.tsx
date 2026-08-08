@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getLocale } from 'next-intl/server'
 import { TrajectoryTimeline } from '@/components/profile/trajectory-timeline'
 import { getProfile } from '@/lib/profile/get-profile'
+import type { Locale } from '@/i18n/config'
 import type { Metadata } from 'next'
 
 interface Props { params: Promise<{ username: string }> }
@@ -17,10 +19,11 @@ export default async function TrajetoriaPage({ params }: Props) {
 
   if (!profile || profile.privacy_mode === 'stealth') notFound()
 
+  const visitorLocale = (await getLocale()) as Locale
   const supabase = await createClient()
   const { data: projects } = await supabase
     .from('highlights')
-    .select('id, slug, title, description, cover_url, cover_position, goal_amount, current_amount, currency, completed_at')
+    .select('id, slug, title, description, cover_url, cover_position, goal_amount, current_amount, currency, completed_at, original_locale, title_translations, description_translations')
     .eq('profile_id', profile.id)
     .eq('status', 'completed')
     .order('completed_at', { ascending: false })
@@ -37,7 +40,7 @@ export default async function TrajetoriaPage({ params }: Props) {
             Projetos e desafios já concluídos ao longo do caminho.
           </p>
         </div>
-        <TrajectoryTimeline username={username} projects={projects ?? []} />
+        <TrajectoryTimeline username={username} projects={projects ?? []} visitorLocale={visitorLocale} />
       </div>
     </div>
   )

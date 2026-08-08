@@ -3,10 +3,9 @@
 import { useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { ImagePlus } from 'lucide-react'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { LocaleContentTabs } from '@/components/dashboard/locale-content-tabs'
 import { createMediaDraft } from '@/components/shared/media-editor/types'
 import { ImageCropEditor } from '@/components/shared/media-editor/image-crop-editor'
 import type { useProjectComposer } from './use-project-composer'
@@ -18,7 +17,11 @@ interface Props {
 export function StepCoverTitle({ composer }: Props) {
   const t = useTranslations('ProjectComposer')
   const inputRef = useRef<HTMLInputElement>(null)
-  const { title, setTitle, description, setDescription, coverMedia, setCoverMedia, coverAspect, setCoverAspect } = composer
+  const {
+    title, setTitle, description, setDescription, coverMedia, setCoverMedia, coverAspect, setCoverAspect,
+    originalLocale, titleTranslations, setTitleTranslations, setTitleSources,
+    descTranslations, setDescTranslations, setDescSources, translateField,
+  } = composer
 
   function handleFile(file: File | undefined) {
     if (!file) return
@@ -62,22 +65,28 @@ export function StepCoverTitle({ composer }: Props) {
 
       <div className="space-y-2">
         <Label htmlFor="title">{t('titleLabel')}</Label>
-        <Input
-          id="title"
-          value={title}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
-          placeholder={t('titlePlaceholder')}
-          required
+        <LocaleContentTabs
+          originalLocale={originalLocale}
+          originalText={title}
+          onOriginalChange={setTitle}
+          translations={titleTranslations}
+          onTranslationChange={(locale, value) => { setTitleTranslations((prev) => ({ ...prev, [locale]: value })); setTitleSources((prev) => ({ ...prev, [locale]: 'human' })) }}
+          onTranslateWithAi={(locale) => translateField(title, locale, setTitleTranslations, setTitleSources)}
+          originalPlaceholder={t('titlePlaceholder')}
+          rows={1}
         />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="description">{t('descriptionLabel')}</Label>
-        <Textarea
-          id="description"
-          value={description}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
-          placeholder={t('descriptionPlaceholder')}
+        <LocaleContentTabs
+          originalLocale={originalLocale}
+          originalText={description}
+          onOriginalChange={setDescription}
+          translations={descTranslations}
+          onTranslationChange={(locale, value) => { setDescTranslations((prev) => ({ ...prev, [locale]: value })); setDescSources((prev) => ({ ...prev, [locale]: 'human' })) }}
+          onTranslateWithAi={(locale) => translateField(description, locale, setDescTranslations, setDescSources)}
+          originalPlaceholder={t('descriptionPlaceholder')}
           rows={3}
         />
       </div>

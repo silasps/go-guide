@@ -1,23 +1,30 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
 import { Highlight } from '@/types/database'
+import type { Locale } from '@/i18n/config'
+import { resolveLocalizedText } from '@/lib/i18n/resolve-content-locale'
 import { formatCurrency } from '@/lib/utils'
 
 interface Props {
   projects: Highlight[]
   username: string
   accentColor: string
+  visitorLocale: Locale
 }
 
-export function ProjectsSection({ projects, username, accentColor }: Props) {
+export async function ProjectsSection({ projects, username, accentColor, visitorLocale }: Props) {
+  const t = await getTranslations('PublicProfile')
+
   return (
     <div className="space-y-3">
-      <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Projetos</h2>
+      <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">{t('projectsHeading')}</h2>
       <div className="flex gap-4 overflow-x-auto pb-1 -mx-4 px-4 snap-x snap-mandatory scrollbar-hide">
         {projects.map((p) => {
           const isFinancial = p.goal_type.includes('financial')
           const pct = isFinancial && p.goal_amount ? Math.min(100, (p.current_amount / p.goal_amount) * 100) : null
           const slug = p.slug ?? p.id
+          const title = resolveLocalizedText(p.title, p.original_locale, p.title_translations, visitorLocale).text ?? p.title
 
           return (
             <Link
@@ -35,7 +42,7 @@ export function ProjectsSection({ projects, username, accentColor }: Props) {
                     {p.cover_url ? (
                       <Image
                         src={p.cover_url}
-                        alt={p.title}
+                        alt={title}
                         width={64}
                         height={64}
                         className="object-cover h-full w-full group-hover:scale-105 transition-transform"
@@ -51,7 +58,7 @@ export function ProjectsSection({ projects, username, accentColor }: Props) {
               </div>
 
               {/* Info principal próxima à bolinha */}
-              <p className="text-[11px] font-medium leading-tight text-center line-clamp-2">{p.title}</p>
+              <p className="text-[11px] font-medium leading-tight text-center line-clamp-2">{title}</p>
 
               {pct !== null && (
                 <div className="w-full space-y-0.5">

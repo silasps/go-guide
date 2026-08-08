@@ -15,6 +15,7 @@ import type { MilestoneDraft } from '@/components/highlights/milestones-editor'
 import type { BudgetCategoryDraft } from '@/components/highlights/budget-categories-editor'
 import { GOAL_TYPE_OPTIONS } from '@/components/highlights/support-types-picker'
 import type { MediaAspectRatio } from '@/types/database'
+import type { Locale } from '@/i18n/config'
 
 export type ProjectComposerStep = 'cover' | 'adjust' | 'goal' | 'story'
 
@@ -34,6 +35,35 @@ export function useProjectComposer({ profileId, onSaved }: Options) {
   const [step, setStep] = useState<ProjectComposerStep>('cover')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [originalLocale] = useState<Locale>('pt')
+  const [titleTranslations, setTitleTranslations] = useState<Partial<Record<Locale, string>>>({})
+  const [titleSources, setTitleSources] = useState<Partial<Record<Locale, 'ai' | 'human'>>>({})
+  const [descTranslations, setDescTranslations] = useState<Partial<Record<Locale, string>>>({})
+  const [descSources, setDescSources] = useState<Partial<Record<Locale, 'ai' | 'human'>>>({})
+
+  async function translateField(
+    text: string, locale: Locale,
+    setTranslations: React.Dispatch<React.SetStateAction<Partial<Record<Locale, string>>>>,
+    setSources: React.Dispatch<React.SetStateAction<Partial<Record<Locale, 'ai' | 'human'>>>>
+  ) {
+    if (!text.trim()) return
+    try {
+      const res = await fetch('/api/ai/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profileId, sourceLocale: originalLocale, targetLocales: [locale], text }),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast.error(t('saveError')); return }
+      const translated = data.translations?.[locale]
+      if (translated) {
+        setTranslations((prev) => ({ ...prev, [locale]: translated }))
+        setSources((prev) => ({ ...prev, [locale]: 'ai' }))
+      }
+    } catch {
+      toast.error(t('saveError'))
+    }
+  }
   // Todas as formas de apoio já marcadas por padrão — o missionário desmarca
   // as que não se aplicam, em vez de precisar lembrar de marcar cada uma.
   const [goalTypes, setGoalTypes] = useState<string[]>(GOAL_TYPE_OPTIONS.map((o) => o.value))
@@ -99,6 +129,13 @@ export function useProjectComposer({ profileId, onSaved }: Options) {
         const hasFinancial = types.includes('financial')
         const isDetailedBudget = hasFinancial && budgetMode === 'detailed'
 
+        const buildTranslations = (translations: Partial<Record<Locale, string>>, sources: Partial<Record<Locale, 'ai' | 'human'>>) =>
+          Object.fromEntries(
+            Object.entries(translations)
+              .filter(([locale, text]) => locale !== originalLocale && text?.trim())
+              .map(([locale, text]) => [locale, { content: text!.trim(), source: sources[locale as Locale] ?? 'human', translated_at: new Date().toISOString() }])
+          )
+
         const res = await fetch('/api/highlights', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -106,6 +143,9 @@ export function useProjectComposer({ profileId, onSaved }: Options) {
             profileId,
             title: title.trim(),
             description: description.trim(),
+            originalLocale,
+            titleTranslations: buildTranslations(titleTranslations, titleSources),
+            descriptionTranslations: buildTranslations(descTranslations, descSources),
             goalTypes,
             category: categories,
             goalAmount: isDetailedBudget ? budgetTotal : (hasFinancial && goalAmount ? parseFloat(fromMasked(goalAmount, currency)) : null),
@@ -149,6 +189,10 @@ export function useProjectComposer({ profileId, onSaved }: Options) {
     step, setStep,
     title, setTitle,
     description, setDescription,
+    originalLocale,
+    titleTranslations, setTitleTranslations, titleSources, setTitleSources,
+    descTranslations, setDescTranslations, descSources, setDescSources,
+    translateField,
     goalTypes, setGoalTypes,
     categories, setCategories,
     currency, handleCurrencyChange,

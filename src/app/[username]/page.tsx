@@ -103,7 +103,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
           <ProfileCTA username={profile.username} hasTrajectory={(completedCount ?? 0) > 0} />
         )}
         <Suspense fallback={<SkCardGrid n={3} />}>
-          <ProjectsSectionAsync profileId={profile.id} username={profile.username} accentColor={profile.accent_color} />
+          <ProjectsSectionAsync profileId={profile.id} username={profile.username} accentColor={profile.accent_color} visitorLocale={visitorLocale} />
         </Suspense>
         <Suspense fallback={<SkFeedPosts />}>
           <ProfileContentAsync
@@ -119,7 +119,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
   )
 }
 
-async function ProjectsSectionAsync({ profileId, username, accentColor }: { profileId: string; username: string; accentColor: string }) {
+async function ProjectsSectionAsync({ profileId, username, accentColor, visitorLocale }: { profileId: string; username: string; accentColor: string; visitorLocale: Locale }) {
   const supabase = await createClient()
   const { data: projects } = await supabase
     .from('highlights')
@@ -129,7 +129,7 @@ async function ProjectsSectionAsync({ profileId, username, accentColor }: { prof
     .order('order_index')
 
   if (!projects || projects.length === 0) return null
-  return <ProjectsSection projects={projects} username={username} accentColor={accentColor} />
+  return <ProjectsSection projects={projects} username={username} accentColor={accentColor} visitorLocale={visitorLocale} />
 }
 
 async function ProfileContentAsync({ profile, visitorLocale, canEdit, deepLinkPostId, deepLinkComments }: { profile: Profile; visitorLocale: Locale; canEdit: boolean; deepLinkPostId?: string; deepLinkComments: boolean }) {
