@@ -21,8 +21,11 @@ const DEEP_DIVE_IDS = ['perfil-publico', 'projetos', 'financeiro']
 
 export default async function HomePage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) redirect('/dashboard')
+  // getSession() lê do cookie sem round-trip pro servidor de Auth — aqui é só
+  // UX (redirecionar quem já tá logado pra fora da landing). O gate de
+  // segurança de verdade é o getUser() no layout do dashboard.
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session) redirect('/dashboard')
 
   const t = await getTranslations('Landing')
   const tModules = await getTranslations('Modules')

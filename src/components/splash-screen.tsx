@@ -10,8 +10,8 @@ import { useEffect, useState } from 'react'
 //
 // Loop com 5 poses reais de passada (desenhadas pelo usuário, com "Go guide"
 // já embutido em cada frame na mesma posição — o texto fica parado enquanto
-// só as pernas se movem).
-const WALK_FRAMES = ['/splash/walk-1.png', '/splash/walk-2.png', '/splash/walk-3.png', '/splash/walk-4.png', '/splash/walk-5.png']
+// só as pernas se movem). WebP em vez de PNG: ~340KB -> ~49KB no total.
+const WALK_FRAMES = ['/splash/walk-1.webp', '/splash/walk-2.webp', '/splash/walk-3.webp', '/splash/walk-4.webp', '/splash/walk-5.webp']
 const FRAME_MS = 220
 
 export function SplashScreen() {

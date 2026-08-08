@@ -57,11 +57,11 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {/* Preload dos frames de passo da splash — React 19 içça <link> pro <head>
             de onde quer que seja renderizado; evita pop-in no primeiro loop. */}
-        <link rel="preload" as="image" href="/splash/walk-1.png" />
-        <link rel="preload" as="image" href="/splash/walk-2.png" />
-        <link rel="preload" as="image" href="/splash/walk-3.png" />
-        <link rel="preload" as="image" href="/splash/walk-4.png" />
-        <link rel="preload" as="image" href="/splash/walk-5.png" />
+        <link rel="preload" as="image" href="/splash/walk-1.webp" />
+        <link rel="preload" as="image" href="/splash/walk-2.webp" />
+        <link rel="preload" as="image" href="/splash/walk-3.webp" />
+        <link rel="preload" as="image" href="/splash/walk-4.webp" />
+        <link rel="preload" as="image" href="/splash/walk-5.webp" />
         <SplashScreen />
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
