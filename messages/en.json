@@ -556,7 +556,8 @@
     "newProject": "New project"
   },
   "MediaEditor": {
-    "zoom": "Zoom",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
     "aspect_original": "Original",
     "aspect_1_1": "1:1",
     "aspect_4_5": "4:5",

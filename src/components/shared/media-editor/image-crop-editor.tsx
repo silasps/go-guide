@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import Image from 'next/image'
-import { ZoomIn, Crop } from 'lucide-react'
+import { Plus, Minus, Crop } from 'lucide-react'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import type { MediaAspectRatio } from '@/types/database'
@@ -29,10 +29,11 @@ function touchDistance(touches: { clientX: number; clientY: number }[] | { [i: n
   return Math.hypot(dx, dy)
 }
 
+const ZOOM_STEP = 0.15
+
 export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChange, onZoomChange, showAspectPicker = true }: Props) {
   const t = useTranslations('MediaEditor')
   const [isDragging, setIsDragging] = useState(false)
-  const [showZoom, setShowZoom] = useState(false)
   // Proporção natural da imagem + cor média — carregadas uma vez pra decidir
   // se o preview deve mostrar "contido" (com sobra colorida) ou "cobrindo"
   // (recortado), igual ao que bakeImage vai gerar de fato ao salvar.
@@ -71,13 +72,20 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => onDragMove(e.clientX, e.clientY)
     const onTouchMove = (e: TouchEvent) => {
-      e.preventDefault()
+      // Só intercepta o toque quando o usuário está de fato arrastando/dando
+      // pinça dentro do editor — fora disso, deixa o gesto passar pra rolagem
+      // normal da página (senão a tela trava e não dá pra chegar no botão
+      // de salvar mais abaixo).
       if (e.touches.length === 2 && pinch.current) {
+        e.preventDefault()
         const ratio = touchDistance(e.touches) / pinch.current.startDist
         onZoomChange(Math.min(3, Math.max(1, pinch.current.startZoom * ratio)))
         return
       }
-      if (e.touches.length === 1) onDragMove(e.touches[0].clientX, e.touches[0].clientY)
+      if (dragging.current && e.touches.length === 1) {
+        e.preventDefault()
+        onDragMove(e.touches[0].clientX, e.touches[0].clientY)
+      }
     }
     window.addEventListener('mousemove', onMouseMove)
     window.addEventListener('mouseup', onDragEnd)
@@ -145,33 +153,33 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); setShowZoom((v) => !v) }}
-          className="absolute bottom-3 left-3 bg-black/60 text-white rounded-full p-2 backdrop-blur-sm"
-          aria-label={t('zoom')}
+        {/* Botões de zoom — mouse/desktop. No touch o zoom principal é por
+            pinça (2 dedos) direto na imagem; os botões continuam disponíveis
+            como alternativa, sem precisar de um slider fino pra arrastar. */}
+        <div
+          className="absolute bottom-3 left-3 flex flex-col gap-1.5"
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
         >
-          <ZoomIn className="h-4 w-4" />
-        </button>
-
-        {showZoom && (
-          <div
-            className="absolute bottom-3 left-14 right-3 bg-black/60 rounded-full px-3 py-2 backdrop-blur-sm"
-            style={{ touchAction: 'manipulation' }}
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onZoomChange(Math.min(3, media.zoom + ZOOM_STEP)) }}
+            disabled={media.zoom >= 3}
+            className="h-8 w-8 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-sm disabled:opacity-40"
+            aria-label={t('zoomIn')}
           >
-            <input
-              type="range"
-              min={1}
-              max={3}
-              step={0.01}
-              value={media.zoom}
-              onChange={(e) => onZoomChange(Number(e.target.value))}
-              className="w-full accent-white"
-            />
-          </div>
-        )}
+            <Plus className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onZoomChange(Math.max(1, media.zoom - ZOOM_STEP)) }}
+            disabled={media.zoom <= 1}
+            className="h-8 w-8 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-sm disabled:opacity-40"
+            aria-label={t('zoomOut')}
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {showAspectPicker && (
