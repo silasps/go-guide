@@ -73,8 +73,11 @@ export async function bakeImage(params: {
     canvas.height = Math.round(boxHeight)
     ctx.fillStyle = averageColor(img)
     ctx.fillRect(0, 0, canvas.width, canvas.height)
-    const dx = (canvas.width - iw) / 2
-    const dy = (canvas.height - ih) / 2
+    // Desloca dentro da sobra conforme a posição escolhida — o eixo sem
+    // folga (imagem já preenche exatamente aquela dimensão) não se move,
+    // mesma semântica de object-fit:contain + object-position no editor.
+    const dx = (canvas.width - iw) * (params.position.x / 100)
+    const dy = (canvas.height - ih) * (params.position.y / 100)
     if (params.cssFilter) ctx.filter = params.cssFilter
     ctx.drawImage(img, dx, dy, iw, ih)
   } else {

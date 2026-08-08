@@ -100,7 +100,6 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
   }, [onDragMove, onDragEnd, onZoomChange])
 
   function startDrag(clientX: number, clientY: number) {
-    if (isContain) return
     dragging.current = true
     setIsDragging(true)
     dragStart.current = { mouseX: clientX, mouseY: clientY, posX: media.position.x, posY: media.position.y }
@@ -115,7 +114,7 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
           !isContain && 'bg-black',
           ASPECT_RATIO_CLASS[aspect] || 'aspect-[4/5]'
         )}
-        style={{ cursor: isContain ? 'default' : 'grab', touchAction: 'none', backgroundColor: isContain ? imgInfo?.bgColor : undefined }}
+        style={{ cursor: 'grab', touchAction: 'none', backgroundColor: isContain ? imgInfo?.bgColor : undefined }}
         onMouseDown={(e) => {
           if ((e.target as HTMLElement).closest('button, input')) return
           e.preventDefault()
@@ -138,7 +137,10 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
           onLoad={handleImageLoad}
           className={cn('pointer-events-none', isContain ? 'object-contain' : 'object-cover')}
           style={{
-            objectPosition: isContain ? '50% 50%' : `${media.position.x}% ${media.position.y}%`,
+            // object-position já resolve o deslocamento dentro da sobra no
+            // modo "contido" (o eixo sem folga simplesmente não se move) —
+            // mesma semântica usada em bakeImage pra gerar o arquivo final.
+            objectPosition: `${media.position.x}% ${media.position.y}%`,
             transform: isContain ? undefined : `scale(${media.zoom})`,
             filter: resolveCssFilter(media) || undefined,
           }}
