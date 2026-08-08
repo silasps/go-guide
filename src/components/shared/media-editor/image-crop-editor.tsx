@@ -33,6 +33,31 @@ function touchDistance(touches: { clientX: number; clientY: number }[] | { [i: n
   return Math.hypot(dx, dy)
 }
 
+// Alcance de arrasto (em % do quadro, a partir do centro=50) num eixo, pro
+// zoom atual — cresce junto com o zoom, mesma proporção em que a imagem de
+// fato ultrapassa o quadro naquele eixo (0 exatamente no ponto em que o
+// eixo passa a cobrir o quadro por inteiro). `tight` = eixo sem sobra desde
+// zoom=1 (localRatio=1); o outro eixo só começa a estourar o quadro a
+// partir de scaleRatio.
+function panRange(zoom: number, tight: boolean, scaleRatio: number) {
+  const localRatio = tight ? 1 : scaleRatio
+  return 50 * Math.abs(zoom / localRatio - 1)
+}
+
+function clampPosition(
+  pos: { x: number; y: number },
+  zoom: number,
+  xIsTight: boolean,
+  scaleRatio: number
+) {
+  const rangeX = panRange(zoom, xIsTight, scaleRatio)
+  const rangeY = panRange(zoom, !xIsTight, scaleRatio)
+  return {
+    x: Math.min(50 + rangeX, Math.max(50 - rangeX, pos.x)),
+    y: Math.min(50 + rangeY, Math.max(50 - rangeY, pos.y)),
+  }
+}
+
 const ZOOM_STEP = 0.1
 const WHEEL_STEP = 0.08
 
@@ -56,6 +81,14 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
   // fórmula, pra o resultado salvo bater com o preview em qualquer zoom).
   const scaleRatio = imgInfo && targetRatio ? Math.max(imgInfo.ratio / targetRatio, targetRatio / imgInfo.ratio) : 1
   const maxZoom = scaleRatio * 3
+  // Eixo "apertado" (sem sobra desde zoom=1, ex.: largura de uma foto
+  // paisagem numa capa ainda mais larga) vs. eixo "com folga" (só passa a
+  // crescer/estourar o quadro a partir de scaleRatio). O alcance do
+  // arrastar em cada eixo cresce com o zoom (mesma proporção que a imagem
+  // de fato ultrapassa o quadro naquele eixo) — sem isso, o limite ficaria
+  // fixo e bem apertado justo quando o usuário mais precisa mover (depois
+  // de já ter dado bastante zoom).
+  const xIsTight = !imgInfo || !targetRatio || imgInfo.ratio > targetRatio
 
   function handleImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
     const img = e.currentTarget
@@ -69,17 +102,27 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
     const dy = ((clientY - dragStart.current.mouseY) / rect.height) * 100
     // position é um deslocamento livre nos dois eixos (não mais limitado à
     // "sobra" do object-fit:contain) — a imagem segue o cursor 1:1, em
-    // qualquer direção, em qualquer zoom.
-    const x = Math.min(100, Math.max(0, dragStart.current.posX + dx))
-    const y = Math.min(100, Math.max(0, dragStart.current.posY + dy))
-    onPositionChange({ x, y })
-  }, [onPositionChange])
+    // qualquer direção, com o alcance máximo crescendo junto com o zoom.
+    onPositionChange(clampPosition(
+      { x: dragStart.current.posX + dx, y: dragStart.current.posY + dy },
+      media.zoom, xIsTight, scaleRatio
+    ))
+  }, [onPositionChange, media.zoom, xIsTight, scaleRatio])
 
   const onDragEnd = useCallback(() => {
     dragging.current = false
     pinch.current = null
     setIsDragging(false)
   }, [])
+
+  // Muda o zoom e, junto, reenquadra a posição atual dentro do novo alcance
+  // válido — sem isso, dar zoom out depois de arrastar bastante deixaria a
+  // posição "presa" fora do novo limite (mais apertado).
+  const setZoom = useCallback((rawZoom: number) => {
+    const zoom = Math.min(maxZoom, Math.max(1, rawZoom))
+    onZoomChange(zoom)
+    onPositionChange(clampPosition(media.position, zoom, xIsTight, scaleRatio))
+  }, [maxZoom, onZoomChange, onPositionChange, media.position, xIsTight, scaleRatio])
 
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => onDragMove(e.clientX, e.clientY)
@@ -91,7 +134,7 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
       if (e.touches.length === 2 && pinch.current) {
         e.preventDefault()
         const ratio = touchDistance(e.touches) / pinch.current.startDist
-        onZoomChange(Math.min(maxZoom, Math.max(1, pinch.current.startZoom * ratio)))
+        setZoom(pinch.current.startZoom * ratio)
         return
       }
       if (dragging.current && e.touches.length === 1) {
@@ -109,7 +152,7 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
       window.removeEventListener('touchmove', onTouchMove)
       window.removeEventListener('touchend', onDragEnd)
     }
-  }, [onDragMove, onDragEnd, onZoomChange, maxZoom])
+  }, [onDragMove, onDragEnd, setZoom])
 
   // Zoom por scroll do mouse (desktop) — listener nativo em vez de onWheel
   // no JSX pra poder chamar preventDefault() sem o aviso de passive listener.
@@ -119,11 +162,11 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
       const delta = e.deltaY > 0 ? -WHEEL_STEP : WHEEL_STEP
-      onZoomChange(Math.min(maxZoom, Math.max(1, media.zoom + delta)))
+      setZoom(media.zoom + delta)
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [maxZoom, media.zoom, onZoomChange])
+  }, [media.zoom, setZoom])
 
   function startDrag(clientX: number, clientY: number) {
     dragging.current = true
@@ -135,7 +178,7 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
     <>
       <button
         type="button"
-        onClick={(e) => { e.stopPropagation(); onZoomChange(Math.min(maxZoom, media.zoom + ZOOM_STEP)) }}
+        onClick={(e) => { e.stopPropagation(); setZoom(media.zoom + ZOOM_STEP) }}
         disabled={media.zoom >= maxZoom}
         className="h-8 w-8 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-sm disabled:opacity-40"
         aria-label={t('zoomIn')}
@@ -144,7 +187,7 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
       </button>
       <button
         type="button"
-        onClick={(e) => { e.stopPropagation(); onZoomChange(Math.max(1, media.zoom - ZOOM_STEP)) }}
+        onClick={(e) => { e.stopPropagation(); setZoom(media.zoom - ZOOM_STEP) }}
         disabled={media.zoom <= 1}
         className="h-8 w-8 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-sm disabled:opacity-40"
         aria-label={t('zoomOut')}
