@@ -5,6 +5,9 @@ import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
 import { compressImage } from '@/lib/media/compress'
+import { bakeImage } from '@/lib/media/bake-image'
+import { createMediaDraft, type MediaDraft } from '@/components/shared/media-editor/types'
+import { ImageCropEditor } from '@/components/shared/media-editor/image-crop-editor'
 import { Profile } from '@/types/database'
 import { AccountTypeSelector, useAccountTypeCopy } from '@/components/profile/account-type-selector'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -14,7 +17,7 @@ import { Label } from '@/components/ui/label'
 import { LocaleContentTabs } from '@/components/dashboard/locale-content-tabs'
 import { AvatarCropDialog } from '@/components/dashboard/settings/avatar-crop-dialog'
 import { toast } from 'sonner'
-import { Loader2, Camera, Check, X } from 'lucide-react'
+import { Loader2, Camera, Check, X, Move } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import type { Locale } from '@/i18n/config'
@@ -36,7 +39,7 @@ export function ProfileForm({ profile, onSaved }: Props) {
   const [rawAvatarFile, setRawAvatarFile] = useState<File | null>(null)
   const [cropDialogOpen, setCropDialogOpen] = useState(false)
   const [coverPreview, setCoverPreview] = useState<string | null>(profile.cover_url)
-  const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [coverMedia, setCoverMedia] = useState<MediaDraft | null>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
   const [displayName, setDisplayName] = useState(profile.display_name)
   const [accountType, setAccountType] = useState(profile.account_type)
@@ -108,13 +111,21 @@ export function ProfileForm({ profile, onSaved }: Props) {
     setRawAvatarFile(null)
   }
 
-  async function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    const compressed = await compressImage(file)
-    setCoverFile(compressed)
-    setCoverPreview(URL.createObjectURL(compressed))
+    setCoverMedia(createMediaDraft(file, 'image'))
+  }
+
+  // Reposicionar/dar zoom na capa já salva, sem precisar escolher outra foto —
+  // busca a imagem atual e reaproveita o mesmo editor de recorte.
+  async function handleEditExistingCover() {
+    if (!coverPreview) return
+    const res = await fetch(coverPreview)
+    const blob = await res.blob()
+    const file = new File([blob], 'cover.webp', { type: blob.type || 'image/webp' })
+    setCoverMedia(createMediaDraft(file, 'image'))
   }
 
   function handleUsernameChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -167,17 +178,27 @@ export function ProfileForm({ profile, onSaved }: Props) {
       }
 
       let cover_url = profile.cover_url
-      if (coverFile) {
+      if (coverMedia) {
+        const baked = await bakeImage({
+          previewUrl: coverMedia.previewUrl,
+          fileName: coverMedia.file.name,
+          position: coverMedia.position,
+          zoom: coverMedia.zoom,
+          aspect: '21:9',
+        })
+        const compressed = await compressImage(baked)
         const path = `${profile.user_id}/cover.webp`
         const { error: uploadError } = await supabase.storage
           .from('avatars')
-          .upload(path, coverFile, { upsert: true, contentType: 'image/webp' })
+          .upload(path, compressed, { upsert: true, contentType: 'image/webp' })
         if (uploadError) {
           toast.error(t('errorUploadPhoto'))
           return
         }
         const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
         cover_url = `${urlData.publicUrl}?t=${Date.now()}`
+        setCoverPreview(cover_url)
+        setCoverMedia(null)
       }
 
       const { error } = await supabase
@@ -233,31 +254,57 @@ export function ProfileForm({ profile, onSaved }: Props) {
       {/* Capa — aparece como fundo do card na grade de descoberta de missionários */}
       <div className="space-y-2">
         <Label>{t('coverPhoto')}</Label>
-        <div className="relative aspect-[21/9] w-full rounded-xl overflow-hidden bg-muted">
-          {coverPreview ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={coverPreview} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <div
-              className="h-full w-full"
-              style={{ background: `linear-gradient(135deg, ${profile.accent_color}, color-mix(in oklch, ${profile.accent_color}, black 35%))` }}
+        {coverMedia ? (
+          <div className="space-y-2">
+            <ImageCropEditor
+              media={coverMedia}
+              aspect="21:9"
+              onAspectChange={() => {}}
+              onPositionChange={(position) => setCoverMedia((prev) => (prev ? { ...prev, position } : prev))}
+              onZoomChange={(zoom) => setCoverMedia((prev) => (prev ? { ...prev, zoom } : prev))}
+              showAspectPicker={false}
             />
-          )}
-          <button
-            onClick={() => coverInputRef.current?.click()}
-            className="absolute bottom-2 right-2 h-9 w-9 rounded-full bg-background/90 backdrop-blur ring-1 ring-foreground/10 flex items-center justify-center hover:bg-background transition-colors shadow-md"
-            aria-label={t('editCover')}
-          >
-            <Camera className="h-4 w-4" />
-          </button>
-          <input
-            ref={coverInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleCoverChange}
-          />
-        </div>
+            <Button type="button" variant="outline" size="sm" onClick={() => coverInputRef.current?.click()}>
+              {t('editCover')}
+            </Button>
+          </div>
+        ) : (
+          <div className="relative aspect-[21/9] w-full rounded-xl overflow-hidden bg-muted">
+            {coverPreview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={coverPreview} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div
+                className="h-full w-full"
+                style={{ background: `linear-gradient(135deg, ${profile.accent_color}, color-mix(in oklch, ${profile.accent_color}, black 35%))` }}
+              />
+            )}
+            {coverPreview && (
+              <button
+                onClick={handleEditExistingCover}
+                className="absolute bottom-2 right-12 h-9 w-9 rounded-full bg-background/90 backdrop-blur ring-1 ring-foreground/10 flex items-center justify-center hover:bg-background transition-colors shadow-md"
+                aria-label={t('repositionCover')}
+                title={t('repositionCover')}
+              >
+                <Move className="h-4 w-4" />
+              </button>
+            )}
+            <button
+              onClick={() => coverInputRef.current?.click()}
+              className="absolute bottom-2 right-2 h-9 w-9 rounded-full bg-background/90 backdrop-blur ring-1 ring-foreground/10 flex items-center justify-center hover:bg-background transition-colors shadow-md"
+              aria-label={t('editCover')}
+            >
+              <Camera className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+        <input
+          ref={coverInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleCoverChange}
+        />
         <p className="text-xs text-muted-foreground">{t('coverHint')}</p>
       </div>
 

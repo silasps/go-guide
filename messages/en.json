@@ -260,6 +260,7 @@
     "translateError": "Error translating. Please try again.",
     "coverPhoto": "Cover photo",
     "editCover": "Edit cover",
+    "repositionCover": "Reposition cover",
     "coverHint": "Shown on your profile card in missionary discovery · JPG, PNG or WebP · max 5MB"
   },
   "PaymentMethods": {

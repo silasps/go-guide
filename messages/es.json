@@ -260,6 +260,7 @@
     "translateError": "Error al traducir. Inténtalo de nuevo.",
     "coverPhoto": "Foto de portada",
     "editCover": "Editar portada",
+    "repositionCover": "Reposicionar portada",
     "coverHint": "Aparece en tu tarjeta de perfil en el descubrimiento de misioneros · JPG, PNG o WebP · máx 5MB"
   },
   "PaymentMethods": {

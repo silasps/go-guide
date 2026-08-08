@@ -4,6 +4,7 @@ const ASPECT_RATIOS: Partial<Record<MediaAspectRatio, number>> = {
   '1:1': 1,
   '4:5': 4 / 5,
   '16:9': 16 / 9,
+  '21:9': 21 / 9,
 }
 
 const RATIO_TOLERANCE = 0.02

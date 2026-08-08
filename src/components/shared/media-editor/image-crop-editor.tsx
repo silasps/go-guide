@@ -17,9 +17,12 @@ interface Props {
   onAspectChange: (aspect: MediaAspectRatio) => void
   onPositionChange: (position: { x: number; y: number }) => void
   onZoomChange: (zoom: number) => void
+  /** Esconde o seletor de proporção — usado quando o formato é fixo pelo
+   *  layout (ex: capa de perfil, sempre 21:9), sem escolha do usuário. */
+  showAspectPicker?: boolean
 }
 
-export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChange, onZoomChange }: Props) {
+export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChange, onZoomChange, showAspectPicker = true }: Props) {
   const t = useTranslations('MediaEditor')
   const [isDragging, setIsDragging] = useState(false)
   const [showZoom, setShowZoom] = useState(false)
@@ -134,19 +137,21 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
         )}
       </div>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger className="mx-auto flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground">
-          <Crop className="h-3.5 w-3.5" />
-          {t(`aspect_${aspect.replace(':', '_')}` as 'aspect_original')}
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="center">
-          {ASPECT_OPTIONS.map((option) => (
-            <DropdownMenuItem key={option} onClick={() => onAspectChange(option)}>
-              {t(`aspect_${option.replace(':', '_')}` as 'aspect_original')}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {showAspectPicker && (
+        <DropdownMenu>
+          <DropdownMenuTrigger className="mx-auto flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground">
+            <Crop className="h-3.5 w-3.5" />
+            {t(`aspect_${aspect.replace(':', '_')}` as 'aspect_original')}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center">
+            {ASPECT_OPTIONS.map((option) => (
+              <DropdownMenuItem key={option} onClick={() => onAspectChange(option)}>
+                {t(`aspect_${option.replace(':', '_')}` as 'aspect_original')}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </div>
   )
 }
