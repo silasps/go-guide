@@ -41,7 +41,7 @@ export function EditProfileDialog({ profile }: Props) {
           <DialogTitle className="text-center text-base">{t('editProfile')}</DialogTitle>
           <div />
         </div>
-        <div className="flex-1 overflow-y-auto px-4 py-4 md:px-5 md:py-0">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 md:px-5 md:py-0">
           <ProfileForm profile={profile} onSaved={() => setOpen(false)} />
         </div>
       </DialogContent>

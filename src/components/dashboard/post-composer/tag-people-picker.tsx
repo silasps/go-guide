@@ -108,7 +108,7 @@ export function TagPeoplePicker({ profileId, media, mediaIndex, aspect, tags, on
               placeholder={t('tagSearchPlaceholder')}
               className="w-full text-sm bg-transparent border-b px-1 py-1 outline-none"
             />
-            <div className="max-h-40 overflow-y-auto">
+            <div className="max-h-40 overflow-y-auto overflow-x-hidden">
               {visibleResults.map((profile) => (
                 <button
                   key={profile.id}

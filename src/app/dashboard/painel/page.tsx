@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveProfile } from '@/lib/profile/active-profile'
 import { getLocale, getTranslations } from 'next-intl/server'
@@ -10,6 +11,7 @@ import { NewProjectQuickAction } from '@/components/highlights/project-composer/
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { SkList } from '@/components/ui/skeleton'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -93,7 +95,9 @@ export default async function DashboardPage() {
             </Link>
           </CardHeader>
           <CardContent className="pt-0">
-            <RecentPosts profileId={profile!.id} />
+            <Suspense fallback={<SkList n={3} />}>
+              <RecentPosts profileId={profile!.id} />
+            </Suspense>
           </CardContent>
         </Card>
 

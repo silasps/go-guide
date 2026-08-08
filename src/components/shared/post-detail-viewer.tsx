@@ -66,7 +66,7 @@ export function PostDetailViewer({ posts, initialIndex, visitorLocale, canEdit =
         </button>
 
         <div
-          className="flex-1 min-h-0 overflow-y-auto flex items-center justify-center py-8 sm:py-12 px-0 sm:px-4"
+          className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex items-center justify-center py-8 sm:py-12 px-0 sm:px-4"
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
         >

@@ -23,13 +23,10 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params
-  const supabase = await createClient()
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('display_name, bio, avatar_url, privacy_mode')
-    .eq('username', username)
-    .single()
+  // getProfile() é cache()-wrapped — o page.tsx logo abaixo busca o mesmo
+  // perfil, então isso reaproveita a mesma query em vez de duplicar o
+  // round-trip ao banco antes até de começar a montar o HTML.
+  const profile = await getProfile(username)
 
   const t = await getTranslations('PublicProfile')
   if (!profile) return { title: t('notFoundTitle') }

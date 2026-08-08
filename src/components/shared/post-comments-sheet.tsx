@@ -190,7 +190,7 @@ export function PostCommentsSheet({ open, onOpenChange, postId, onCommentAdded }
         <DialogHeader>
           <DialogTitle>{t('comments')}</DialogTitle>
         </DialogHeader>
-        <div className="flex-1 overflow-y-auto space-y-3 -mx-1 px-1">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-3 -mx-1 px-1">
           {comments === null ? (
             <div className="flex justify-center py-6"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
           ) : comments.length === 0 ? (

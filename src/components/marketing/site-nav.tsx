@@ -101,7 +101,7 @@ export function SiteNav() {
       </div>
 
       {mobileOpen && (
-        <div className="md:hidden border-t px-6 py-4 space-y-1 bg-background max-h-[70vh] overflow-y-auto">
+        <div className="md:hidden border-t px-6 py-4 space-y-1 bg-background max-h-[70vh] overflow-y-auto overflow-x-hidden">
           <div className="flex sm:hidden items-center justify-center pb-3 mb-1 border-b">
             <LanguageSwitcher />
           </div>

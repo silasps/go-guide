@@ -69,7 +69,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden pb-16 md:pb-0">
             {/* max-w-5xl keeps content readable on ultrawide screens */}
             <div className="p-4 md:p-8 max-w-5xl mx-auto w-full">
               {children}

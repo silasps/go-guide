@@ -82,7 +82,7 @@ export function AccountMenuDrawer({ profile }: Props) {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-3 py-2">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-2">
               {nav.map(({ href, label, icon: Icon, exact }) => {
                 const active = exact ? pathname === href : pathname.startsWith(href)
                 return (

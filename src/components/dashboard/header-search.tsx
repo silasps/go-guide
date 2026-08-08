@@ -59,7 +59,7 @@ export function HeaderSearch() {
       />
 
       {open && trimmedQuery.length >= 2 && (
-        <div className="absolute left-0 top-full mt-2 w-80 max-h-[70vh] overflow-y-auto rounded-xl border bg-popover shadow-lg ring-1 ring-foreground/10 p-2 z-50">
+        <div className="absolute left-0 top-full mt-2 w-80 max-h-[70vh] overflow-y-auto overflow-x-hidden rounded-xl border bg-popover shadow-lg ring-1 ring-foreground/10 p-2 z-50">
           {!loading && !hasResults && (
             <p className="text-sm text-muted-foreground text-center py-6">{t('noResults', { query: trimmedQuery })}</p>
           )}

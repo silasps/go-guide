@@ -76,7 +76,7 @@ export function MessageThread({ profileId, myUserId, otherUserId, otherName }: P
         <p className="text-xs text-muted-foreground flex items-center gap-1">🔒 Conversa cifrada ponta-a-ponta</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-0.5">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-0.5">
         {loading && <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>}
         {!loading && messages.length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-8">Nenhuma mensagem ainda. Diga olá!</p>
