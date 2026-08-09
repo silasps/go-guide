@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { LanguageSwitcher } from '@/components/marketing/language-switcher'
 import { AccountMenuDrawer, type DrawerProfile } from '@/components/dashboard/account-menu-drawer'
 import { BackButton } from '@/components/ui/back-button'
+import { useHideOnScroll } from '@/hooks/use-hide-on-scroll'
 import { User, BookOpen, FolderOpen, Trophy } from 'lucide-react'
 
 interface Props {
@@ -31,6 +32,7 @@ export function ProfileTabs({ username, hasTrajectory, isMissionary, canEdit, vi
   const pathname = usePathname()
   const t = useTranslations('PublicProfile')
   const base = `/${username}`
+  const hidden = useHideOnScroll()
 
   // A página de um projeto específico deixou de ser tratada como "fluxo de
   // ação sem chrome" (tipo mandar mensagem) — o usuário pediu que ela
@@ -69,7 +71,12 @@ export function ProfileTabs({ username, hasTrajectory, isMissionary, canEdit, vi
   ]
 
   return (
-    <div className="sticky top-0 z-40 bg-background/90 backdrop-blur border-b">
+    <div
+      className={cn(
+        'sticky top-0 z-40 bg-background/90 backdrop-blur border-b transition-transform duration-300',
+        hidden ? '-translate-y-full' : 'translate-y-0'
+      )}
+    >
       <div className="max-w-xl mx-auto flex items-center gap-1">
         <BackButton
           href={viewerUserId ? '/dashboard' : '/'}

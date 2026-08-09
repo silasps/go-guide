@@ -819,7 +819,8 @@
     "sectionFinancial": "financial",
     "sectionMilestones": "milestones",
     "sectionLetter": "story",
-    "sectionDatesStatus": "dates and status"
+    "sectionDatesStatus": "dates and status",
+    "sectionGallery": "photo gallery"
   },
   "PrayerRequestForm": {
     "becomePartnerPrompt": "Would you like to pray regularly for {name}, not just this once?",

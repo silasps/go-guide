@@ -819,7 +819,8 @@
     "sectionFinancial": "financeiro",
     "sectionMilestones": "marcos",
     "sectionLetter": "história",
-    "sectionDatesStatus": "datas e status"
+    "sectionDatesStatus": "datas e status",
+    "sectionGallery": "galeria de fotos"
   },
   "PrayerRequestForm": {
     "becomePartnerPrompt": "Gostaria de orar regularmente por {name}, não só desta vez?",

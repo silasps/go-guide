@@ -4,11 +4,19 @@ import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { Copy } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
+import { cn } from '@/lib/utils'
 import { getPaymentMethodEntry } from '@/lib/payment-methods/catalog'
 import { parseBankDetails } from '@/lib/payment-methods/bank-details'
 import type { PledgePaymentMethod } from '@/types/database'
 
-export function CopyableValue({ value }: { value: string }) {
+interface CopyableValueProps {
+  value: string
+  /** Destaque visual (cor de apoio) pro método mais rápido de contribuir —
+   *  hoje só o PIX usa isso, pra não sumir no meio de outras informações. */
+  emphasized?: boolean
+}
+
+export function CopyableValue({ value, emphasized = false }: CopyableValueProps) {
   const t = useTranslations('PaymentInstructions')
 
   async function handleCopy() {
@@ -20,10 +28,13 @@ export function CopyableValue({ value }: { value: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      className="flex w-full items-center gap-2 rounded-md border border-input bg-background px-2.5 py-1.5 text-left transition-colors hover:bg-muted/50"
+      className={cn(
+        'flex w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-left transition-colors',
+        emphasized ? 'border-support/40 bg-support/10 hover:bg-support/15' : 'border-input bg-background hover:bg-muted/50'
+      )}
     >
-      <span className="flex-1 select-all break-all font-mono text-sm">{value}</span>
-      <Copy className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      <span className={cn('flex-1 select-all break-all font-mono text-sm', emphasized && 'font-semibold')}>{value}</span>
+      <Copy className={cn('h-3.5 w-3.5 shrink-0', emphasized ? 'text-support' : 'text-muted-foreground')} />
     </button>
   )
 }
@@ -83,12 +94,12 @@ export function PaymentMethodInstructions({ method, label, value, details, missi
   }
 
   if (method === 'pix') {
-    return box(
-      <div className="space-y-1.5">
+    return (
+      <div className="rounded-lg border border-support/40 bg-support/10 p-3 space-y-1.5">
+        <p className="text-xs font-medium text-support flex items-center gap-1.5"><Icon className="h-3.5 w-3.5" /> {t('titlePix', { name: missionaryName })}</p>
         {label && <p className="text-xs text-muted-foreground">{t('pixHolder')}: <span className="font-medium text-foreground">{label}</span></p>}
-        <CopyableValue value={value} />
-      </div>,
-      t('titlePix', { name: missionaryName })
+        <CopyableValue value={value} emphasized />
+      </div>
     )
   }
 

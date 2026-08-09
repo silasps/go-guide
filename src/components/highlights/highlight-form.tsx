@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
-import { Highlight, Milestone, ProjectBudgetCategory } from '@/types/database'
+import { Highlight, Milestone, ProjectBudgetCategory, ProjectGalleryImage } from '@/types/database'
 import type { Locale } from '@/i18n/config'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,6 +16,7 @@ import { toMasked, fromMasked, reformatMasked, CURRENCIES } from '@/lib/currency
 import { CoverEditor, parsePosition, uniqueFileName } from './cover-editor'
 import { MilestonesEditor, type MilestoneDraft } from './milestones-editor'
 import { BudgetCategoriesEditor, type BudgetCategoryDraft } from './budget-categories-editor'
+import { GalleryEditor, type GalleryImageDraft } from './gallery-editor'
 import { SupportTypesPicker } from './support-types-picker'
 import { LocaleContentTabs } from '@/components/dashboard/locale-content-tabs'
 
@@ -44,7 +45,7 @@ export const PROJECT_CATEGORIES = [
 ] as const
 
 interface Props {
-  highlight?: Highlight & { milestones?: Milestone[]; budgetCategories?: ProjectBudgetCategory[] }
+  highlight?: Highlight & { milestones?: Milestone[]; budgetCategories?: ProjectBudgetCategory[]; galleryImages?: ProjectGalleryImage[] }
   profileId: string
   backPath?: string
 }
@@ -127,6 +128,10 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
   )
   const budgetTotal = budgetCategories.reduce((sum, b) => sum + (parseFloat(fromMasked(b.target_amount, currency)) || 0), 0)
 
+  const [galleryImages, setGalleryImages] = useState<GalleryImageDraft[]>(
+    (highlight?.galleryImages ?? []).map(g => ({ url: g.image_url }))
+  )
+
   function handleCurrencyChange(newCurrency: string) {
     setGoalAmount(prev => reformatMasked(prev, currency, newCurrency))
     setCurrentAmount(prev => reformatMasked(prev, currency, newCurrency))
@@ -152,6 +157,16 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
         }
 
         const cover_position = `${Math.round(position.x)}% ${Math.round(position.y)}%`
+
+        const galleryUrls: string[] = []
+        for (const img of galleryImages) {
+          if (!img.file) { galleryUrls.push(img.url); continue }
+          const path = `${currentUser!.id}/highlights/${uniqueFileName('webp')}`
+          const { error } = await supabase.storage.from('media').upload(path, img.file, { upsert: true })
+          if (error) throw error
+          galleryUrls.push(supabase.storage.from('media').getPublicUrl(path).data.publicUrl)
+        }
+
         const types = goalTypes.length > 0 ? goalTypes : ['ongoing']
         const hasFinancial = types.includes('financial')
         const isDetailedBudget = hasFinancial && budgetMode === 'detailed'
@@ -197,6 +212,7 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
                     target_amount: parseFloat(fromMasked(b.target_amount, currency)),
                   }))
               : [],
+            galleryImages: galleryUrls,
           }),
         })
         if (!res.ok) {
@@ -422,6 +438,13 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
           <div className="space-y-3">
             <Label>Marcos do projeto</Label>
             <MilestonesEditor milestones={milestones} onChange={setMilestones} />
+          </div>
+
+          {/* Galeria de fotos — imagens avulsas que representam o projeto,
+              separadas da capa única e dos posts vinculados ao projeto. */}
+          <div className="space-y-3">
+            <Label>Fotos do projeto</Label>
+            <GalleryEditor images={galleryImages} onChange={setGalleryImages} />
           </div>
         </div>
       </div>

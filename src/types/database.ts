@@ -168,6 +168,14 @@ export interface ProjectBudgetProgress extends ProjectBudgetCategory {
   raised_amount: number
 }
 
+export interface ProjectGalleryImage {
+  id: string
+  highlight_id: string
+  image_url: string
+  order_index: number
+  created_at: string
+}
+
 export interface Milestone {
   id: string
   highlight_id: string

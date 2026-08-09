@@ -29,6 +29,12 @@ export default async function EditarProjetoPage({ params }: Props) {
     .eq('highlight_id', id)
     .order('order_index')
 
+  const { data: galleryImages } = await supabase
+    .from('project_gallery_images')
+    .select('*')
+    .eq('highlight_id', id)
+    .order('order_index')
+
   const publicSlug = highlight.slug ?? highlight.id
 
   return (
@@ -53,7 +59,7 @@ export default async function EditarProjetoPage({ params }: Props) {
           </Link>
         </div>
       </div>
-      <HighlightForm highlight={{ ...highlight, milestones: milestones ?? [], budgetCategories: budgetCategories ?? [] }} profileId={profile.id} backPath="/dashboard/projetos" />
+      <HighlightForm highlight={{ ...highlight, milestones: milestones ?? [], budgetCategories: budgetCategories ?? [], galleryImages: galleryImages ?? [] }} profileId={profile.id} backPath="/dashboard/projetos" />
     </div>
   )
 }

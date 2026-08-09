@@ -11,10 +11,12 @@ import { buttonVariants } from '@/components/ui/button'
 import { cn, formatCurrency, getInitials } from '@/lib/utils'
 import { resolveLocalizedText } from '@/lib/i18n/resolve-content-locale'
 import type { Locale } from '@/i18n/config'
-import { CheckCircle2, Circle, Users } from 'lucide-react'
+import { CheckCircle2, Circle, QrCode, Users } from 'lucide-react'
 import { BudgetBreakdown } from '@/components/highlights/budget-breakdown'
 import { FundingProjectionCard } from '@/components/highlights/funding-projection-card'
-import type { PaymentMethodType } from '@/types/database'
+import type { PaymentMethodType, PostWithProfile } from '@/types/database'
+import { enrichWithEngagement } from '@/lib/posts/enrich-with-engagement'
+import { ProfilePostsGrid } from '@/components/shared/profile-posts-grid'
 import { getProfileViewerContext } from '@/lib/profile/viewer-context'
 import { CopyableValue } from '@/components/partners/payment-method-instructions'
 import { CoverTitleEditSection } from '@/components/highlights/cover-title-edit-section'
@@ -22,6 +24,7 @@ import { DescriptionEditSection } from '@/components/highlights/description-edit
 import { SupportTypesEditSection } from '@/components/highlights/support-types-edit-section'
 import { FinancialEditSection } from '@/components/highlights/financial-edit-section'
 import { MilestonesEditSection } from '@/components/highlights/milestones-edit-section'
+import { GalleryEditSection } from '@/components/highlights/gallery-edit-section'
 import { LetterEditSection } from '@/components/highlights/letter-edit-section'
 import { DatesStatusEditSection } from '@/components/highlights/dates-status-edit-section'
 import { StatusBadge } from '@/components/highlights/status-badge'
@@ -149,18 +152,33 @@ export default async function ProjetoPublicoPage({ params }: Props) {
   const localizedTitle = resolveLocalizedText(project.title, project.original_locale, project.title_translations, visitorLocale).text ?? project.title
   const localizedDescription = resolveLocalizedText(project.description, project.original_locale, project.description_translations, visitorLocale).text
 
-  const [{ data: milestones }, { data: updates }, { data: budgetCategories }, { data: pastProjects }, { count: supporterCount }] = await Promise.all([
+  const [{ data: milestones }, { data: updates }, { data: budgetCategories }, { data: galleryImages }, { data: pastProjects }, { count: supporterCount }] = await Promise.all([
     supabase.from('milestones').select('*').eq('highlight_id', project.id).order('order_index'),
-    supabase.from('posts').select('id, content, media_urls, published_at, type, original_locale, translations')
+    supabase.from('posts').select('*')
       .eq('profile_id', profile.id).eq('project_id', project.id).eq('is_draft', false)
-      .order('published_at', { ascending: false }).limit(10),
+      .order('published_at', { ascending: false }).limit(12),
     supabase.from('project_budget_progress').select('*').eq('highlight_id', project.id).order('order_index'),
+    supabase.from('project_gallery_images').select('*').eq('highlight_id', project.id).order('order_index'),
     supabase.from('highlights').select('id, slug, title, cover_url, cover_position, original_locale, title_translations')
       .eq('profile_id', profile.id).eq('status', 'completed').neq('id', project.id)
       .order('completed_at', { ascending: false }).limit(3),
     supabase.from('pledges').select('reporter_user_id, reporter_email', { count: 'exact', head: true })
       .eq('highlight_id', project.id).eq('status', 'confirmed'),
   ])
+
+  // Posts vinculados a este projeto (`project_id`) já tinham o caminho de ida
+  // (post -> projeto), mas nenhum de volta — mesmos dados/engajamento do
+  // grid de posts do perfil (`[username]/page.tsx`), reaproveitando
+  // `ProfilePostsGrid`/`PostDetailViewer` em vez de inventar outra grade.
+  const { data: { user } } = await supabase.auth.getUser()
+  const updatesEngagement = updates && updates.length > 0
+    ? await enrichWithEngagement(supabase, updates.map(u => u.id), user?.id)
+    : new Map()
+  const updatesWithProfile = (updates ?? []).map(u => ({
+    ...u,
+    profile: { id: profile.id, username: profile.username, display_name: profile.display_name, avatar_url: profile.avatar_url, accent_color: profile.accent_color },
+    ...updatesEngagement.get(u.id)!,
+  })) as unknown as PostWithProfile[]
 
   const types: string[] = Array.isArray(project.goal_type) ? project.goal_type : [project.goal_type]
   const pct = project.goal_amount
@@ -195,6 +213,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
     status: project.status,
     milestones: (milestones ?? []).map(m => ({ id: m.id, title: m.title, is_completed: m.is_completed })),
     budgetCategories: (budgetCategories ?? []).map(b => ({ category_type: b.category_type, custom_label: b.custom_label, description: b.description, target_amount: b.target_amount })),
+    galleryImages: (galleryImages ?? []).map(g => g.image_url),
   }
   const sectionProps = { canEdit, snapshot, highlightId: project.id, profileId: profile.id }
 
@@ -329,14 +348,16 @@ export default async function ProjetoPublicoPage({ params }: Props) {
             </FinancialEditSection>
 
             {pixMethod && (
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground text-center">Chave PIX para transferência direta</p>
+              <div className="rounded-xl border border-support/40 bg-support/10 p-3 space-y-1.5">
+                <p className="text-xs font-medium text-support text-center flex items-center justify-center gap-1.5">
+                  <QrCode className="h-3.5 w-3.5" /> Chave PIX para transferência direta
+                </p>
                 {pixMethod.label && (
                   <p className="text-xs text-center text-muted-foreground">
                     Em nome de <span className="font-medium text-foreground">{pixMethod.label}</span>
                   </p>
                 )}
-                <CopyableValue value={pixMethod.value} />
+                <CopyableValue value={pixMethod.value} emphasized />
               </div>
             )}
           </div>
@@ -437,6 +458,27 @@ export default async function ProjetoPublicoPage({ params }: Props) {
           </div>
         )}
 
+        {/* Galeria — fotos avulsas que representam o projeto, separadas da
+            capa única e dos posts vinculados (que aparecem em "Atualizações"). */}
+        {(snapshot.galleryImages.length > 0 || canEdit) && (
+          <div className="space-y-3">
+            <h2 className="font-semibold">Fotos do projeto</h2>
+            <GalleryEditSection {...sectionProps}>
+              {snapshot.galleryImages.length > 0 ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {snapshot.galleryImages.map((url, i) => (
+                    <div key={i} className="relative aspect-square rounded-xl overflow-hidden bg-muted">
+                      <Image src={url} alt="" fill sizes="33vw" className="object-cover" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                canEdit ? <p className="text-sm text-muted-foreground italic">Nenhuma foto ainda.</p> : null
+              )}
+            </GalleryEditSection>
+          </div>
+        )}
+
         {/* História por trás */}
         {(project.letter || canEdit) && (
           <div className="space-y-3">
@@ -455,29 +497,11 @@ export default async function ProjetoPublicoPage({ params }: Props) {
           </div>
         )}
 
-        {/* Atualizações */}
-        {updates && updates.length > 0 && (
-          <div className="space-y-4">
+        {/* Atualizações — posts vinculados a este projeto (caminho de volta) */}
+        {updatesWithProfile.length > 0 && (
+          <div className="space-y-3">
             <h2 className="font-semibold">Atualizações</h2>
-            <div className="space-y-4">
-              {updates.map(u => {
-                const updateText = resolveLocalizedText(u.content, u.original_locale, u.translations, visitorLocale).text
-                return (
-                <div key={u.id} className="p-4 rounded-xl border bg-card space-y-2">
-                  {u.media_urls?.[0] && (
-                    <div className="relative h-40 rounded-lg overflow-hidden">
-                      <Image src={u.media_urls[0]} alt="" fill className="object-cover" />
-                    </div>
-                  )}
-                  {updateText && <p className="text-sm whitespace-pre-wrap">{updateText}</p>}
-                  {u.published_at && (
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(u.published_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
-                    </p>
-                  )}
-                </div>
-              )})}
-            </div>
+            <ProfilePostsGrid posts={updatesWithProfile} visitorLocale={visitorLocale} canEdit={canEdit} />
           </div>
         )}
 

@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { highlightId, profileId, title, description, goalTypes, category, goalAmount, currentAmount,
     currency, coverUrl, coverPosition, tripStartDate, fundingDeadline, scripture, letter, status, milestones, budgetCategories,
-    originalLocale, titleTranslations, descriptionTranslations } = body
+    galleryImages, originalLocale, titleTranslations, descriptionTranslations } = body
 
   try {
     await assertProfileAccess(profileId, user.id)
@@ -146,6 +146,15 @@ export async function POST(req: NextRequest) {
           custom_label: b.custom_label,
           description: b.description,
           target_amount: b.target_amount,
+          order_index: i,
+        })))
+      }
+
+      await dbDelete(`project_gallery_images?highlight_id=eq.${hId}`)
+      if (Array.isArray(galleryImages) && galleryImages.length > 0) {
+        await dbPost('project_gallery_images', galleryImages.map((url: string, i: number) => ({
+          highlight_id: hId,
+          image_url: url,
           order_index: i,
         })))
       }
