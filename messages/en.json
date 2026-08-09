@@ -690,6 +690,7 @@
     "milestonesLabel": "Project milestones",
     "createProject": "Create project",
     "titleRequiredError": "Title is required.",
+    "coverRequiredError": "Add a cover photo before saving.",
     "saveError": "Error saving.",
     "projectCreated": "Project created."
   },

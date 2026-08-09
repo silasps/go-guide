@@ -19,6 +19,7 @@ import { BudgetCategoriesEditor, type BudgetCategoryDraft } from './budget-categ
 import { GalleryEditor, type GalleryImageDraft } from './gallery-editor'
 import { SupportTypesPicker } from './support-types-picker'
 import { LocaleContentTabs } from '@/components/dashboard/locale-content-tabs'
+import { PROJECT_CATEGORIES } from '@/lib/highlights/project-categories'
 
 function initialTranslations(translations: Partial<Record<Locale, { content: string }>> | undefined) {
   const t: Partial<Record<Locale, string>> = {}
@@ -31,18 +32,6 @@ function initialSources(translations: Partial<Record<Locale, { source: 'ai' | 'h
   for (const [locale, v] of Object.entries(translations ?? {})) s[locale as Locale] = v.source
   return s
 }
-
-// Assunto do projeto (ortogonal ao goal_type acima, que é o TIPO DE APOIO
-// pedido) — sinal de afinidade usado pelo ranking do feed, sem UI pública.
-export const PROJECT_CATEGORIES = [
-  { value: 'children',                emoji: '🧒', label: 'Crianças' },
-  { value: 'health',                  emoji: '🩺', label: 'Saúde' },
-  { value: 'education',               emoji: '📚', label: 'Educação' },
-  { value: 'evangelism',              emoji: '✝️', label: 'Evangelismo' },
-  { value: 'community_development',   emoji: '🏘️', label: 'Desenvolvimento comunitário' },
-  { value: 'disaster_relief',         emoji: '🆘', label: 'Desastres/emergência' },
-  { value: 'other',                   emoji: '✨', label: 'Outro' },
-] as const
 
 interface Props {
   highlight?: Highlight & { milestones?: Milestone[]; budgetCategories?: ProjectBudgetCategory[]; galleryImages?: ProjectGalleryImage[] }
@@ -142,6 +131,7 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
   function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!title.trim()) { toast.error('Título obrigatório.'); return }
+    if (!coverFile && !coverPreview) { toast.error('Adicione uma foto de capa antes de salvar.'); return }
 
     run(true, async () => {
       try {

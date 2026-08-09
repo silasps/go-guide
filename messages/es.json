@@ -690,6 +690,7 @@
     "milestonesLabel": "Hitos del proyecto",
     "createProject": "Crear proyecto",
     "titleRequiredError": "El título es obligatorio.",
+    "coverRequiredError": "Agrega una foto de portada antes de guardar.",
     "saveError": "Error al guardar.",
     "projectCreated": "Proyecto creado."
   },

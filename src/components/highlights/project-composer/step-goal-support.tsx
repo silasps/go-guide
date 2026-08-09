@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { CURRENCIES, toMasked } from '@/lib/currency-mask'
 import { SupportTypesPicker } from '@/components/highlights/support-types-picker'
 import { BudgetCategoriesEditor } from '@/components/highlights/budget-categories-editor'
-import { PROJECT_CATEGORIES } from '@/components/highlights/highlight-form'
+import { PROJECT_CATEGORIES } from '@/lib/highlights/project-categories'
 import { cn } from '@/lib/utils'
 import type { useProjectComposer } from './use-project-composer'
 

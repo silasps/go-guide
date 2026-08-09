@@ -25,6 +25,7 @@ import { SupportTypesEditSection } from '@/components/highlights/support-types-e
 import { FinancialEditSection } from '@/components/highlights/financial-edit-section'
 import { MilestonesEditSection } from '@/components/highlights/milestones-edit-section'
 import { GalleryEditSection } from '@/components/highlights/gallery-edit-section'
+import { ProjectCoverFallback } from '@/components/highlights/project-cover-fallback'
 import { FloatingSupportCta } from '@/components/highlights/floating-support-cta'
 import { ScrollToSectionLink } from '@/components/highlights/scroll-to-section-link'
 import { LetterEditSection } from '@/components/highlights/letter-edit-section'
@@ -153,7 +154,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
       .order('published_at', { ascending: false }).limit(12),
     supabase.from('project_budget_progress').select('*').eq('highlight_id', project.id).order('order_index'),
     supabase.from('project_gallery_images').select('*').eq('highlight_id', project.id).order('order_index'),
-    supabase.from('highlights').select('id, slug, title, cover_url, cover_position, original_locale, title_translations')
+    supabase.from('highlights').select('id, slug, title, cover_url, cover_position, category, original_locale, title_translations')
       .eq('profile_id', profile.id).eq('status', 'completed').neq('id', project.id)
       .order('completed_at', { ascending: false }).limit(3),
     supabase.from('pledges').select('reporter_user_id, reporter_email', { count: 'exact', head: true })
@@ -218,18 +219,20 @@ export default async function ProjetoPublicoPage({ params }: Props) {
         <CoverTitleEditSection {...sectionProps}>
           <>
             {/* Hero: capa 16:9 + avatar sobreposto */}
-            {project.cover_url && (
-              <div className="relative aspect-video rounded-2xl overflow-hidden">
+            <div className="relative aspect-video rounded-2xl overflow-hidden">
+              {project.cover_url ? (
                 <Image src={project.cover_url} alt={localizedTitle} fill className="object-cover" style={{ objectPosition: project.cover_position ?? '50% 50%' }} />
-                <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-black/40 backdrop-blur-sm rounded-full pr-3 py-1">
-                  <Avatar className="h-7 w-7 border-2 border-white/80">
-                    <AvatarImage src={profile.avatar_url ?? ''} alt={profile.display_name} />
-                    <AvatarFallback className="text-[10px]">{getInitials(profile.display_name)}</AvatarFallback>
-                  </Avatar>
-                  <span className="text-white text-xs font-medium">{profile.display_name}</span>
-                </div>
+              ) : (
+                <ProjectCoverFallback category={project.category} />
+              )}
+              <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-black/40 backdrop-blur-sm rounded-full pr-3 py-1">
+                <Avatar className="h-7 w-7 border-2 border-white/80">
+                  <AvatarImage src={profile.avatar_url ?? ''} alt={profile.display_name} />
+                  <AvatarFallback className="text-[10px]">{getInitials(profile.display_name)}</AvatarFallback>
+                </Avatar>
+                <span className="text-white text-xs font-medium">{profile.display_name}</span>
               </div>
-            )}
+            </div>
 
             {/* Cabeçalho */}
             <div className="space-y-3 mt-3">
@@ -528,8 +531,10 @@ export default async function ProjetoPublicoPage({ params }: Props) {
                 return (
                   <Link key={p.id} href={`/${username}/projetos/${p.slug ?? p.id}`} className="space-y-1.5 group">
                     <div className="relative aspect-square rounded-xl overflow-hidden bg-muted">
-                      {p.cover_url && (
+                      {p.cover_url ? (
                         <Image src={p.cover_url} alt={pTitle} fill className="object-cover group-hover:scale-105 transition-transform" style={{ objectPosition: p.cover_position ?? '50% 50%' }} />
+                      ) : (
+                        <ProjectCoverFallback category={p.category} />
                       )}
                     </div>
                     <p className="text-xs font-medium line-clamp-2">{pTitle}</p>

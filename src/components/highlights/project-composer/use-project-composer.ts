@@ -98,6 +98,7 @@ export function useProjectComposer({ profileId, onSaved }: Options) {
 
   function handleSave() {
     if (!title.trim()) { toast.error(t('titleRequiredError')); return }
+    if (!coverMedia) { toast.error(t('coverRequiredError')); return }
 
     run(true, async () => {
       try {

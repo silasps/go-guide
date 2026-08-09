@@ -690,6 +690,7 @@
     "milestonesLabel": "Marcos do projeto",
     "createProject": "Criar projeto",
     "titleRequiredError": "Título obrigatório.",
+    "coverRequiredError": "Adicione uma foto de capa antes de salvar.",
     "saveError": "Erro ao salvar.",
     "projectCreated": "Projeto criado."
   },

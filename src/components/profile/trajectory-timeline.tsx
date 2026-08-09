@@ -2,6 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils'
 import { resolveLocalizedText } from '@/lib/i18n/resolve-content-locale'
+import { ProjectCoverFallback } from '@/components/highlights/project-cover-fallback'
 import type { Locale, ContentTranslation } from '@/types/database'
 
 interface PastProject {
@@ -34,11 +35,13 @@ export function TrajectoryTimeline({ username, projects, visitorLocale }: { user
           <Link key={p.id} href={`/${username}/projetos/${p.slug ?? p.id}`} className="block relative group">
             <div className="absolute -left-[1.65rem] top-1.5 h-3 w-3 rounded-full bg-primary" />
             <div className="flex gap-3 p-3 rounded-xl border bg-card group-hover:bg-muted/50 transition-colors">
-              {p.cover_url && (
-                <div className="relative h-16 w-16 rounded-lg overflow-hidden shrink-0">
+              <div className="relative h-16 w-16 rounded-lg overflow-hidden shrink-0">
+                {p.cover_url ? (
                   <Image src={p.cover_url} alt={title} fill className="object-cover" style={{ objectPosition: p.cover_position }} />
-                </div>
-              )}
+                ) : (
+                  <ProjectCoverFallback />
+                )}
+              </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted-foreground">
                   {p.completed_at ? new Date(p.completed_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : 'Concluído'}
