@@ -3,28 +3,14 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Plus, Trash2 } from 'lucide-react'
 import type { BudgetCategoryType } from '@/types/database'
 import { toMasked, fromMasked } from '@/lib/currency-mask'
+import { BUDGET_CATEGORY_LABELS } from '@/lib/highlights/budget-category-labels'
 import { useState } from 'react'
 
-export const BUDGET_CATEGORY_LABELS: Record<BudgetCategoryType, string> = {
-  airfare: 'Passagem aérea',
-  bus: 'Ônibus',
-  boat: 'Barco',
-  ferry: 'Balsa',
-  rideshare: 'Uber/táxi',
-  lodging: 'Estadia',
-  food: 'Alimentação',
-  equipment: 'Equipamento',
-  visa_documentation: 'Visto/documentação',
-  insurance: 'Seguro viagem',
-  training: 'Treinamento',
-  shipping: 'Envio de carga',
-  other: 'Outros',
-}
-
-export interface BudgetCategoryDraft { category_type: BudgetCategoryType; custom_label: string; target_amount: string }
+export interface BudgetCategoryDraft { category_type: BudgetCategoryType; custom_label: string; description: string; target_amount: string }
 
 interface Props {
   currency: string
@@ -36,9 +22,11 @@ interface Props {
 
 export function BudgetCategoriesEditor({ currency, mode, onModeChange, categories, onChange }: Props) {
   const [newType, setNewType] = useState<BudgetCategoryType>('airfare')
+  const [newCustomLabel, setNewCustomLabel] = useState('')
 
   function addCategory() {
-    onChange([...categories, { category_type: newType, custom_label: '', target_amount: '' }])
+    onChange([...categories, { category_type: newType, custom_label: newCustomLabel, description: '', target_amount: '' }])
+    setNewCustomLabel('')
   }
   function removeCategory(idx: number) {
     onChange(categories.filter((_, i) => i !== idx))
@@ -65,34 +53,43 @@ export function BudgetCategoriesEditor({ currency, mode, onModeChange, categorie
       {mode === 'detailed' && (
         <div className="space-y-2 rounded-xl border p-3">
           {categories.map((b, i) => (
-            <div key={i} className="flex gap-2 items-start">
-              <select
-                value={b.category_type}
-                onChange={(e) => updateCategory(i, { category_type: e.target.value as BudgetCategoryType })}
-                className="h-8 rounded-lg border border-input bg-transparent px-2 text-xs outline-none focus-visible:border-ring flex-1 min-w-0"
-              >
-                {Object.entries(BUDGET_CATEGORY_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-              {b.category_type === 'other' && (
+            <div key={i} className="space-y-1.5 rounded-lg border border-border/60 p-2">
+              <div className="flex gap-2 items-start">
+                <select
+                  value={b.category_type}
+                  onChange={(e) => updateCategory(i, { category_type: e.target.value as BudgetCategoryType })}
+                  className="h-8 rounded-lg border border-input bg-transparent px-2 text-xs outline-none focus-visible:border-ring flex-1 min-w-0"
+                >
+                  {Object.entries(BUDGET_CATEGORY_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+                {b.category_type === 'other' && (
+                  <Input
+                    value={b.custom_label}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateCategory(i, { custom_label: e.target.value })}
+                    placeholder="Título"
+                    className="h-8 text-xs flex-1"
+                  />
+                )}
                 <Input
-                  value={b.custom_label}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateCategory(i, { custom_label: e.target.value })}
-                  placeholder="Qual?"
-                  className="h-8 text-xs flex-1"
+                  inputMode="numeric"
+                  value={b.target_amount}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateCategory(i, { target_amount: toMasked(e.target.value, currency) })}
+                  placeholder="Valor"
+                  className="h-8 text-xs w-24 shrink-0"
                 />
-              )}
-              <Input
-                inputMode="numeric"
-                value={b.target_amount}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateCategory(i, { target_amount: toMasked(e.target.value, currency) })}
-                placeholder="Valor"
-                className="h-8 text-xs w-24 shrink-0"
+                <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeCategory(i)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              <Textarea
+                value={b.description}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updateCategory(i, { description: e.target.value })}
+                placeholder="Descrição (o que essa etapa inclui)"
+                className="min-h-8 text-xs py-1.5"
+                rows={2}
               />
-              <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeCategory(i)}>
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
             </div>
           ))}
           <div className="flex gap-2 pt-1">
@@ -105,6 +102,14 @@ export function BudgetCategoriesEditor({ currency, mode, onModeChange, categorie
                 <option key={value} value={value}>{label}</option>
               ))}
             </select>
+            {newType === 'other' && (
+              <Input
+                value={newCustomLabel}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCustomLabel(e.target.value)}
+                placeholder="Qual?"
+                className="h-8 text-xs flex-1"
+              />
+            )}
             <Button type="button" variant="outline" size="sm" onClick={addCategory} className="gap-1.5">
               <Plus className="h-3.5 w-3.5" /> Adicionar
             </Button>

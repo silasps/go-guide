@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import { Loader2, CheckCircle } from 'lucide-react'
 import { toMasked, fromMasked, CURRENCIES } from '@/lib/currency-mask'
 import { PaymentMethodInstructions } from './payment-method-instructions'
+import { BudgetCategorySelect, type BudgetCategoryOption } from './budget-category-select'
 
 type PaymentOption = { id: string; method: PledgePaymentMethod; label: string; value: string; details: string | null; currency: string }
 
@@ -32,13 +33,17 @@ interface Props {
   user: SessionUser | null
   returnPath: string // caminho atual (com highlight_id se houver), usado no redirect de login/cadastro
   highlightId?: string
+  budgetCategories?: BudgetCategoryOption[]
+  initialCategoryId?: string | null
 }
 
-export function RecurringPledgeForm({ profileId, missionaryName, currency, paymentOptions, stripeAvailable, user, returnPath, highlightId }: Props) {
+export function RecurringPledgeForm({ profileId, missionaryName, currency, paymentOptions, stripeAvailable, user, returnPath, highlightId, budgetCategories, initialCategoryId }: Props) {
   const t = useTranslations('RecurringPledge')
+  const tPledge = useTranslations('PledgeForm')
   const [done, setDone] = useState(false)
   const [showManual, setShowManual] = useState(!stripeAvailable)
   const [amount, setAmount] = useState('')
+  const [categoryId, setCategoryId] = useState<string | null>(initialCategoryId ?? null)
   const [optionId, setOptionId] = useState(paymentOptions[0]?.id ?? 'other')
   const [reminderOptIn, setReminderOptIn] = useState(true)
   const { isPending: startingCheckout, run: runCheckout } = usePendingAction()
@@ -90,7 +95,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
       const res = await fetch('/api/stripe/checkout-recurring', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profileId, amount: parsedAmount, currency, highlightId }),
+        body: JSON.stringify({ profileId, amount: parsedAmount, currency, highlightId, budgetCategoryId: categoryId }),
       })
       const data = await res.json()
       if (!res.ok || !data.url) { toast.error(t('errorCheckout')); return }
@@ -136,6 +141,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
         currency: activeCurrency,
         payment_method: method,
         highlight_id: highlightId ?? null,
+        budget_category_id: highlightId ? categoryId : null,
         reminder_opt_in: reminderOptIn,
         next_reminder_at: nextReminderAt,
         status: 'active',
@@ -155,6 +161,19 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
         <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
           {t('linkingAs', { email: user.email ?? '', name: missionaryName })}
         </p>
+
+        {highlightId && budgetCategories && budgetCategories.length > 0 && (
+          <BudgetCategorySelect
+            categories={budgetCategories}
+            value={categoryId}
+            onChange={setCategoryId}
+            currency={currency}
+            fieldLabel={tPledge('whereToInvestLabel')}
+            generalLabel={tPledge('whereToInvestGeneral')}
+            missingLabel={(amount) => tPledge('missingAmount', { amount })}
+          />
+        )}
+
         <div className="space-y-2">
           <Label className="flex items-center gap-1.5">
             {t('amountLabelPlain')} *

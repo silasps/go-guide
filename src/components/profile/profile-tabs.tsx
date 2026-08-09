@@ -18,30 +18,25 @@ interface Props {
   ownerProfile: DrawerProfile | null
 }
 
-// Fluxos de ação/conversão (oração, parceria, mensagem) e a tela de um
-// projeto específico não fazem parte da navegação por abas — mesma lógica
-// do Instagram, onde compor uma mensagem ou abrir um post não mostra a
-// barra de abas do perfil por cima. O LanguageSwitcher também mora aqui
-// (em vez de flutuar solto em layout.tsx) pra nunca se sobrepor às abas —
-// nas telas sem abas, ele volta a flutuar isolado no canto, ao lado do
-// único botão de voltar (fixo, discreto) dessas telas.
+// Fluxos de ação/conversão (oração, parceria, mensagem) não fazem parte da
+// navegação por abas — mesma lógica do Instagram, onde compor uma mensagem
+// não mostra a barra de abas do perfil por cima. A página de um projeto
+// específico já mostrou a barra normal (pedido do usuário, pra dar pra
+// navegar pro resto do perfil sem ter que voltar primeiro). O
+// LanguageSwitcher também mora aqui (em vez de flutuar solto em
+// layout.tsx) pra nunca se sobrepor às abas — nas telas sem abas, ele volta
+// a flutuar isolado no canto, ao lado do único botão de voltar (fixo,
+// discreto) dessas telas.
 export function ProfileTabs({ username, hasTrajectory, isMissionary, canEdit, viewerUserId, ownerProfile }: Props) {
   const pathname = usePathname()
   const t = useTranslations('PublicProfile')
   const base = `/${username}`
 
-  const isProjectDetail = pathname.startsWith(`${base}/projetos/`)
-  if (isProjectDetail) {
-    // Foto de capa em tela cheia: botão fica fixo no canto, como em
-    // visualizadores de foto (Instagram), com sombra pra ficar legível
-    // sobre qualquer imagem por baixo.
-    return (
-      <div className="fixed top-3 inset-x-3 z-50 flex items-center justify-between">
-        <BackButton href={base} label={t('backToProfile')} className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]" />
-        <LanguageSwitcher compact className="bg-background/90 backdrop-blur rounded-full ring-1 ring-foreground/10 shadow-sm px-2 py-1" />
-      </div>
-    )
-  }
+  // A página de um projeto específico deixou de ser tratada como "fluxo de
+  // ação sem chrome" (tipo mandar mensagem) — o usuário pediu que ela
+  // mostre a barra de abas normal (Perfil/História/Projetos), pra dar pra
+  // navegar pro resto do perfil sem precisar voltar primeiro. Antes tinha
+  // um caso especial aqui só com botão de voltar fixo sobre a capa.
 
   const contentMaxWidth: Record<string, string> = {
     [`${base}/mensagens`]: 'max-w-lg',

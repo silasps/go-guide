@@ -140,10 +140,11 @@ export async function POST(req: NextRequest) {
 
       await dbDelete(`project_budget_categories?highlight_id=eq.${hId}`)
       if (Array.isArray(budgetCategories) && budgetCategories.length > 0) {
-        await dbPost('project_budget_categories', budgetCategories.map((b: { category_type: string; custom_label: string | null; target_amount: number }, i: number) => ({
+        await dbPost('project_budget_categories', budgetCategories.map((b: { category_type: string; custom_label: string | null; description: string | null; target_amount: number }, i: number) => ({
           highlight_id: hId,
           category_type: b.category_type,
           custom_label: b.custom_label,
+          description: b.description,
           target_amount: b.target_amount,
           order_index: i,
         })))

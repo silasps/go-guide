@@ -165,6 +165,7 @@ export function useProjectComposer({ profileId, onSaved }: Options) {
                   .map((b) => ({
                     category_type: b.category_type,
                     custom_label: b.category_type === 'other' ? (b.custom_label.trim() || 'Outros') : null,
+                    description: b.description.trim() || null,
                     target_amount: parseFloat(fromMasked(b.target_amount, currency)),
                   }))
               : [],

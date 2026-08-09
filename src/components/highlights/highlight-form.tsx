@@ -121,6 +121,7 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
     (highlight?.budgetCategories ?? []).map(b => ({
       category_type: b.category_type,
       custom_label: b.custom_label ?? '',
+      description: b.description ?? '',
       target_amount: toMasked(String(Math.round(b.target_amount * 100)), initialCurrency),
     }))
   )
@@ -192,6 +193,7 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
                   .map(b => ({
                     category_type: b.category_type,
                     custom_label: b.category_type === 'other' ? (b.custom_label.trim() || 'Outros') : null,
+                    description: b.description.trim() || null,
                     target_amount: parseFloat(fromMasked(b.target_amount, currency)),
                   }))
               : [],

@@ -12,13 +12,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, ChevronLeft } from 'lucide-react'
 
 function LoginForm() {
   const t = useTranslations('Auth')
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') ?? '/dashboard'
+  const isMessageFlow = redirect.includes('/mensagens')
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -53,11 +54,20 @@ function LoginForm() {
   }
 
   return (
-    <Card>
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl">{t('loginTitle')}</CardTitle>
-        <CardDescription>{t('loginSubtitle')}</CardDescription>
-      </CardHeader>
+    <>
+      <button
+        type="button"
+        onClick={() => router.back()}
+        className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ChevronLeft className="h-4 w-4" />
+        {t('back')}
+      </button>
+      <Card>
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl">{t('loginTitle')}</CardTitle>
+          <CardDescription>{isMessageFlow ? t('loginSubtitleMessage') : t('loginSubtitle')}</CardDescription>
+        </CardHeader>
 
       <CardContent>
         <Button variant="outline" className="w-full mb-4" onClick={handleGoogle}>
@@ -125,7 +135,8 @@ function LoginForm() {
           </Link>
         </p>
       </CardFooter>
-    </Card>
+      </Card>
+    </>
   )
 }
 

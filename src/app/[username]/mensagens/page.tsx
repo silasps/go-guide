@@ -12,7 +12,7 @@ export default async function PartnerMensagensPage({ params }: Props) {
   const { username } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect(`/login?next=/${username}/mensagens`)
+  if (!user) redirect(`/login?redirect=/${username}/mensagens`)
 
   const { canEdit } = await getProfileViewerContext(username)
   if (canEdit) redirect(`/${username}`)

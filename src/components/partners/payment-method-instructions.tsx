@@ -84,7 +84,10 @@ export function PaymentMethodInstructions({ method, label, value, details, missi
 
   if (method === 'pix') {
     return box(
-      <CopyableValue value={value} />,
+      <div className="space-y-1.5">
+        {label && <p className="text-xs text-muted-foreground">{t('pixHolder')}: <span className="font-medium text-foreground">{label}</span></p>}
+        <CopyableValue value={value} />
+      </div>,
       t('titlePix', { name: missionaryName })
     )
   }

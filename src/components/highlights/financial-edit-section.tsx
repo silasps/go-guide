@@ -14,6 +14,7 @@ function toDrafts(categories: SectionProps['snapshot']['budgetCategories'], curr
   return categories.map(b => ({
     category_type: b.category_type as BudgetCategoryDraft['category_type'],
     custom_label: b.custom_label ?? '',
+    description: b.description ?? '',
     target_amount: toMasked(String(Math.round(b.target_amount * 100)), currency),
   }))
 }
@@ -82,6 +83,7 @@ export function FinancialEditSection({ canEdit, snapshot, highlightId, profileId
             .map(b => ({
               category_type: b.category_type,
               custom_label: b.category_type === 'other' ? (b.custom_label.trim() || 'Outros') : null,
+              description: b.description.trim() || null,
               target_amount: parseFloat(fromMasked(b.target_amount, currency)),
             }))
         : [],

@@ -14,6 +14,7 @@ import { Loader2, CheckCircle, Upload } from 'lucide-react'
 import { PledgePaymentMethod } from '@/types/database'
 import { toMasked, fromMasked, CURRENCIES } from '@/lib/currency-mask'
 import { PaymentMethodInstructions } from './payment-method-instructions'
+import { BudgetCategorySelect, type BudgetCategoryOption } from './budget-category-select'
 import Image from 'next/image'
 
 type PaymentOption = { id: string; method: PledgePaymentMethod; label: string; value: string; details: string | null; currency: string }
@@ -26,14 +27,17 @@ interface Props {
   isRecurring: boolean
   defaultCurrency: string
   paymentOptions: PaymentOption[]
+  budgetCategories?: BudgetCategoryOption[]
+  initialCategoryId?: string | null
   onBecomePartner?: () => void
 }
 
-export function PledgeForm({ profileId, missionaryName, highlightId, highlightTitle, isRecurring, defaultCurrency, paymentOptions, onBecomePartner }: Props) {
+export function PledgeForm({ profileId, missionaryName, highlightId, highlightTitle, isRecurring, defaultCurrency, paymentOptions, budgetCategories, initialCategoryId, onBecomePartner }: Props) {
   const t = useTranslations('PledgeForm')
   const [done, setDone] = useState(false)
   const [saving, setSaving] = useState(false)
   const [amount, setAmount] = useState('')
+  const [categoryId, setCategoryId] = useState<string | null>(initialCategoryId ?? null)
   const [optionId, setOptionId] = useState(paymentOptions[0]?.id ?? 'other')
   const [otherDescription, setOtherDescription] = useState('')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
@@ -82,6 +86,7 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
 
     const { error } = await supabase.from('pledges').insert({
       highlight_id: isRecurring ? null : (highlightId ?? null),
+      budget_category_id: isRecurring ? null : (highlightId ? categoryId : null),
       profile_id: profileId,
       reporter_user_id: user?.id ?? null,
       reporter_name: isAnonymous ? null : name.trim(),
@@ -161,6 +166,18 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
               />
             )}
           </div>
+
+          {highlightId && budgetCategories && budgetCategories.length > 0 && (
+            <BudgetCategorySelect
+              categories={budgetCategories}
+              value={categoryId}
+              onChange={setCategoryId}
+              currency={defaultCurrency}
+              fieldLabel={t('whereToInvestLabel')}
+              generalLabel={t('whereToInvestGeneral')}
+              missingLabel={(amount) => t('missingAmount', { amount })}
+            />
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">

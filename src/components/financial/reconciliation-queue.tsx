@@ -5,9 +5,10 @@ interface Props {
   pledges: (Pledge & { highlight?: { title: string } | null })[]
   accounts: FinancialAccount[]
   profileId: string
+  budgetCategoriesByHighlight: Record<string, { id: string; label: string }[]>
 }
 
-export function ReconciliationQueue({ pledges, accounts, profileId }: Props) {
+export function ReconciliationQueue({ pledges, accounts, profileId, budgetCategoriesByHighlight }: Props) {
   if (pledges.length === 0) {
     return <p className="text-sm text-muted-foreground py-12 text-center">Nenhuma oferta pendente de confirmação.</p>
   }
@@ -19,7 +20,13 @@ export function ReconciliationQueue({ pledges, accounts, profileId }: Props) {
   return (
     <div className="space-y-3">
       {pledges.map(p => (
-        <PledgeReviewCard key={p.id} pledge={p} accounts={accounts} profileId={profileId} />
+        <PledgeReviewCard
+          key={p.id}
+          pledge={p}
+          accounts={accounts}
+          profileId={profileId}
+          budgetCategories={p.highlight_id ? (budgetCategoriesByHighlight[p.highlight_id] ?? []) : []}
+        />
       ))}
     </div>
   )

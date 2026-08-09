@@ -1,11 +1,9 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { toast } from 'sonner'
 import { Profile } from '@/types/database'
 import { EditProfileDialog } from '@/components/profile/edit-profile-dialog'
-import { Button } from '@/components/ui/button'
-import { Share2 } from 'lucide-react'
+import { ShareButton } from '@/components/shared/share-button'
 
 interface Props {
   profile: Profile
@@ -17,27 +15,16 @@ interface Props {
 export function ProfileOwnerActions({ profile }: Props) {
   const t = useTranslations('PublicProfile')
 
-  async function handleShare() {
-    const url = `${window.location.origin}/${profile.username}`
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: profile.display_name, url })
-      } catch {
-        // usuário cancelou o compartilhamento — não é um erro
-      }
-      return
-    }
-    await navigator.clipboard.writeText(url)
-    toast.success(t('linkCopied'))
-  }
-
   return (
     <div className="flex gap-3">
       <EditProfileDialog profile={profile} />
-      <Button variant="outline" className="flex-1 gap-2" onClick={handleShare}>
-        <Share2 className="h-4 w-4" />
-        {t('shareProfile')}
-      </Button>
+      <ShareButton
+        className="flex-1"
+        url={typeof window !== 'undefined' ? `${window.location.origin}/${profile.username}` : `/${profile.username}`}
+        title={profile.display_name}
+        label={t('shareProfile')}
+        copiedLabel={t('linkCopied')}
+      />
     </div>
   )
 }

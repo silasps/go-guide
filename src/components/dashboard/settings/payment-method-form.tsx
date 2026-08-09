@@ -40,6 +40,7 @@ export function PaymentMethodForm({ profileId, method, nextSortOrder = 0 }: Prop
   const entry = getPaymentMethodEntry(type)
   const isOther = type === 'other'
   const isBank = type === 'bank_transfer'
+  const isPix = type === 'pix'
 
   function resetForm() {
     setType('pix')
@@ -59,7 +60,7 @@ export function PaymentMethodForm({ profileId, method, nextSortOrder = 0 }: Prop
   function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!value.trim()) { toast.error(t('errorValueRequired')); return }
-    if ((isOther || isBank) && !label.trim()) { toast.error(t('errorLabelRequired')); return }
+    if ((isOther || isBank || isPix) && !label.trim()) { toast.error(t('errorLabelRequired')); return }
 
     run(true, async () => {
       const supabase = createClient()
@@ -130,12 +131,12 @@ export function PaymentMethodForm({ profileId, method, nextSortOrder = 0 }: Prop
             </select>
           </div>
           <div className="space-y-2">
-            <Label>{isBank ? t('bankHolderLabel') : t('labelLabel')}{(isOther || isBank) && ' *'}</Label>
+            <Label>{isBank ? t('bankHolderLabel') : isPix ? t('pixHolderLabel') : t('labelLabel')}{(isOther || isBank || isPix) && ' *'}</Label>
             <Input
               value={label}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLabel(e.target.value)}
-              placeholder={isBank ? t('bankHolderPlaceholder') : isOther ? t('labelPlaceholderOther') : t(`type_${type}`)}
-              required={isOther || isBank}
+              placeholder={isBank ? t('bankHolderPlaceholder') : isPix ? t('pixHolderPlaceholder') : isOther ? t('labelPlaceholderOther') : t(`type_${type}`)}
+              required={isOther || isBank || isPix}
             />
           </div>
           <div className="space-y-2">

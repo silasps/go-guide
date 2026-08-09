@@ -14,7 +14,7 @@ export interface HighlightSnapshot {
   letter: string
   status: string
   milestones: { id?: string; title: string; is_completed: boolean }[]
-  budgetCategories: { category_type: string; custom_label: string | null; target_amount: number }[]
+  budgetCategories: { category_type: string; custom_label: string | null; description: string | null; target_amount: number }[]
 }
 
 export interface SectionProps {

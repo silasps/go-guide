@@ -5,6 +5,7 @@ import { PledgeForm } from './pledge-form'
 import { RecurringPledgeForm } from './recurring-pledge-form'
 import { PartnershipForm } from './partnership-form'
 import { PledgePaymentMethod } from '@/types/database'
+import type { BudgetCategoryOption } from './budget-category-select'
 
 type Choice = 'financial_once' | 'financial_once_general' | 'financial_ongoing' | 'prayer' | 'ambassador' | 'volunteer'
 
@@ -24,12 +25,14 @@ interface Props {
   highlightTitle?: string
   defaultCurrency: string
   paymentOptions: { id: string; method: PledgePaymentMethod; label: string; value: string; details: string | null; currency: string }[]
+  budgetCategories?: BudgetCategoryOption[]
+  initialCategoryId?: string | null
   hasFinancialOptions: boolean
   stripeAvailable: boolean
   user: SessionUser | null
 }
 
-export function PartnershipWizard({ profileId, username, initialChoice, missionaryName, missionStartYear, highlightId, highlightTitle, defaultCurrency, paymentOptions, hasFinancialOptions, stripeAvailable, user }: Props) {
+export function PartnershipWizard({ profileId, username, initialChoice, missionaryName, missionStartYear, highlightId, highlightTitle, defaultCurrency, paymentOptions, budgetCategories, initialCategoryId, hasFinancialOptions, stripeAvailable, user }: Props) {
   const [choice, setChoice] = useState<Choice | null>(initialChoice ?? null)
 
   if (choice === 'financial_once' || choice === 'financial_once_general') {
@@ -43,6 +46,8 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
         isRecurring={false}
         defaultCurrency={defaultCurrency}
         paymentOptions={paymentOptions}
+        budgetCategories={choice === 'financial_once' ? budgetCategories : undefined}
+        initialCategoryId={choice === 'financial_once' ? initialCategoryId : undefined}
         onBecomePartner={() => setChoice('financial_ongoing')}
       />
     )
@@ -60,6 +65,8 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
         user={user}
         returnPath={returnPath}
         highlightId={highlightId}
+        budgetCategories={budgetCategories}
+        initialCategoryId={initialCategoryId}
       />
     )
   }

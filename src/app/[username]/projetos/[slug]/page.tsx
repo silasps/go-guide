@@ -24,8 +24,16 @@ import { FinancialEditSection } from '@/components/highlights/financial-edit-sec
 import { MilestonesEditSection } from '@/components/highlights/milestones-edit-section'
 import { LetterEditSection } from '@/components/highlights/letter-edit-section'
 import { DatesStatusEditSection } from '@/components/highlights/dates-status-edit-section'
+import { StatusBadge } from '@/components/highlights/status-badge'
 import type { HighlightSnapshot } from '@/components/highlights/section-types'
 import { getProfile } from '@/lib/profile/get-profile'
+import { ShareButton } from '@/components/shared/share-button'
+
+// Mesmo padrão de src/app/layout.tsx — necessário aqui pra montar uma URL
+// absoluta de compartilhamento num Server Component (sem window.location).
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL?.startsWith('https')
+  ? process.env.NEXT_PUBLIC_APP_URL
+  : 'https://mission-guide.vercel.app'
 
 interface Props {
   params: Promise<{ username: string; slug: string }>
@@ -186,7 +194,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
     letter: project.letter ?? '',
     status: project.status,
     milestones: (milestones ?? []).map(m => ({ id: m.id, title: m.title, is_completed: m.is_completed })),
-    budgetCategories: (budgetCategories ?? []).map(b => ({ category_type: b.category_type, custom_label: b.custom_label, target_amount: b.target_amount })),
+    budgetCategories: (budgetCategories ?? []).map(b => ({ category_type: b.category_type, custom_label: b.custom_label, description: b.description, target_amount: b.target_amount })),
   }
   const sectionProps = { canEdit, snapshot, highlightId: project.id, profileId: profile.id }
 
@@ -212,7 +220,21 @@ export default async function ProjetoPublicoPage({ params }: Props) {
 
             {/* Cabeçalho */}
             <div className="space-y-3 mt-3">
-              <h1 className="text-2xl font-bold">{localizedTitle}</h1>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-2xl font-bold flex-1 min-w-0">{localizedTitle}</h1>
+                {/* Status precisa ficar visível E editável direto daqui —
+                    não só dentro do formulário de edição de datas
+                    (feedback direto do usuário). */}
+                <StatusBadge {...sectionProps} />
+                <ShareButton
+                  iconOnly
+                  variant="ghost"
+                  url={`${SITE_URL}/${username}/projetos/${project.slug ?? project.id}`}
+                  title={localizedTitle}
+                  label="Compartilhar projeto"
+                  copiedLabel="Link do projeto copiado"
+                />
+              </div>
               {project.scripture && (
                 <p className="text-sm italic text-muted-foreground border-l-2 border-primary/40 pl-3">{project.scripture}</p>
               )}
@@ -243,10 +265,19 @@ export default async function ProjetoPublicoPage({ params }: Props) {
           <DatesStatusEditSection {...sectionProps}>
             <>
               {project.trip_start_date && (
-                <span className="px-2.5 py-1 rounded-full border">✈️ Viagem em {new Date(project.trip_start_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                <span className="px-2.5 py-1 rounded-full border">📅 Início em {new Date(project.trip_start_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
               )}
               {project.funding_deadline && (
                 <span className="px-2.5 py-1 rounded-full border">⏳ Prazo: {new Date(project.funding_deadline).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+              )}
+              {/* Sem isso, com as duas datas vazias o children fica sem
+                  nenhum conteúdo — a caixinha que ancora o lápis de editar
+                  (position: relative) encolhe a zero e o ícone (absolute)
+                  fica "flutuando" solto no canto, sem card visível ao redor. */}
+              {/* pr-7 reserva o espaço do lápis (absolute top-0 right-0,
+                  h-7 w-7) — sem isso o texto passa por baixo do ícone. */}
+              {!project.trip_start_date && !project.funding_deadline && canEdit && (
+                <span className="italic pr-7">Adicionar datas...</span>
               )}
             </>
           </DatesStatusEditSection>
@@ -255,9 +286,13 @@ export default async function ProjetoPublicoPage({ params }: Props) {
           )}
         </div>
 
-        {/* Bloco financeiro em destaque — só aparece quando relevante */}
+        {/* Bloco financeiro em destaque — só aparece quando relevante.
+            Hierarquia: progresso geral em destaque → CTA geral → (se
+            houver) apoio por área específica, cada uma com seu próprio
+            "faltam" e botão de contribuir — pedido direto do usuário pra
+            deixar isso mais organizado e fácil de agir. */}
         {hasFinancial && (
-          <div className="rounded-2xl border bg-card p-5 space-y-4">
+          <div className="rounded-2xl border bg-card p-5 space-y-5">
             <FinancialEditSection {...sectionProps}>
               <>
                 {project.goal_amount && pct !== null && (
@@ -274,18 +309,33 @@ export default async function ProjetoPublicoPage({ params }: Props) {
                   </div>
                 )}
 
+                {!canEdit && (
+                  <Link href={`/${username}/parceria?highlight_id=${project.id}&choice=financial_once`} className={cn(buttonVariants({ variant: 'support', size: 'lg' }), 'w-full text-base')}>
+                    💰 Apoiar este projeto
+                  </Link>
+                )}
+
                 {budgetCategories && budgetCategories.length > 0 && (
-                  <BudgetBreakdown categories={budgetCategories} currency={project.currency} />
+                  <BudgetBreakdown
+                    categories={budgetCategories}
+                    currency={project.currency}
+                    heading="Ou apoie uma área específica"
+                    contributeBaseHref={canEdit ? undefined : `/${username}/parceria?highlight_id=${project.id}&choice=financial_once`}
+                    contributeLabel="Contribuir"
+                    missingLabel={(amount) => `Faltam ${amount}`}
+                  />
                 )}
               </>
             </FinancialEditSection>
 
-            <Link href={`/${username}/parceria?highlight_id=${project.id}&choice=financial_once`} className={cn(buttonVariants({ variant: 'support', size: 'lg' }), 'w-full text-base')}>
-              💰 Faça parte deste projeto
-            </Link>
             {pixMethod && (
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground text-center">Chave PIX para transferência direta</p>
+                {pixMethod.label && (
+                  <p className="text-xs text-center text-muted-foreground">
+                    Em nome de <span className="font-medium text-foreground">{pixMethod.label}</span>
+                  </p>
+                )}
                 <CopyableValue value={pixMethod.value} />
               </div>
             )}
@@ -300,6 +350,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
             createdAt={project.created_at}
             fundingDeadline={project.funding_deadline}
             tripStartDate={project.trip_start_date}
+            contributeHref={canEdit ? undefined : `/${username}/parceria?highlight_id=${project.id}&choice=financial_once`}
           />
         )}
 

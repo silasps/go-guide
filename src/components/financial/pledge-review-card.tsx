@@ -18,12 +18,16 @@ interface Props {
   pledge: Pledge & { highlight?: { title: string } | null }
   accounts: FinancialAccount[]
   profileId: string
+  budgetCategories: { id: string; label: string }[]
 }
 
-export function PledgeReviewCard({ pledge, accounts, profileId }: Props) {
+export function PledgeReviewCard({ pledge, accounts, profileId, budgetCategories }: Props) {
   const router = useRouter()
   const [amount, setAmount] = useState(String(pledge.reported_amount))
   const [accountId, setAccountId] = useState(accounts.find(a => a.currency_code === pledge.currency)?.id ?? accounts[0]?.id ?? '')
+  // Pré-preenchido com a categoria que o apoiador escolheu ao contribuir —
+  // o missionário confirma ou corrige antes de gerar o lançamento.
+  const [categoryId, setCategoryId] = useState(pledge.budget_category_id ?? '')
   const { pendingValue: saving, run } = usePendingAction<'confirm' | 'reject'>()
   const [rejectReason, setRejectReason] = useState('')
   const [showReject, setShowReject] = useState(false)
@@ -64,6 +68,7 @@ export function PledgeReviewCard({ pledge, accounts, profileId }: Props) {
         description: `Oferta de ${pledge.reporter_name || ANONYMOUS_LABEL}`,
         partner_id: partnerId,
         highlight_id: pledge.highlight_id,
+        budget_category_id: categoryId || null,
         source: 'manual',
         date: pledge.reported_at.slice(0, 10),
       }).select('id').single()
@@ -132,6 +137,16 @@ export function PledgeReviewCard({ pledge, accounts, profileId }: Props) {
           {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
       </div>
+
+      {budgetCategories.length > 0 && (
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Categoria do orçamento</label>
+          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring">
+            <option value="">Projeto geral</option>
+            {budgetCategories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+          </select>
+        </div>
+      )}
 
       {showReject ? (
         <div className="space-y-2">

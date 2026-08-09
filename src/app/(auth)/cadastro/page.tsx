@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, ChevronLeft } from 'lucide-react'
 
 function CadastroForm() {
   const t = useTranslations('Auth')
@@ -23,6 +23,7 @@ function CadastroForm() {
   // de papel — sem essa nota, a pessoa não percebe que está criando uma
   // conta de apoiador (feedback direto do usuário).
   const isPartnerFlow = !redirect.startsWith('/onboarding')
+  const isMessageFlow = redirect.includes('/mensagens')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -66,10 +67,19 @@ function CadastroForm() {
   }
 
   return (
-    <Card>
+    <>
+      <button
+        type="button"
+        onClick={() => router.back()}
+        className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ChevronLeft className="h-4 w-4" />
+        {t('back')}
+      </button>
+      <Card>
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">{t('signupTitle')}</CardTitle>
-        <CardDescription>{t('signupSubtitle')}</CardDescription>
+        <CardDescription>{isMessageFlow ? t('signupSubtitleMessage') : t('signupSubtitle')}</CardDescription>
       </CardHeader>
 
       <CardContent>
@@ -151,7 +161,8 @@ function CadastroForm() {
           </Link>
         </p>
       </CardFooter>
-    </Card>
+      </Card>
+    </>
   )
 }
 

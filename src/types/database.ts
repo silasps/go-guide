@@ -158,6 +158,7 @@ export interface ProjectBudgetCategory {
   highlight_id: string
   category_type: BudgetCategoryType
   custom_label: string | null
+  description: string | null
   target_amount: number
   order_index: number
   created_at: string
@@ -297,6 +298,7 @@ export type PledgeStatus = 'pending' | 'confirmed' | 'rejected'
 export interface Pledge {
   id: string
   highlight_id: string | null
+  budget_category_id: string | null
   profile_id: string
   partner_id: string | null
   reporter_user_id: string | null
@@ -330,6 +332,7 @@ export interface RecurringPledge {
   currency: string
   payment_method: PaymentMethodType
   highlight_id: string | null
+  budget_category_id: string | null
   reminder_opt_in: boolean
   next_reminder_at: string | null
   stripe_subscription_id: string | null
