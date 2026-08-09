@@ -87,9 +87,15 @@ export function ProfileTabs({ username, hasTrajectory, isMissionary, canEdit, vi
           {tabs.map(({ href, label, exact, Icon }) => {
             const active = exact ? pathname === href : pathname.startsWith(href)
             return (
+              // `replace`: trocar de aba (Perfil/História/Projetos) não deve
+              // empilhar histórico — o `BackButton` acima usa `router.back()`
+              // de verdade, então sem isso "voltar" ficava saltando de aba em
+              // aba em vez de sair direto pra onde a pessoa veio (feedback
+              // direto do usuário, que ficou "preso" alternando entre abas).
               <Link
                 key={href}
                 href={href}
+                replace
                 className={cn(
                   'flex-1 flex items-center justify-center gap-1.5 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors',
                   active
