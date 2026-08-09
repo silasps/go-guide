@@ -3,9 +3,12 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { ImagePlus, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { compressImage } from '@/lib/media/compress'
 
 export interface GalleryImageDraft { url: string; file?: File }
+
+const MAX_IMAGES = 10
 
 interface Props {
   images: GalleryImageDraft[]
@@ -14,13 +17,22 @@ interface Props {
 
 export function GalleryEditor({ images, onChange }: Props) {
   const [loading, setLoading] = useState(false)
+  const atLimit = images.length >= MAX_IMAGES
 
   async function handleSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
     if (files.length === 0) return
+
+    const remaining = MAX_IMAGES - images.length
+    const accepted = files.slice(0, remaining)
+    if (files.length > accepted.length) {
+      toast.error(`Máximo de ${MAX_IMAGES} fotos por projeto.`)
+    }
+    if (accepted.length === 0) { e.target.value = ''; return }
+
     setLoading(true)
     const added: GalleryImageDraft[] = []
-    for (const file of files) {
+    for (const file of accepted) {
       const compressed = await compressImage(file)
       added.push({ url: URL.createObjectURL(compressed), file: compressed })
     }
@@ -51,11 +63,15 @@ export function GalleryEditor({ images, onChange }: Props) {
           ))}
         </div>
       )}
-      <label className="flex items-center justify-center gap-2 h-10 rounded-lg border border-dashed text-sm text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors cursor-pointer">
-        <ImagePlus className="h-4 w-4" />
-        {loading ? 'Processando...' : 'Adicionar fotos'}
-        <input type="file" accept="image/*" multiple className="hidden" onChange={handleSelect} disabled={loading} />
-      </label>
+      {atLimit ? (
+        <p className="text-xs text-muted-foreground text-center">Limite de {MAX_IMAGES} fotos atingido.</p>
+      ) : (
+        <label className="flex items-center justify-center gap-2 h-10 rounded-lg border border-dashed text-sm text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors cursor-pointer">
+          <ImagePlus className="h-4 w-4" />
+          {loading ? 'Processando...' : `Adicionar fotos (${images.length}/${MAX_IMAGES})`}
+          <input type="file" accept="image/*" multiple className="hidden" onChange={handleSelect} disabled={loading} />
+        </label>
+      )}
     </div>
   )
 }
