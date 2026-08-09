@@ -70,7 +70,7 @@ export default async function ExplorarPage() {
     <div className="min-h-screen flex flex-col bg-background">
       <SiteNav />
 
-      <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-8 space-y-8">
+      <main className="flex-1 max-w-2xl lg:max-w-4xl mx-auto w-full px-4 py-8 space-y-8">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold">Explorar</h1>
           <p className="text-muted-foreground text-sm">Veja o que missionários estão fazendo agora pelo go→guide.</p>
@@ -84,7 +84,7 @@ export default async function ExplorarPage() {
           <ExploreTabs
             projects={
               projects && projects.length > 0 ? (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                   {projects.map((p) => {
                     const profile = p.profile as unknown as { id: string; username: string; display_name: string; avatar_url: string | null } | null
                     if (!profile) return null

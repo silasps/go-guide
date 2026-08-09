@@ -36,7 +36,7 @@ export function ProfilePostsGrid({ posts, visitorLocale, canEdit = false, deepLi
             key={post.id}
             type="button"
             onClick={() => setOpenIndex(i)}
-            className="relative aspect-[4/5] bg-muted overflow-hidden"
+            className="relative aspect-square bg-muted overflow-hidden"
           >
             <GridThumbnail post={post} visitorLocale={visitorLocale} />
             {post.type === 'carousel' && <Copy className="absolute top-1.5 right-1.5 h-4 w-4 text-white drop-shadow" />}
@@ -69,8 +69,14 @@ function GridThumbnail({ post, visitorLocale }: { post: PostWithProfile; visitor
 
   const { text } = resolveLocalizedText(post.content, post.original_locale, post.translations, visitorLocale)
   return (
-    <div className="h-full w-full flex items-center justify-center p-2 bg-muted">
-      <p className="text-[11px] leading-snug text-center line-clamp-6 text-muted-foreground">{text}</p>
+    // Sem foto, o post ainda precisa "ser uma imagem" na grade — igual ao
+    // Instagram, onde todo item da grade tem uma miniatura de verdade,
+    // nunca texto cru sobre cinza. Fundo na cor do perfil (accent_color) +
+    // gradiente escuro sutil garante contraste do texto branco em cima,
+    // independente do tom da cor escolhida.
+    <div className="relative h-full w-full flex items-center justify-center p-4 text-center" style={{ backgroundColor: post.profile.accent_color || '#6366f1' }}>
+      <div className="absolute inset-0 bg-gradient-to-br from-black/10 via-transparent to-black/30" />
+      <p className="relative text-[11px] leading-snug line-clamp-6 text-white font-medium">{text}</p>
     </div>
   )
 }
