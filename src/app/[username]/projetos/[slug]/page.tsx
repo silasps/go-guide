@@ -25,6 +25,8 @@ import { SupportTypesEditSection } from '@/components/highlights/support-types-e
 import { FinancialEditSection } from '@/components/highlights/financial-edit-section'
 import { MilestonesEditSection } from '@/components/highlights/milestones-edit-section'
 import { GalleryEditSection } from '@/components/highlights/gallery-edit-section'
+import { FloatingSupportCta } from '@/components/highlights/floating-support-cta'
+import { ScrollToSectionLink } from '@/components/highlights/scroll-to-section-link'
 import { LetterEditSection } from '@/components/highlights/letter-edit-section'
 import { DatesStatusEditSection } from '@/components/highlights/dates-status-edit-section'
 import { StatusBadge } from '@/components/highlights/status-badge'
@@ -89,14 +91,6 @@ const SUPPORT_TYPES = [
     title: 'Oração',
     description: 'Comprometa-se a orar regularmente por este projeto',
     cta: 'Comprometer-me em oração',
-  },
-  {
-    key: 'ambassador',
-    choice: 'ambassador',
-    icon: '📣',
-    title: 'Divulgue e traga apoiadores',
-    description: 'Compartilhe com sua rede e ajude este projeto a crescer',
-    cta: 'Quero divulgar',
   },
   {
     key: 'volunteer',
@@ -269,6 +263,10 @@ export default async function ProjetoPublicoPage({ params }: Props) {
           </DescriptionEditSection>
         )}
 
+        {(project.letter || canEdit) && (
+          <ScrollToSectionLink targetId="project-story" label="📖 Conheça a história por trás deste projeto" />
+        )}
+
         {canEdit && (
           <SupportTypesEditSection {...sectionProps}>
             <div className="flex flex-wrap gap-1.5">
@@ -311,7 +309,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
             "faltam" e botão de contribuir — pedido direto do usuário pra
             deixar isso mais organizado e fácil de agir. */}
         {hasFinancial && (
-          <div className="rounded-2xl border bg-card p-5 space-y-5">
+          <div id="financial-card" className="rounded-2xl border bg-card p-5 space-y-5">
             <FinancialEditSection {...sectionProps}>
               <>
                 {project.goal_amount && pct !== null && (
@@ -363,6 +361,8 @@ export default async function ProjetoPublicoPage({ params }: Props) {
           </div>
         )}
 
+        {hasFinancial && !canEdit && <FloatingSupportCta targetId="financial-card" />}
+
         {hasFinancial && project.status === 'active' && (
           <FundingProjectionCard
             raisedAmount={project.current_amount}
@@ -377,7 +377,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
 
         {/* Outras formas de apoio */}
         {activeSupportTypes.filter(t => t.key !== 'financial').length > 0 && (
-          <div className="space-y-3">
+          <div className="rounded-2xl border bg-card p-5 space-y-3">
             <h2 className="font-semibold">Outras formas de apoiar</h2>
             <div className="space-y-2">
               {activeSupportTypes.filter(t => t.key !== 'financial').map(t => (
@@ -405,7 +405,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
 
         {/* Se não tem financeiro, mostra todos os tipos como cards */}
         {!hasFinancial && activeSupportTypes.length > 0 && (
-          <div className="space-y-3">
+          <div className="rounded-2xl border bg-card p-5 space-y-3">
             <h2 className="font-semibold">Como apoiar</h2>
             <div className="space-y-2">
               {activeSupportTypes.map(t => (
@@ -433,7 +433,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
 
         {/* Marcos */}
         {(totalMilestones > 0 || canEdit) && (
-          <div className="space-y-3">
+          <div className="rounded-2xl border bg-card p-5 space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold">Marcos</h2>
               {totalMilestones > 0 && <span className="text-sm text-muted-foreground">{completedCount}/{totalMilestones} concluídos</span>}
@@ -461,7 +461,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
         {/* Galeria — fotos avulsas que representam o projeto, separadas da
             capa única e dos posts vinculados (que aparecem em "Atualizações"). */}
         {(snapshot.galleryImages.length > 0 || canEdit) && (
-          <div className="space-y-3">
+          <div className="rounded-2xl border bg-card p-5 space-y-3">
             <h2 className="font-semibold">Fotos do projeto</h2>
             <GalleryEditSection {...sectionProps}>
               {snapshot.galleryImages.length > 0 ? (
@@ -481,7 +481,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
 
         {/* História por trás */}
         {(project.letter || canEdit) && (
-          <div className="space-y-3">
+          <div id="project-story" className="rounded-2xl border bg-card p-5 space-y-3">
             <h2 className="font-semibold">A história por trás deste projeto</h2>
             <LetterEditSection {...sectionProps}>
               {project.letter ? (
@@ -497,17 +497,27 @@ export default async function ProjetoPublicoPage({ params }: Props) {
           </div>
         )}
 
-        {/* Atualizações — posts vinculados a este projeto (caminho de volta) */}
+        {/* Atualizações — posts vinculados a este projeto (caminho de volta).
+            Cartão sem padding horizontal (`overflow-hidden` em vez de `p-5`)
+            porque `ProfilePostsGrid` usa `-mx-4` pra sangrar a grade até a
+            borda contra o `px-4` da página — com `p-5` uniforme ela vazaria
+            alguns pixels pra fora dos cantos arredondados do cartão. Em vez
+            disso, o `px-4` fica só no wrapper direto da grade, cancelado
+            pelo mesmo `-mx-4`, e a grade sangra até a borda do cartão (que
+            corta os cantos com `overflow-hidden`) — mesmo efeito visual do
+            grid do perfil, só que dentro do cartão. */}
         {updatesWithProfile.length > 0 && (
-          <div className="space-y-3">
-            <h2 className="font-semibold">Atualizações</h2>
-            <ProfilePostsGrid posts={updatesWithProfile} visitorLocale={visitorLocale} canEdit={canEdit} />
+          <div className="rounded-2xl border bg-card overflow-hidden">
+            <h2 className="font-semibold p-5 pb-3">Atualizações</h2>
+            <div className="px-4">
+              <ProfilePostsGrid posts={updatesWithProfile} visitorLocale={visitorLocale} canEdit={canEdit} />
+            </div>
           </div>
         )}
 
         {/* Projetos anteriores do mesmo missionário */}
         {pastProjects && pastProjects.length > 0 && (
-          <div className="space-y-3">
+          <div className="rounded-2xl border bg-card p-5 space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold">Trajetória de {profile.display_name}</h2>
               <Link href={`/${username}/trajetoria`} className="text-xs text-primary hover:underline">Ver tudo</Link>
