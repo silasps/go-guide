@@ -79,7 +79,7 @@ export function ProfileTabs({ username, hasTrajectory, isMissionary, canEdit, vi
     >
       <div className="max-w-xl mx-auto flex items-center gap-1">
         <BackButton
-          href={viewerUserId ? '/dashboard' : '/'}
+          href={viewerUserId ? '/dashboard' : '/explorar'}
           label={viewerUserId ? t('backToDashboard') : t('backToHome')}
           className="shrink-0"
         />
