@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { hasInAppNavigation } from '@/lib/navigation-tracker'
 
 interface BackButtonProps {
   /** Destino usado só como rede de segurança quando não há histórico pra
@@ -26,7 +27,10 @@ export function BackButton({ href, onClick, label, className }: BackButtonProps)
 
   function handleClick() {
     if (onClick) return onClick()
-    if (typeof window !== 'undefined' && window.history.length > 1) router.back()
+    // `window.history.length > 1` sozinho não basta — abas novas (link
+    // compartilhado) às vezes já chegam com length > 1 sem ter pra onde
+    // voltar de verdade dentro do app (ver `navigation-tracker.ts`).
+    if (hasInAppNavigation()) router.back()
     else if (href) router.push(href)
   }
 

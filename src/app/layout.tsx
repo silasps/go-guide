@@ -6,6 +6,7 @@ import './globals.css'
 import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from '@/components/theme-provider'
 import { NavigationProgress } from '@/components/navigation-progress'
+import { NavigationTracker } from '@/components/navigation-tracker'
 import { SplashScreen } from '@/components/splash-screen'
 
 const inter = Inter({
@@ -66,6 +67,7 @@ export default async function RootLayout({
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <NavigationProgress />
+            <NavigationTracker />
             {children}
             <Toaster richColors position="top-right" />
           </ThemeProvider>
