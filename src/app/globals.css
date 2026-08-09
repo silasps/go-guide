@@ -139,11 +139,15 @@
   * {
     @apply border-border outline-ring/50;
   }
-  html, body {
+  html {
     overflow-x: hidden;
-    /* Padrão do sistema: a página nunca se move lateralmente — só rolagem
-       vertical. Isso não afeta carrosséis/áreas de scroll horizontal
-       intencionais (cada um cuida do próprio overscroll-behavior). */
+    /* Só em `html`, não em `body`: setar overflow-x sem overflow-y
+       explícito faz o overflow-y computar como `auto` (regra do CSS
+       Overflow Module) — em `body` isso o transforma num scroll
+       container próprio e quebra `position: sticky` de tudo dentro
+       dele (grudava relativo ao scrollTop do body, sempre 0, em vez do
+       scroll real do `html`). Página nunca se move lateralmente, só
+       rolagem vertical — carrosséis cuidam do próprio overscroll. */
     overscroll-behavior-x: none;
   }
   body {

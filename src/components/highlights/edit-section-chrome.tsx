@@ -10,7 +10,7 @@ export function EditPencilButton({ onClick, label }: { onClick: () => void; labe
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="absolute top-0 right-0 h-7 w-7 flex items-center justify-center rounded-full bg-background/90 backdrop-blur ring-1 ring-foreground/10 text-muted-foreground hover:text-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+      className="absolute top-0 right-0 h-7 w-7 flex items-center justify-center rounded-full bg-background/90 backdrop-blur ring-1 ring-foreground/10 text-muted-foreground hover:text-foreground transition-colors"
     >
       <Pencil className="h-3.5 w-3.5" />
     </button>
