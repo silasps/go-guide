@@ -74,7 +74,7 @@ function GridThumbnail({ post, visitorLocale }: { post: PostWithProfile; visitor
     // nunca texto cru sobre cinza. Fundo na cor do perfil (accent_color) +
     // gradiente escuro sutil garante contraste do texto branco em cima,
     // independente do tom da cor escolhida.
-    <div className="relative h-full w-full flex items-center justify-center p-4 text-center" style={{ backgroundColor: post.profile.accent_color || '#6366f1' }}>
+    <div className="relative h-full w-full flex items-center justify-center p-4 text-center" style={{ backgroundColor: post.profile.accent_color || '#34390c' }}>
       <div className="absolute inset-0 bg-gradient-to-br from-black/10 via-transparent to-black/30" />
       <p className="relative text-[11px] leading-snug line-clamp-6 text-white font-medium">{text}</p>
     </div>

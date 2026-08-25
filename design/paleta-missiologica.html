@@ -1,0 +1,736 @@
+<title>Paleta Missiológica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --paper: oklch(0.982 0.004 75);
+    --paper-raised: oklch(0.995 0.003 75);
+    --ink: oklch(0.22 0.016 60);
+    --ink-soft: oklch(0.46 0.014 60);
+    --ink-faint: oklch(0.62 0.01 60);
+    --line: oklch(0.89 0.008 60);
+    --line-soft: oklch(0.93 0.006 60);
+    --old-primary: oklch(0.53 0.21 277);
+    --old-primary-soft: oklch(0.53 0.21 277 / 10%);
+
+    --serif: "Fraunces", "Iowan Old Style", "Palatino Linotype", serif;
+    --sans: "Work Sans", -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", "SF Mono", ui-monospace, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: oklch(0.19 0.012 60);
+      --paper-raised: oklch(0.235 0.014 60);
+      --ink: oklch(0.94 0.008 60);
+      --ink-soft: oklch(0.74 0.012 60);
+      --ink-faint: oklch(0.56 0.012 60);
+      --line: oklch(0.32 0.014 60);
+      --line-soft: oklch(0.27 0.012 60);
+      --old-primary: oklch(0.72 0.13 277);
+      --old-primary-soft: oklch(0.72 0.13 277 / 14%);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: oklch(0.19 0.012 60);
+    --paper-raised: oklch(0.235 0.014 60);
+    --ink: oklch(0.94 0.008 60);
+    --ink-soft: oklch(0.74 0.012 60);
+    --ink-faint: oklch(0.56 0.012 60);
+    --line: oklch(0.32 0.014 60);
+    --line-soft: oklch(0.27 0.012 60);
+    --old-primary: oklch(0.72 0.13 277);
+    --old-primary-soft: oklch(0.72 0.13 277 / 14%);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  .wrap {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 5rem 1.75rem 7rem;
+  }
+
+  /* ---------- Masthead ---------- */
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: block;
+    margin-bottom: 1.1rem;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(2.1rem, 5vw, 3.15rem);
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    margin: 0 0 1.1rem;
+    text-wrap: balance;
+    max-width: 15ch;
+  }
+  .lede {
+    font-size: 1.09rem;
+    color: var(--ink-soft);
+    max-width: 62ch;
+    margin: 0;
+  }
+  .masthead-meta {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+  }
+
+  h2 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 1.6rem;
+    letter-spacing: -0.005em;
+    margin: 0 0 0.6rem;
+    text-wrap: balance;
+  }
+  h3 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 1.05rem;
+    margin: 0 0 0.35rem;
+  }
+  p { margin: 0 0 1rem; }
+  p:last-child { margin-bottom: 0; }
+
+  section { margin-top: 5rem; }
+  .section-label {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 0.9rem;
+    display: block;
+  }
+
+  /* ---------- Diagnosis block ---------- */
+  .diagnosis {
+    display: grid;
+    grid-template-columns: minmax(180px, 240px) 1fr;
+    gap: 2rem;
+    align-items: start;
+    padding: 1.75rem;
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  .diagnosis-swatch {
+    aspect-ratio: 4 / 3;
+    border-radius: 10px;
+    background: var(--old-primary);
+    display: flex;
+    align-items: flex-end;
+    padding: 0.85rem;
+  }
+  .diagnosis-swatch span {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: oklch(0.98 0.02 277);
+    background: oklch(0 0 0 / 20%);
+    padding: 0.2rem 0.5rem;
+    border-radius: 5px;
+  }
+  .diagnosis-copy ul {
+    margin: 0.9rem 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.6rem;
+  }
+  .diagnosis-copy li {
+    padding-left: 1.15rem;
+    position: relative;
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+  }
+  .diagnosis-copy li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.55em;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--old-primary);
+  }
+
+  /* ---------- Criteria ---------- */
+  .criteria {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+    margin-top: 1.5rem;
+  }
+  .criteria .crit {
+    border-top: 2px solid var(--ink);
+    padding-top: 0.7rem;
+  }
+  .criteria .crit b {
+    display: block;
+    font-size: 0.92rem;
+    margin-bottom: 0.3rem;
+  }
+  .criteria .crit span {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+
+  /* ---------- Candidate ---------- */
+  .candidate {
+    margin-top: 3.5rem;
+    padding-top: 2.75rem;
+    border-top: 1px solid var(--line);
+  }
+  .candidate-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.4rem;
+  }
+  .candidate-name {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 2rem;
+    letter-spacing: -0.01em;
+  }
+  .candidate-thesis {
+    font-size: 1.05rem;
+    color: var(--ink-soft);
+    max-width: 60ch;
+    margin: 0.5rem 0 2rem;
+  }
+
+  .candidate-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 2.5rem;
+    align-items: start;
+  }
+  .candidate-rationale h3 {
+    margin-top: 1.4rem;
+  }
+  .candidate-rationale h3:first-child { margin-top: 0; }
+  .candidate-rationale p {
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+  }
+
+  /* Swatch strip */
+  .swatches {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.6rem;
+    margin-bottom: 1.5rem;
+  }
+  .swatch {
+    border-radius: 10px;
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 0.6rem;
+    border: 1px solid var(--line-soft);
+  }
+  .swatch b {
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+  .swatch span {
+    display: block;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    opacity: 0.85;
+    margin-top: 0.15rem;
+  }
+
+  /* Mockup */
+  .mockup {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 1.5rem;
+  }
+  .mockup-btn-row { display: flex; gap: 0.6rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .mockup-btn {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 0.55rem 1.05rem;
+    border-radius: 9px;
+    border: none;
+    cursor: default;
+  }
+  .mockup-btn.outline {
+    background: transparent;
+    border: 1.5px solid currentColor;
+  }
+  .mockup-chip-row { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; }
+  .mockup-chip {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+  }
+  .mockup-card {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.85rem;
+    border-radius: 11px;
+    background: var(--paper);
+    border: 1px solid var(--line-soft);
+  }
+  .mockup-ring {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    padding: 2px;
+    flex-shrink: 0;
+  }
+  .mockup-ring-inner {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: var(--line-soft);
+    border: 2px solid var(--paper-raised);
+  }
+  .mockup-card-text b { display: block; font-size: 0.88rem; }
+  .mockup-card-text span { font-size: 0.78rem; color: var(--ink-faint); }
+  .mockup-progress {
+    margin-top: 0.65rem;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--line-soft);
+    overflow: hidden;
+  }
+  .mockup-progress i { display: block; height: 100%; width: 62%; border-radius: 3px; }
+  .mockup-link { font-size: 0.85rem; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+
+  /* ---------- Tonal variants ---------- */
+  .variant-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+  .variant-card {
+    position: relative;
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    padding: 1.1rem;
+  }
+  .variant-card.is-recommended {
+    border-color: var(--c-primary);
+    box-shadow: 0 0 0 1px var(--c-primary);
+  }
+  .variant-badge {
+    position: absolute;
+    top: -0.6rem;
+    left: 1rem;
+    background: var(--c-primary);
+    color: var(--c-primary-fg);
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+  }
+  .variant-swatches {
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 0.7rem;
+  }
+  .variant-swatch {
+    width: 2.2rem;
+    height: 2.2rem;
+    border-radius: 8px;
+  }
+  .variant-card b { display: block; font-family: var(--serif); font-size: 1.05rem; margin-bottom: 0.15rem; }
+  .variant-code { font-family: var(--mono); font-size: 0.66rem; color: var(--ink-faint); display: block; margin-bottom: 0.5rem; }
+  .variant-card p { font-size: 0.82rem; color: var(--ink-soft); margin: 0; }
+  .variant-card .mockup-btn { font-size: 0.78rem; padding: 0.45rem 0.85rem; }
+
+  /* ---------- Comparison table ---------- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1.5rem;
+    font-size: 0.88rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.75rem 0.9rem;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+  }
+  td.name { font-family: var(--serif); font-weight: 600; font-size: 0.98rem; }
+  td { color: var(--ink-soft); }
+  .table-wrap { overflow-x: auto; }
+
+  /* ---------- Recommendation ---------- */
+  .rec {
+    margin-top: 5rem;
+    padding: 2rem 2.25rem;
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 16px;
+  }
+  .rec .section-label { color: oklch(0.7 0.01 60); }
+  .rec h2 { color: var(--paper); }
+  .rec p { color: oklch(0.82 0.01 60); font-size: 0.97rem; }
+  .rec strong { color: var(--paper); }
+
+  .next-steps {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+  .next-steps div b {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: block;
+    margin-bottom: 0.4rem;
+  }
+  .next-steps div p { font-size: 0.9rem; color: var(--ink-soft); }
+
+  @media (max-width: 720px) {
+    .diagnosis { grid-template-columns: 1fr; }
+    .criteria { grid-template-columns: repeat(2, 1fr); }
+    .candidate-grid { grid-template-columns: 1fr; }
+    .next-steps { grid-template-columns: 1fr; }
+    .variant-grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <span class="eyebrow">Estudo de identidade visual · go_guide</span>
+    <h1>Uma cor para carregar a missão</h1>
+    <p class="lede">
+      Hoje o roxo-azulado do sistema é herança de template de SaaS — não carrega nenhum significado
+      próprio. Este documento propõe três direções alternativas, cada uma ancorada em psicologia
+      das cores e em simbolismo bíblico/missiológico, para substituir a cor primária do produto.
+    </p>
+    <div class="masthead-meta">
+      <span>3 direções</span>
+      <span>4 critérios de avaliação</span>
+      <span>1 recomendação</span>
+    </div>
+  </header>
+
+  <section>
+    <span class="section-label">O problema</span>
+    <div class="diagnosis">
+      <div class="diagnosis-swatch"><span>oklch(0.53 0.21 277)</span></div>
+      <div class="diagnosis-copy">
+        <h2 style="margin-bottom:0.3rem;">Índigo — o roxo-azulado atual</h2>
+        <p style="color:var(--ink-soft); font-size:0.95rem;">É a cor mais comum de produtos SaaS recentes — Stripe, Linear e centenas de starters de design system usam praticamente o mesmo tom. Tecnicamente correta, mas muda nada sobre o que o produto é.</p>
+        <ul>
+          <li>Sem raiz bíblica ou missiológica conhecida — é uma escolha de tecnologia, não de propósito.</li>
+          <li>Indistinguível de qualquer outro app de produtividade ou fintech.</li>
+          <li>Psicologicamente associada a luxo/tecnologia corporativa — o oposto do tom humilde e relacional que a plataforma quer comunicar.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <span class="section-label">Critérios usados pra avaliar cada direção</span>
+    <h2>Como pensamos sobre isso</h2>
+    <div class="criteria">
+      <div class="crit"><b>Significado</b><span>A cor carrega simbolismo bíblico ou missiológico reconhecível, não é arbitrária.</span></div>
+      <div class="crit"><b>Diferenciação</b><span>Não parece mais um SaaS genérico — é reconhecível como "esse produto".</span></div>
+      <div class="crit"><b>Função</b><span>Funciona como cor de ação real: contraste de texto, sensação de "clicável", legível nos dois temas.</span></div>
+      <div class="crit"><b>Harmonia</b><span>Convive bem com o que já existe — verde de sucesso, âmbar de aviso, terracota de apoio, vermelho de erro.</span></div>
+    </div>
+  </section>
+
+  <!-- ================= CANDIDATE A — FOREST GREEN (REFINADO) ================= -->
+  <section class="candidate" style="--c-primary: oklch(0.33 0.065 116); --c-primary-fg: oklch(0.97 0.015 116); --c-accent: oklch(0.72 0.1 78); --c-accent-fg: oklch(0.24 0.05 78);">
+    <div class="candidate-head">
+      <span class="candidate-name">Colheita</span>
+      <span class="section-label" style="margin:0;">Direção escolhida — refinando o tom</span>
+    </div>
+    <p class="candidate-thesis">Verde-oliva profundo, puxado pro castanho — terra revirada, não pinheiro de cartão-postal. Um dourado de trigo maduro mais discreto como par.</p>
+
+    <div class="candidate-grid">
+      <div class="candidate-rationale">
+        <h3>Psicologia</h3>
+        <p>Verde é a cor mais universalmente associada a crescimento, vida, renovação e permissão para agir. Fechado e puxado pro castanho, ele perde qualquer semelhança com verde-menta de app de bem-estar e passa a comunicar solidez, maturidade, terra revirada — mais "chão" do que "folha".</p>
+        <h3>Raiz missiológica</h3>
+        <p>"A seara é grande, mas os trabalhadores são poucos" (Mt 9:37) — a metáfora central da missão é agrícola: plantar, regar, colher. Verde é a cor dos pastos verdejantes do Salmo 23, do ramo de oliveira, do fruto que permanece.</p>
+        <h3>Na prática</h3>
+        <p>Um tom mais escuro e dessaturado como este pede um pouco mais de atenção ao contraste em botões pequenos, mas ainda funciona com folga acima do mínimo de acessibilidade (AA) nos dois temas — já testado nas três variantes abaixo.</p>
+      </div>
+
+      <div>
+        <div class="swatches">
+          <div class="swatch" style="background: var(--c-primary); color: var(--c-primary-fg);"><b>Primária</b><span>oklch(.33 .065 116)</span></div>
+          <div class="swatch" style="background: var(--c-accent); color: var(--c-accent-fg);"><b>Trigo</b><span>oklch(.72 .10 78)</span></div>
+          <div class="swatch" style="background: oklch(0.94 0.02 116); color: oklch(0.28 0.05 116);"><b>Superfície</b><span>oklch(.94 .02 116)</span></div>
+        </div>
+        <div class="mockup">
+          <div class="mockup-btn-row">
+            <button class="mockup-btn" style="background: var(--c-primary); color: var(--c-primary-fg);">Faça parte</button>
+            <button class="mockup-btn outline" style="color: var(--c-primary);">Ver projeto</button>
+          </div>
+          <div class="mockup-chip-row">
+            <div class="mockup-chip" style="background: color-mix(in oklch, var(--c-primary) 14%, transparent);">🎁</div>
+            <div class="mockup-chip" style="background: color-mix(in oklch, var(--c-accent) 25%, transparent);">🙏</div>
+            <div class="mockup-chip" style="background: var(--old-primary-soft);">📣</div>
+          </div>
+          <div class="mockup-card">
+            <div class="mockup-ring" style="background: var(--c-primary);"><div class="mockup-ring-inner"></div></div>
+            <div class="mockup-card-text">
+              <b>Missão em Moçambique</b>
+              <span>R$ 4.180 de R$ 6.700</span>
+              <div class="mockup-progress"><i style="background: var(--c-primary);"></i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 2.5rem;">
+      <h3 style="margin-bottom: 0.3rem;">Três graus de "terroso"</h3>
+      <p style="font-size: 0.92rem; color: var(--ink-soft); max-width: 62ch; margin-bottom: 1.25rem;">Do mais próximo do verde-floresta original até o mais fechado, quase castanho. A do meio (Oliva) é o que eu recomendaria como ponto de equilíbrio.</p>
+      <div class="variant-grid">
+
+        <div class="variant-card" style="--c-primary: oklch(0.36 0.078 132); --c-primary-fg: oklch(0.97 0.015 132); --c-accent: oklch(0.74 0.11 82);">
+          <div class="variant-swatches">
+            <div class="variant-swatch" style="background: var(--c-primary);"></div>
+            <div class="variant-swatch" style="background: var(--c-accent);"></div>
+          </div>
+          <b>Musgo</b>
+          <span class="variant-code">oklch(.36 .078 132)</span>
+          <p>O passo mais leve — ainda claramente verde, só mais fechado que o original.</p>
+          <button class="mockup-btn" style="background: var(--c-primary); color: var(--c-primary-fg); margin-top: 0.75rem;">Faça parte</button>
+        </div>
+
+        <div class="variant-card is-recommended" style="--c-primary: oklch(0.33 0.065 116); --c-primary-fg: oklch(0.97 0.015 116); --c-accent: oklch(0.72 0.1 78);">
+          <span class="variant-badge">Recomendado</span>
+          <div class="variant-swatches">
+            <div class="variant-swatch" style="background: var(--c-primary);"></div>
+            <div class="variant-swatch" style="background: var(--c-accent);"></div>
+          </div>
+          <b>Oliva</b>
+          <span class="variant-code">oklch(.33 .065 116)</span>
+          <p>Puxa visivelmente pro castanho sem deixar de "ler" como verde. O ponto de equilíbrio.</p>
+          <button class="mockup-btn" style="background: var(--c-primary); color: var(--c-primary-fg); margin-top: 0.75rem;">Faça parte</button>
+        </div>
+
+        <div class="variant-card" style="--c-primary: oklch(0.29 0.05 100); --c-primary-fg: oklch(0.97 0.012 100); --c-accent: oklch(0.7 0.09 74);">
+          <div class="variant-swatches">
+            <div class="variant-swatch" style="background: var(--c-primary);"></div>
+            <div class="variant-swatch" style="background: var(--c-accent);"></div>
+          </div>
+          <b>Terra</b>
+          <span class="variant-code">oklch(.29 .05 100)</span>
+          <p>O mais fechado e dessaturado dos três — na fronteira entre verde-escuro e castanho.</p>
+          <button class="mockup-btn" style="background: var(--c-primary); color: var(--c-primary-fg); margin-top: 0.75rem;">Faça parte</button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= CANDIDATE B — CLAY ================= -->
+  <section class="candidate" style="--c-primary: oklch(0.5 0.135 42); --c-primary-fg: oklch(0.98 0.02 42); --c-accent: oklch(0.6 0.05 155); --c-accent-fg: oklch(0.99 0.02 155);">
+    <div class="candidate-head">
+      <span class="candidate-name">Caminho</span>
+    </div>
+    <p class="candidate-thesis">Terracota queimada, cor de barro e estrada — com um verde-sálvia empoeirado como contraponto. A cor da jornada, não do escritório.</p>
+
+    <div class="candidate-grid">
+      <div class="candidate-rationale">
+        <h3>Psicologia</h3>
+        <p>Terracota comunica calor humano, hospitalidade e humildade — é a cor do artesanal, não do corporativo. É também a cor menos usada por produtos de tecnologia, o que a torna a direção mais memorável das três.</p>
+        <h3>Raiz missiológica</h3>
+        <p>"Nós somos o barro, e tu és o oleiro" (Is 64:8) — pessoas comuns levando um tesouro em vasos de barro (2 Co 4:7). É também, literalmente, a cor da terra de estradas de campo missionário — poeira, tijolo cru, o caminho percorrido.</p>
+        <h3>Na prática</h3>
+        <p>É a única das três que já existe no sistema hoje — como cor de "apoio" (o laranja por trás dos ícones de doação). Promovê-la a cor primária unifica uma paleta que já estava, sem perceber, puxando pra esse lado. Exige mais cuidado de contraste que o verde para textos pequenos.</p>
+      </div>
+
+      <div>
+        <div class="swatches">
+          <div class="swatch" style="background: var(--c-primary); color: var(--c-primary-fg);"><b>Primária</b><span>oklch(.50 .135 42)</span></div>
+          <div class="swatch" style="background: var(--c-accent); color: var(--c-accent-fg);"><b>Sálvia</b><span>oklch(.60 .05 155)</span></div>
+          <div class="swatch" style="background: oklch(0.95 0.025 42); color: oklch(0.35 0.08 42);"><b>Superfície</b><span>oklch(.95 .025 42)</span></div>
+        </div>
+        <div class="mockup">
+          <div class="mockup-btn-row">
+            <button class="mockup-btn" style="background: var(--c-primary); color: var(--c-primary-fg);">Faça parte</button>
+            <button class="mockup-btn outline" style="color: var(--c-primary);">Ver projeto</button>
+          </div>
+          <div class="mockup-chip-row">
+            <div class="mockup-chip" style="background: color-mix(in oklch, var(--c-primary) 14%, transparent);">🎁</div>
+            <div class="mockup-chip" style="background: color-mix(in oklch, var(--c-accent) 25%, transparent);">🙏</div>
+            <div class="mockup-chip" style="background: var(--old-primary-soft);">📣</div>
+          </div>
+          <div class="mockup-card">
+            <div class="mockup-ring" style="background: var(--c-primary);"><div class="mockup-ring-inner"></div></div>
+            <div class="mockup-card-text">
+              <b>Missão em Moçambique</b>
+              <span>R$ 4.180 de R$ 6.700</span>
+              <div class="mockup-progress"><i style="background: var(--c-primary);"></i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= CANDIDATE C — TEAL ================= -->
+  <section class="candidate" style="--c-primary: oklch(0.44 0.09 200); --c-primary-fg: oklch(0.98 0.015 200); --c-accent: oklch(0.66 0.14 40); --c-accent-fg: oklch(0.99 0.02 40);">
+    <div class="candidate-head">
+      <span class="candidate-name">Águas Vivas</span>
+    </div>
+    <p class="candidate-thesis">Azul-petróleo profundo, entre o oceano e o rio — com um coral queimado como contraste. A cor da travessia e da confiança.</p>
+
+    <div class="candidate-grid">
+      <div class="candidate-rationale">
+        <h3>Psicologia</h3>
+        <p>Azul é, isoladamente, a cor mais associada a confiança, estabilidade e comunicação — por isso domina bancos, saúde e ONGs internacionais. Misturado com verde, o petróleo suaviza a frieza do azul puro sem perder a sensação de solidez.</p>
+        <h3>Raiz missiológica</h3>
+        <p>"Águas vivas" (Jo 4:14), o batismo, a travessia do mar — ir "até os confins da terra" é, literalmente, atravessar água. É também a cor mais próxima do que organizações missionárias internacionais já usam, o que ajuda no reconhecimento imediato de categoria.</p>
+        <h3>Na prática</h3>
+        <p>É a opção mais segura das três: excelente contraste em qualquer tema, nenhuma ambiguidade com os tons já usados no sistema. Em troca, é também a menos diferenciada — várias ONGs e apps de saúde já ocupam esse mesmo território visual.</p>
+      </div>
+
+      <div>
+        <div class="swatches">
+          <div class="swatch" style="background: var(--c-primary); color: var(--c-primary-fg);"><b>Primária</b><span>oklch(.44 .09 200)</span></div>
+          <div class="swatch" style="background: var(--c-accent); color: var(--c-accent-fg);"><b>Coral</b><span>oklch(.66 .14 40)</span></div>
+          <div class="swatch" style="background: oklch(0.94 0.025 200); color: oklch(0.32 0.06 200);"><b>Superfície</b><span>oklch(.94 .025 200)</span></div>
+        </div>
+        <div class="mockup">
+          <div class="mockup-btn-row">
+            <button class="mockup-btn" style="background: var(--c-primary); color: var(--c-primary-fg);">Faça parte</button>
+            <button class="mockup-btn outline" style="color: var(--c-primary);">Ver projeto</button>
+          </div>
+          <div class="mockup-chip-row">
+            <div class="mockup-chip" style="background: color-mix(in oklch, var(--c-primary) 12%, transparent);">🎁</div>
+            <div class="mockup-chip" style="background: color-mix(in oklch, var(--c-accent) 22%, transparent);">🙏</div>
+            <div class="mockup-chip" style="background: var(--old-primary-soft);">📣</div>
+          </div>
+          <div class="mockup-card">
+            <div class="mockup-ring" style="background: var(--c-primary);"><div class="mockup-ring-inner"></div></div>
+            <div class="mockup-card-text">
+              <b>Missão em Moçambique</b>
+              <span>R$ 4.180 de R$ 6.700</span>
+              <div class="mockup-progress"><i style="background: var(--c-primary);"></i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= COMPARISON ================= -->
+  <section>
+    <span class="section-label">Lado a lado</span>
+    <h2>Comparativo direto</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Direção</th><th>Significado</th><th>Diferenciação</th><th>Função como UI</th><th>Harmonia com o que existe</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="name">Colheita</td>
+            <td>Alta — crescimento e "a seara é grande"</td>
+            <td>Alta — pouco usado em SaaS</td>
+            <td>Excelente — verde já lê como "ação positiva"</td>
+            <td>Boa — precisa distinguir do verde de sucesso já existente</td>
+          </tr>
+          <tr>
+            <td class="name">Caminho</td>
+            <td>Alta — barro, jarros de barro, estrada</td>
+            <td>Muito alta — quase nenhum concorrente usa</td>
+            <td>Boa — exige mais cuidado de contraste</td>
+            <td>Ótima — já existe como cor de apoio no sistema</td>
+          </tr>
+          <tr>
+            <td class="name">Águas Vivas</td>
+            <td>Média-alta — travessia, águas vivas, batismo</td>
+            <td>Média — território já ocupado por ONGs</td>
+            <td>Excelente — o mais seguro dos três</td>
+            <td>Boa — nenhum conflito com tokens atuais</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= RECOMMENDATION ================= -->
+  <section class="rec">
+    <span class="section-label">Recomendação</span>
+    <h2>Colheita, no tom Oliva</h2>
+    <p><strong>oklch(0.33 0.065 116)</strong> — o do meio das três variantes. Fechado e puxado pro castanho o suficiente pra deixar de parecer "app de bem-estar", sem perder a legibilidade como verde nem o contraste como cor de botão/link nos dois temas.</p>
+    <p><strong>Musgo</strong> é a opção mais segura se, depois de ver rodando, achar que Oliva pesou demais. <strong>Terra</strong> fica pra quem quiser ir no limite do "quase castanho" — no dark mode ela pede mais atenção de contraste que as outras duas.</p>
+  </section>
+
+  <div class="next-steps">
+    <div>
+      <b>Escolha o tom</b>
+      <p>Me diga qual variante — Musgo, Oliva ou Terra — ou peça um ajuste fino (mais escuro, mais claro, mais ou menos saturado).</p>
+    </div>
+    <div>
+      <b>Eu aplico no sistema</b>
+      <p>Atualizo <code>globals.css</code> (tema claro e escuro), o <code>accent_color</code> padrão de novos perfis e os ícones de módulo na landing.</p>
+    </div>
+    <div>
+      <b>Testamos junto</b>
+      <p>Confiro contraste (WCAG AA) nos dois temas e te mostro o resultado rodando antes de fechar.</p>
+    </div>
+  </div>
+
+</div>
