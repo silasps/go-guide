@@ -38,7 +38,7 @@ interface Props {
   stripeAvailable: boolean
   heroImageUrl?: string | null
   heroImagePosition?: string
-  onBack: () => void
+  backHref: string
   user: SessionUser | null
   returnPath: string // caminho atual (com highlight_id se houver), usado no redirect de login/cadastro
   highlightId?: string
@@ -46,7 +46,7 @@ interface Props {
   initialCategoryId?: string | null
 }
 
-export function RecurringPledgeForm({ profileId, missionaryName, currency, paymentOptions, stripeAvailable, heroImageUrl = null, heroImagePosition, onBack, user, returnPath, highlightId, budgetCategories, initialCategoryId }: Props) {
+export function RecurringPledgeForm({ profileId, missionaryName, currency, paymentOptions, stripeAvailable, heroImageUrl = null, heroImagePosition, backHref, user, returnPath, highlightId, budgetCategories, initialCategoryId }: Props) {
   const t = useTranslations('RecurringPledge')
   const tPledge = useTranslations('PledgeForm')
   const [done, setDone] = useState(false)
@@ -77,7 +77,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
   if (!user) {
     return (
       <div className="min-h-screen bg-background">
-        <CheckoutHeader onBack={onBack} />
+        <CheckoutHeader backHref={backHref} />
         <div className="mx-auto flex min-h-[calc(100vh-56px)] max-w-md flex-col justify-center px-4 pb-8">
           <Card>
             <CardHeader>
@@ -101,7 +101,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
   if (done) {
     return (
       <div className="min-h-screen bg-background">
-        <CheckoutHeader onBack={onBack} />
+        <CheckoutHeader backHref={backHref} />
         <div className="mx-auto flex min-h-[calc(100vh-56px)] max-w-md flex-col justify-center px-4 pb-8">
           <Card>
             <CardContent className="py-12 text-center space-y-3">
@@ -181,7 +181,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
 
   return (
     <div className="min-h-screen bg-background">
-      <CheckoutHeader onBack={onBack} title={t('title', { name: missionaryName })} />
+      <CheckoutHeader backHref={backHref} title={t('title', { name: missionaryName })} />
 
       <div className="mx-auto max-w-md px-4 pt-[72px] pb-28 space-y-4">
         <DonationHero imageUrl={heroImageUrl} alt={missionaryName} objectPosition={heroImagePosition} />

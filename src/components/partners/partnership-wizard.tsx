@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { PledgeForm } from './pledge-form'
 import { RecurringPledgeForm } from './recurring-pledge-form'
@@ -38,27 +37,35 @@ interface Props {
 }
 
 export function PartnershipWizard({ profileId, username, initialChoice, missionaryName, missionStartYear, highlightId, highlightTitle, defaultCurrency, paymentOptions, budgetCategories, initialCategoryId, hasFinancialOptions, stripeAvailable, profileAvatarUrl, highlightCoverUrl, highlightCoverPosition, user }: Props) {
-  const [choice, setChoice] = useState<Choice | null>(initialChoice ?? null)
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  // Sem isso, o passo do wizard só existe no estado do React — ao ir pro
-  // Stripe Checkout (navegação de página de verdade, sai do app) e clicar
-  // em "voltar" lá, o histórico do navegador volta pra URL de /parceria tal
-  // como ela estava (sem `choice`), recarregando do zero na lista inicial
-  // em vez de voltar pra tela em que o usuário realmente estava (pedido
-  // direto do usuário). `replace` (não `push`) pra não empilhar uma entrada
-  // de histórico a cada clique dentro do wizard, só manter a URL atual em
-  // sincronia com o passo atual.
-  useEffect(() => {
+  // `choice` vem direto da URL (nunca de state próprio) — é a URL que manda,
+  // não o contrário. Isso é o que faz `router.back()` funcionar direito: ao
+  // escolher algo na lista, `goTo` empilha uma entrada de histórico de
+  // verdade (`push`), então voltar (seta do CheckoutHeader, botão do
+  // navegador, ou o botão "voltar" da própria página do Stripe Checkout)
+  // sempre volta pra tela imediatamente anterior de verdade — seja a lista
+  // do wizard (se foi por ela) ou a página de origem (projeto/perfil), se o
+  // usuário chegou direto num link profundo (`?choice=financial_once`) sem
+  // nunca ter visto a lista. Antes, `choice` era `useState` e "voltar"
+  // sempre resetava pra lista via `setChoice(null)`, ignorando de onde o
+  // usuário realmente veio (bug reportado pelo usuário).
+  const choice = (searchParams.get('choice') as Choice | null) ?? initialChoice ?? null
+
+  function goTo(next: Choice | null) {
     const params = new URLSearchParams(searchParams.toString())
-    if (choice) params.set('choice', choice)
+    if (next) params.set('choice', next)
     else params.delete('choice')
     const query = params.toString()
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [choice])
+    router.push(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }
+
+  // Destino de segurança só usado quando não há histórico de navegação real
+  // pra voltar (ex.: aba nova aberta direto num link profundo) — o clique
+  // normal sempre prefere `router.back()` de verdade (ver BackButton).
+  const listHref = `/${username}/parceria`
 
   if (choice === 'financial_once' || choice === 'financial_once_general') {
     return (
@@ -76,8 +83,8 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
         heroImagePosition={choice === 'financial_once' && highlightCoverUrl ? (highlightCoverPosition ?? undefined) : undefined}
         budgetCategories={choice === 'financial_once' ? budgetCategories : undefined}
         initialCategoryId={choice === 'financial_once' ? initialCategoryId : undefined}
-        onBack={() => setChoice(null)}
-        onBecomePartner={() => setChoice('financial_ongoing')}
+        backHref={listHref}
+        onBecomePartner={() => goTo('financial_ongoing')}
       />
     )
   }
@@ -93,7 +100,7 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
         stripeAvailable={stripeAvailable}
         heroImageUrl={highlightId ? (highlightCoverUrl ?? profileAvatarUrl) : profileAvatarUrl}
         heroImagePosition={highlightId && highlightCoverUrl ? (highlightCoverPosition ?? undefined) : undefined}
-        onBack={() => setChoice(null)}
+        backHref={listHref}
         user={user}
         returnPath={returnPath}
         highlightId={highlightId}
@@ -110,7 +117,7 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
     const typeMap = { prayer: 'prayer', ambassador: 'ambassador', volunteer: 'both' } as const
     return (
       <div className="min-h-screen bg-background">
-        <CheckoutHeader onBack={() => setChoice(null)} />
+        <CheckoutHeader backHref={listHref} />
         <div className="mx-auto max-w-md px-4 pt-[72px] pb-8">
           <PartnershipForm profileId={profileId} missionaryName={missionaryName} defaultType={typeMap[choice]} />
         </div>
@@ -130,7 +137,7 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
       {hasFinancialOptions && highlightId && (
         <button
           type="button"
-          onClick={() => setChoice('financial_once')}
+          onClick={() => goTo('financial_once')}
           className="w-full flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors text-left"
         >
           <span className="text-2xl shrink-0 h-10 w-10 rounded-full bg-support/10 flex items-center justify-center">💰</span>
@@ -143,7 +150,7 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
       {hasFinancialOptions && (
         <button
           type="button"
-          onClick={() => setChoice('financial_once_general')}
+          onClick={() => goTo('financial_once_general')}
           className="w-full flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors text-left"
         >
           <span className="text-2xl shrink-0 h-10 w-10 rounded-full bg-support/10 flex items-center justify-center">🎁</span>
@@ -156,7 +163,7 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
       {hasFinancialOptions && (
         <button
           type="button"
-          onClick={() => setChoice('financial_ongoing')}
+          onClick={() => goTo('financial_ongoing')}
           className="w-full flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors text-left"
         >
           <span className="text-2xl shrink-0 h-10 w-10 rounded-full bg-support/10 flex items-center justify-center">🔄</span>
@@ -171,7 +178,7 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
       )}
       <button
         type="button"
-        onClick={() => setChoice('prayer')}
+        onClick={() => goTo('prayer')}
         className="w-full flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors text-left"
       >
         <span className="text-2xl shrink-0">🙏</span>
@@ -182,7 +189,7 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
       </button>
       <button
         type="button"
-        onClick={() => setChoice('ambassador')}
+        onClick={() => goTo('ambassador')}
         className="w-full flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors text-left"
       >
         <span className="text-2xl shrink-0">📣</span>
@@ -193,7 +200,7 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
       </button>
       <button
         type="button"
-        onClick={() => setChoice('volunteer')}
+        onClick={() => goTo('volunteer')}
         className="w-full flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors text-left"
       >
         <span className="text-2xl shrink-0">🤝</span>

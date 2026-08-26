@@ -39,11 +39,11 @@ interface Props {
   heroImagePosition?: string
   budgetCategories?: BudgetCategoryOption[]
   initialCategoryId?: string | null
-  onBack: () => void
+  backHref: string
   onBecomePartner?: () => void
 }
 
-export function PledgeForm({ profileId, missionaryName, highlightId, highlightTitle, isRecurring, defaultCurrency, paymentOptions, stripeAvailable = false, heroImageUrl = null, heroImagePosition, budgetCategories, initialCategoryId, onBack, onBecomePartner }: Props) {
+export function PledgeForm({ profileId, missionaryName, highlightId, highlightTitle, isRecurring, defaultCurrency, paymentOptions, stripeAvailable = false, heroImageUrl = null, heroImagePosition, budgetCategories, initialCategoryId, backHref, onBecomePartner }: Props) {
   const t = useTranslations('PledgeForm')
   const [done, setDone] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -159,7 +159,7 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
   if (done) {
     return (
       <div className="min-h-screen bg-background">
-        <CheckoutHeader onBack={onBack} />
+        <CheckoutHeader backHref={backHref} />
         <div className="mx-auto flex min-h-[calc(100vh-56px)] max-w-md flex-col justify-center px-4 pb-8 space-y-3">
           <Card>
             <CardContent className="py-12 text-center space-y-3">
@@ -185,7 +185,7 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
 
   return (
     <div className="min-h-screen bg-background">
-      <CheckoutHeader onBack={onBack} title={title} />
+      <CheckoutHeader backHref={backHref} title={title} />
 
       <div className="mx-auto max-w-md px-4 pt-[72px] pb-28 space-y-4">
         <DonationHero imageUrl={heroImageUrl} alt={highlightTitle ?? missionaryName} objectPosition={heroImagePosition} />
