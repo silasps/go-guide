@@ -6,8 +6,7 @@ import { RecurringPledgeForm } from './recurring-pledge-form'
 import { PartnershipForm } from './partnership-form'
 import { PledgePaymentMethod } from '@/types/database'
 import type { BudgetCategoryOption } from './budget-category-select'
-import { BackButton } from '@/components/ui/back-button'
-import { LanguageSwitcher } from '@/components/marketing/language-switcher'
+import { CheckoutHeader } from './checkout-header'
 
 type Choice = 'financial_once' | 'financial_once_general' | 'financial_ongoing' | 'prayer' | 'ambassador' | 'volunteer'
 
@@ -89,12 +88,9 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
   if (choice === 'prayer' || choice === 'ambassador' || choice === 'volunteer') {
     const typeMap = { prayer: 'prayer', ambassador: 'ambassador', volunteer: 'both' } as const
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md space-y-6">
-          <div className="flex items-center justify-between">
-            <BackButton onClick={() => setChoice(null)} label="Voltar" />
-            <LanguageSwitcher compact />
-          </div>
+      <div className="min-h-screen bg-background">
+        <CheckoutHeader onBack={() => setChoice(null)} />
+        <div className="mx-auto max-w-md px-4 pt-[72px] pb-8">
           <PartnershipForm profileId={profileId} missionaryName={missionaryName} defaultType={typeMap[choice]} />
         </div>
       </div>
@@ -102,12 +98,9 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md space-y-6">
-      <div className="flex items-center justify-between">
-        <BackButton href={`/${username}`} label="Voltar ao perfil" />
-        <LanguageSwitcher compact />
-      </div>
+    <div className="min-h-screen bg-background">
+      <CheckoutHeader backHref={`/${username}`} backLabel="Voltar ao perfil" />
+      <div className="mx-auto max-w-md px-4 pt-[72px] pb-8">
       <div className="space-y-3">
       <div className="text-center mb-3">
         <h1 className="text-2xl font-bold">Faça parte com {missionaryName}</h1>

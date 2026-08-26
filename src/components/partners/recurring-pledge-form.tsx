@@ -10,8 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { BackButton } from '@/components/ui/back-button'
-import { LanguageSwitcher } from '@/components/marketing/language-switcher'
+import { CheckoutHeader } from './checkout-header'
 import { toast } from 'sonner'
 import { Loader2, CheckCircle } from 'lucide-react'
 import { toMasked, fromMasked, CURRENCIES } from '@/lib/currency-mask'
@@ -71,12 +70,9 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md space-y-3">
-          <div className="flex items-center justify-between">
-            <BackButton onClick={onBack} label="Voltar" />
-            <LanguageSwitcher compact />
-          </div>
+      <div className="min-h-screen bg-background">
+        <CheckoutHeader onBack={onBack} />
+        <div className="mx-auto flex min-h-[calc(100vh-56px)] max-w-md flex-col justify-center px-4 pb-8">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">{t('needsAccountTitle')}</CardTitle>
@@ -98,12 +94,9 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
 
   if (done) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md space-y-3">
-          <div className="flex items-center justify-between">
-            <BackButton onClick={onBack} label="Voltar" />
-            <LanguageSwitcher compact />
-          </div>
+      <div className="min-h-screen bg-background">
+        <CheckoutHeader onBack={onBack} />
+        <div className="mx-auto flex min-h-[calc(100vh-56px)] max-w-md flex-col justify-center px-4 pb-8">
           <Card>
             <CardContent className="py-12 text-center space-y-3">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
@@ -182,13 +175,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="fixed inset-x-0 top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-md items-center gap-2 px-2">
-          <BackButton onClick={onBack} label="Voltar" />
-          <h1 className="flex-1 font-semibold text-base truncate">{t('title', { name: missionaryName })}</h1>
-          <LanguageSwitcher compact />
-        </div>
-      </header>
+      <CheckoutHeader onBack={onBack} title={t('title', { name: missionaryName })} />
 
       <div className="mx-auto max-w-md px-4 pt-[72px] pb-28 space-y-4">
         <DonationHero imageUrl={heroImageUrl} alt={missionaryName} objectPosition={heroImagePosition} />

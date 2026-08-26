@@ -10,8 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
-import { BackButton } from '@/components/ui/back-button'
-import { LanguageSwitcher } from '@/components/marketing/language-switcher'
+import { CheckoutHeader } from './checkout-header'
 import { toast } from 'sonner'
 import { Loader2, CheckCircle, Upload } from 'lucide-react'
 import { PledgePaymentMethod } from '@/types/database'
@@ -155,12 +154,9 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
 
   if (done) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md space-y-3">
-          <div className="flex items-center justify-between">
-            <BackButton onClick={onBack} label="Voltar" />
-            <LanguageSwitcher compact />
-          </div>
+      <div className="min-h-screen bg-background">
+        <CheckoutHeader onBack={onBack} />
+        <div className="mx-auto flex min-h-[calc(100vh-56px)] max-w-md flex-col justify-center px-4 pb-8 space-y-3">
           <Card>
             <CardContent className="py-12 text-center space-y-3">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
@@ -185,13 +181,7 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="fixed inset-x-0 top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-md items-center gap-2 px-2">
-          <BackButton onClick={onBack} label="Voltar" />
-          <h1 className="flex-1 font-semibold text-base truncate">{title}</h1>
-          <LanguageSwitcher compact />
-        </div>
-      </header>
+      <CheckoutHeader onBack={onBack} title={title} />
 
       <div className="mx-auto max-w-md px-4 pt-[72px] pb-28 space-y-4">
         <DonationHero imageUrl={heroImageUrl} alt={highlightTitle ?? missionaryName} objectPosition={heroImagePosition} />
