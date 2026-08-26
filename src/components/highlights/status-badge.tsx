@@ -4,20 +4,21 @@ import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { useHighlightSectionSave } from '@/hooks/use-highlight-section-save'
 import { STATUS_OPTIONS } from '@/lib/highlights/project-status'
+import { cn } from '@/lib/utils'
 import type { SectionProps } from './section-types'
 
-type Props = Pick<SectionProps, 'canEdit' | 'snapshot' | 'highlightId' | 'profileId'>
+type Props = Pick<SectionProps, 'canEdit' | 'snapshot' | 'highlightId' | 'profileId'> & { className?: string }
 
 // Status precisa ficar visível E editável direto dali — não só dentro do
 // formulário de edição de datas, que ninguém abre pra só trocar o status
 // (feedback direto do usuário). Pra quem não pode editar, é só um badge.
-export function StatusBadge({ canEdit, snapshot, highlightId, profileId }: Props) {
+export function StatusBadge({ canEdit, snapshot, highlightId, profileId, className }: Props) {
   const { saving, save } = useHighlightSectionSave()
   const current = STATUS_OPTIONS.find((s) => s.value === snapshot.status)
   const variant = snapshot.status === 'completed' ? 'success' : 'secondary'
 
   if (!canEdit) {
-    return <Badge variant={variant} className="text-xs shrink-0">{current?.label ?? snapshot.status}</Badge>
+    return <Badge variant={variant} className={cn('text-xs shrink-0', className)}>{current?.label ?? snapshot.status}</Badge>
   }
 
   function handleSelect(status: string) {
@@ -36,7 +37,7 @@ export function StatusBadge({ canEdit, snapshot, highlightId, profileId }: Props
           <Badge
             variant={variant}
             render={<button type="button" />}
-            className="text-xs shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+            className={cn('text-xs shrink-0 cursor-pointer hover:opacity-80 transition-opacity', className)}
           >
             {saving ? '...' : (current?.label ?? snapshot.status)}
           </Badge>

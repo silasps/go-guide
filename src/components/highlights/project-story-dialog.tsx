@@ -25,7 +25,7 @@ export function ProjectStoryDialog({ triggerLabel, title, closeLabel, children }
       <DialogTrigger render={
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-full bg-secondary/15 hover:bg-secondary/25 text-secondary px-4 py-2.5 text-sm font-medium transition-colors"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary px-4 py-3 text-sm font-semibold transition-colors"
         >
           <BookOpen className="h-4 w-4" />
           {triggerLabel}

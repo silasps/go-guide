@@ -252,25 +252,28 @@ export default async function ProjetoPublicoPage({ params }: Props) {
                 </Avatar>
                 <span className="text-white text-xs font-medium">{profile.display_name}</span>
               </div>
-            </div>
-
-            {/* Cabeçalho */}
-            <div className="space-y-3 mt-3">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="font-heading text-2xl font-bold flex-1 min-w-0">{localizedTitle}</h1>
-                {/* Status precisa ficar visível E editável direto daqui —
-                    não só dentro do formulário de edição de datas
-                    (feedback direto do usuário). */}
-                <StatusBadge {...sectionProps} />
+              {/* Status + compartilhar sobrepostos na capa (não espremidos
+                  ao lado do título) — fundo opaco garante contraste com
+                  qualquer foto, e o alvo de toque fica bem maior que os
+                  ícones/badges soltos de antes (o usuário achou pequenos
+                  demais e quase invisíveis). */}
+              <div className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full bg-background/95 backdrop-blur-sm p-1 shadow-sm">
+                <StatusBadge {...sectionProps} className="h-6 px-2.5 text-[13px]" />
                 <ShareButton
                   iconOnly
                   variant="ghost"
+                  className="h-8 w-8"
                   url={`${SITE_URL}/${username}/projetos/${project.slug ?? project.id}`}
                   title={localizedTitle}
                   label="Compartilhar projeto"
                   copiedLabel="Link do projeto copiado"
                 />
               </div>
+            </div>
+
+            {/* Cabeçalho */}
+            <div className="space-y-3 mt-3">
+              <h1 className="font-heading text-2xl font-bold">{localizedTitle}</h1>
               {localizedScripture && (
                 <p className="text-sm italic text-muted-foreground border-l-2 border-primary/40 pl-3">{localizedScripture}</p>
               )}
