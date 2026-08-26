@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import { coverThumbnailSrc } from '@/lib/media/bunny-thumbnail'
 import { ProjectStory } from '@/types/database'
 import { ProjectStoryViewer } from './project-story-viewer'
 
@@ -37,7 +38,7 @@ export function ProjectStoriesRow({ stories }: Props) {
                 <div className="h-full w-full rounded-full overflow-hidden bg-muted">
                   {story.highlight.cover_url ? (
                     <Image
-                      src={story.highlight.cover_url}
+                      src={coverThumbnailSrc(story.highlight.cover_url)}
                       alt={story.highlight.title}
                       width={64}
                       height={64}

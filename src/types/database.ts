@@ -80,6 +80,8 @@ export interface Post {
   content: string | null
   media_urls: string[]
   media_aspect_ratio: MediaAspectRatio
+  media_status: 'ready' | 'processing' | 'failed'
+  media_bunny_video_id: string | null
   location: string | null
   published_at: string | null
   scheduled_at: string | null
@@ -133,6 +135,9 @@ export interface Highlight {
   current_amount: number
   currency: string
   cover_url: string | null
+  cover_media_type: 'image' | 'video'
+  cover_status: 'ready' | 'processing' | 'failed'
+  cover_bunny_video_id: string | null
   is_featured: boolean
   order_index: number
   status: HighlightStatus
@@ -149,6 +154,8 @@ export interface Highlight {
   original_locale: Locale
   title_translations: Partial<Record<Locale, ContentTranslation>>
   description_translations: Partial<Record<Locale, ContentTranslation>>
+  scripture_translations: Partial<Record<Locale, ContentTranslation>>
+  letter_translations: Partial<Record<Locale, ContentTranslation>>
   created_at: string
   updated_at: string
 }
@@ -181,6 +188,7 @@ export interface Milestone {
   highlight_id: string
   profile_id: string
   title: string
+  title_translations: Partial<Record<Locale, ContentTranslation>>
   is_completed: boolean
   completed_at: string | null
   order_index: number
@@ -481,7 +489,7 @@ export interface WhatsappConfig {
 
 // Joined types for queries
 export interface PostWithProfile extends Post {
-  profile: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url' | 'accent_color'>
+  profile: Pick<Profile, 'id' | 'username' | 'display_name' | 'avatar_url' | 'accent_color' | 'user_role'>
   highlight: Pick<Highlight, 'title' | 'slug' | 'category' | 'cover_url'> | null
   tags: PostTagWithProfile[]
   like_count: number

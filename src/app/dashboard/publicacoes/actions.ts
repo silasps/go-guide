@@ -42,6 +42,8 @@ export async function savePost(input: {
   type: PostType
   content: string
   mediaUrls: string[]
+  mediaBunnyVideoId?: string | null
+  mediaStatus?: 'ready' | 'processing' | 'failed'
   mediaAspectRatio?: MediaAspectRatio
   location?: string | null
   isDraft: boolean
@@ -87,6 +89,8 @@ export async function savePost(input: {
     type: input.type,
     content: input.content.trim() || null,
     media_urls: input.mediaUrls,
+    media_bunny_video_id: input.mediaBunnyVideoId ?? null,
+    media_status: input.mediaStatus ?? 'ready',
     media_aspect_ratio: input.mediaAspectRatio ?? '4:5',
     location: input.location?.trim() || null,
     is_draft: input.isDraft,
@@ -127,7 +131,6 @@ export async function savePost(input: {
     }
   }
 
-  revalidatePath('/dashboard/publicacoes')
   revalidatePath('/dashboard/feed')
 }
 

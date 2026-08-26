@@ -43,12 +43,18 @@ export function ProfileContentTabs({ posts, projects, historyBlocks, username, a
 
   if (tabs.length <= 1) {
     return posts.length ? (
-      <ProfilePostsGrid posts={posts} visitorLocale={visitorLocale} canEdit={canEdit} deepLinkPostId={deepLinkPostId} deepLinkComments={deepLinkComments} />
+      <div className="space-y-3">
+        <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">{t('postsHeading')}</h2>
+        <ProfilePostsGrid posts={posts} visitorLocale={visitorLocale} canEdit={canEdit} deepLinkPostId={deepLinkPostId} deepLinkComments={deepLinkComments} />
+      </div>
     ) : null
   }
 
+  const headingKey = tab === 'posts' ? 'postsHeading' : tab === 'projects' ? 'projectsHeading' : null
+
   return (
     <div className="space-y-3">
+      {headingKey && <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">{t(headingKey)}</h2>}
       <div className="flex border-y -mx-4">
         {tabs.map(({ id, Icon }) => (
           <button

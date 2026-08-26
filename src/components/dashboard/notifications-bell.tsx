@@ -38,8 +38,8 @@ const AREA_HREF: Record<NotificationArea, string> = {
   prayers: '/dashboard/oracoes',
   partners: '/dashboard/parceiros',
   financial: '/dashboard/financeiro/lancamentos',
-  comments: '/dashboard/publicacoes',
-  content: '/dashboard/publicacoes',
+  comments: '/dashboard/feed',
+  content: '/dashboard/feed',
 }
 
 const AREA_ICON: Record<NotificationArea, React.ComponentType<{ className?: string }>> = {

@@ -1,12 +1,11 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { Heart, MessageCircle, Share2, Tag as TagIcon, MoreHorizontal, Pencil, Archive, Trash2 } from 'lucide-react'
+import { Heart, Globe, MessageCircle, Share2, Tag as TagIcon, MoreHorizontal, Pencil, Archive, Trash2 } from 'lucide-react'
 import { PostTagWithProfile, PostWithProfile } from '@/types/database'
 import type { Locale } from '@/i18n/config'
 import { resolveLocalizedText } from '@/lib/i18n/resolve-content-locale'
@@ -16,7 +15,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { PostProjectLink } from '@/components/shared/post-project-link'
 import { PostCommentsSheet } from '@/components/shared/post-comments-sheet'
+import { InstagramVideoPlayer } from '@/components/shared/instagram-video-player'
 import { toggleLike, recordShare } from '@/app/dashboard/publicacoes/social-actions'
+import { useOptionalComposer } from '@/components/dashboard/post-composer-provider'
 
 const ASPECT_CLASS: Record<string, string> = {
   original: '',
@@ -36,7 +37,7 @@ interface Props {
 
 export function PostCard({ post, visitorLocale, canEdit = false, autoOpenComments = false }: Props) {
   const t = useTranslations('Feed')
-  const router = useRouter()
+  const composer = useOptionalComposer()
   const { text } = resolveLocalizedText(post.content, post.original_locale, post.translations, visitorLocale)
 
   const [liked, setLiked] = useState(post.viewer_has_liked)
@@ -153,7 +154,7 @@ export function PostCard({ post, visitorLocale, canEdit = false, autoOpenComment
               <MoreHorizontal className="h-4 w-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => router.push('/dashboard/publicacoes')} className="gap-2">
+              <DropdownMenuItem onClick={() => composer?.openComposer(post)} className="gap-2">
                 <Pencil className="h-3.5 w-3.5" />
                 {t('editPost')}
               </DropdownMenuItem>
@@ -240,16 +241,28 @@ function PostMedia({
   showTags: boolean
   onToggleTags: () => void
 }) {
-  if (!post.media_urls?.length) return null
+  const t = useTranslations('Feed')
   const aspectClass = ASPECT_CLASS[post.media_aspect_ratio] || 'aspect-[4/5]'
 
+  // Vídeo processando na Bunny ainda não tem media_urls — mas o post
+  // precisa renderizar o placeholder de "processando" mesmo assim.
   if (post.type === 'video') {
     return (
       <div className={cn('relative bg-muted', aspectClass)}>
-        <video src={post.media_urls[0]} controls className="w-full h-full object-cover" />
+        <InstagramVideoPlayer
+          src={post.media_urls[0] ?? ''}
+          status={post.media_status}
+          className="absolute inset-0"
+          processingLabel={t('videoProcessing')}
+          muteLabel={t('mute')}
+          unmuteLabel={t('unmute')}
+        />
+        <RoleBadge role={post.profile.user_role} />
       </div>
     )
   }
+
+  if (!post.media_urls?.length) return null
 
   if (post.type === 'carousel') {
     return (
@@ -267,6 +280,7 @@ function PostMedia({
             <span key={i} className={cn('h-1.5 w-1.5 rounded-full', i === activeSlide ? 'bg-white' : 'bg-white/40')} />
           ))}
         </div>
+        <RoleBadge role={post.profile.user_role} />
         {post.tags.length > 0 && <TagToggleButton onClick={onToggleTags} />}
       </div>
     )
@@ -276,7 +290,19 @@ function PostMedia({
     <div className={cn('relative bg-muted', aspectClass)}>
       <Image src={post.media_urls[0]} alt="" fill className="object-cover" />
       {showTags && <TagPins tags={post.tags.filter((tag) => tag.media_index === 0)} />}
+      <RoleBadge role={post.profile.user_role} />
       {post.tags.length > 0 && <TagToggleButton onClick={onToggleTags} />}
+    </div>
+  )
+}
+
+function RoleBadge({ role }: { role: 'missionary' | 'partner' }) {
+  const t = useTranslations('Feed')
+  const Icon = role === 'missionary' ? Heart : Globe
+  return (
+    <div className="absolute top-2 right-2 bg-card/95 text-foreground rounded-full px-2.5 py-1 shadow-sm flex items-center gap-1 text-xs font-medium">
+      <Icon className="h-3.5 w-3.5 text-primary" />
+      {t(role === 'missionary' ? 'roleMissionary' : 'rolePartner')}
     </div>
   )
 }

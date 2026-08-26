@@ -33,6 +33,79 @@ export async function POST(req: NextRequest) {
         stripe_subscription_id: String(session.subscription),
       }).eq('id', recurringPledgeId)
     }
+
+    const profileId = session.metadata?.pledge_profile_id
+    if (session.mode === 'payment' && profileId) {
+      const m = session.metadata!
+      const isAnonymous = m.pledge_is_anonymous === '1'
+      const reporterUserId = m.pledge_reporter_user_id || null
+      const amount = (session.amount_total ?? 0) / 100
+      const currency = (session.currency ?? 'brl').toUpperCase()
+
+      let partnerId: string | null = null
+      if (!isAnonymous && reporterUserId) {
+        const { data: existing } = await supabase.from('partners').select('id').eq('profile_id', profileId).eq('user_id', reporterUserId).maybeSingle()
+        if (existing) {
+          partnerId = existing.id
+        } else {
+          const { data: created } = await supabase.from('partners').insert({
+            profile_id: profileId,
+            user_id: reporterUserId,
+            name: m.pledge_name || 'Parceiro',
+            email: m.pledge_email || session.customer_details?.email || null,
+            type: 'financial',
+          }).select('id').single()
+          partnerId = created?.id ?? null
+        }
+      }
+
+      const { data: newPledge } = await supabase.from('pledges').insert({
+        highlight_id: m.pledge_highlight_id || null,
+        budget_category_id: m.pledge_budget_category_id || null,
+        profile_id: profileId,
+        partner_id: partnerId,
+        reporter_user_id: reporterUserId,
+        reporter_name: isAnonymous ? null : (m.pledge_name || null),
+        reporter_email: isAnonymous ? null : (m.pledge_email || session.customer_details?.email || null),
+        is_anonymous: isAnonymous,
+        message: m.pledge_message || null,
+        reported_amount: amount,
+        currency,
+        payment_method: 'stripe',
+        reported_at: new Date().toISOString(),
+        is_recurring_pledge: false,
+        status: 'confirmed',
+        reviewed_at: new Date().toISOString(),
+      }).select('id').single()
+
+      const { data: stripeMethod } = await supabase
+        .from('payment_methods')
+        .select('linked_account_id')
+        .eq('profile_id', profileId)
+        .eq('type', 'stripe')
+        .maybeSingle()
+
+      if (newPledge && stripeMethod?.linked_account_id) {
+        const { data: transaction } = await supabase.from('transactions').insert({
+          account_id: stripeMethod.linked_account_id,
+          profile_id: profileId,
+          created_by_user_id: null,
+          type: 'income',
+          amount,
+          currency,
+          description: `Oferta via Stripe — ${isAnonymous ? 'Apoiador anônimo' : (m.pledge_name || 'Doador')}`,
+          partner_id: partnerId,
+          highlight_id: m.pledge_highlight_id || null,
+          budget_category_id: m.pledge_budget_category_id || null,
+          source: 'api',
+          date: new Date().toISOString().slice(0, 10),
+        }).select('id').single()
+
+        if (transaction) {
+          await supabase.from('pledges').update({ confirmed_transaction_id: transaction.id }).eq('id', newPledge.id)
+        }
+      }
+    }
   }
 
   if (event.type === 'invoice.payment_succeeded') {

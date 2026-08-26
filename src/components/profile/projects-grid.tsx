@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import { coverThumbnailSrc } from '@/lib/media/bunny-thumbnail'
 import Link from 'next/link'
 import { Highlight } from '@/types/database'
 import type { Locale } from '@/i18n/config'
@@ -24,7 +25,7 @@ export function ProjectsGrid({ projects, username, accentColor, visitorLocale }:
           <Link key={p.id} href={`/${username}/projetos/${slug}`} className="relative aspect-[4/5] bg-muted overflow-hidden group">
             {p.cover_url ? (
               <Image
-                src={p.cover_url}
+                src={coverThumbnailSrc(p.cover_url)}
                 alt={title}
                 fill
                 sizes="33vw"

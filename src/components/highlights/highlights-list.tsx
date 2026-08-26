@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import { coverThumbnailSrc } from '@/lib/media/bunny-thumbnail'
 import Link from 'next/link'
 import { Highlight } from '@/types/database'
 import { formatCurrency } from '@/lib/utils'
@@ -67,7 +68,7 @@ export function HighlightsList({ highlights: initial, basePath = '/dashboard/des
             {/* Cover */}
             <div className="h-14 w-14 rounded-lg bg-muted overflow-hidden shrink-0">
               {h.cover_url
-                ? <Image src={h.cover_url} alt={h.title} width={112} height={112} className="object-cover h-full w-full" style={{ objectPosition: h.cover_position ?? '50% 50%' }} />
+                ? <Image src={coverThumbnailSrc(h.cover_url)} alt={h.title} width={112} height={112} className="object-cover h-full w-full" style={{ objectPosition: h.cover_position ?? '50% 50%' }} />
                 : <div className="h-full flex items-center justify-center text-xl">✨</div>
               }
             </div>

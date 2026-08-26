@@ -75,8 +75,8 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json()
   const { highlightId, profileId, title, description, goalTypes, category, goalAmount, currentAmount,
-    currency, coverUrl, coverPosition, tripStartDate, fundingDeadline, scripture, letter, status, milestones, budgetCategories,
-    galleryImages, originalLocale, titleTranslations, descriptionTranslations } = body
+    currency, coverUrl, coverPosition, coverMediaType, coverStatus, coverBunnyVideoId, tripStartDate, fundingDeadline, scripture, letter, status, milestones, budgetCategories,
+    galleryImages, originalLocale, titleTranslations, descriptionTranslations, scriptureTranslations, letterTranslations } = body
 
   try {
     await assertProfileAccess(profileId, user.id)
@@ -89,11 +89,11 @@ export async function POST(req: NextRequest) {
   // Rede de segurança server-side pro mesmo requisito já validado no
   // client (highlight-form.tsx/use-project-composer.ts) — só na criação;
   // projetos antigos sem capa continuam editáveis normalmente.
-  if (!highlightId && !coverUrl) {
+  if (!highlightId && !coverUrl && !coverBunnyVideoId) {
     return NextResponse.json({ error: 'Adicione uma foto de capa antes de salvar.' }, { status: 400 })
   }
 
-  const payload = {
+  const payload: Record<string, unknown> = {
     profile_id: profileId,
     title,
     description: description || null,
@@ -102,8 +102,10 @@ export async function POST(req: NextRequest) {
     goal_amount: goalAmount ?? null,
     current_amount: currentAmount ?? 0,
     currency,
-    cover_url: coverUrl ?? null,
     cover_position: coverPosition,
+    cover_media_type: coverMediaType ?? 'image',
+    cover_status: coverStatus ?? 'ready',
+    cover_bunny_video_id: coverBunnyVideoId ?? null,
     trip_start_date: tripStartDate ?? null,
     funding_deadline: fundingDeadline ?? null,
     scripture: scripture || null,
@@ -113,7 +115,12 @@ export async function POST(req: NextRequest) {
     original_locale: originalLocale ?? 'pt',
     title_translations: titleTranslations ?? {},
     description_translations: descriptionTranslations ?? {},
+    scripture_translations: scriptureTranslations ?? {},
+    letter_translations: letterTranslations ?? {},
   }
+  // coverUrl vem ausente quando um vídeo novo ainda está sendo processado
+  // pela Bunny — não sobrescreve a capa atual até o webhook confirmar.
+  if (coverUrl !== undefined) payload.cover_url = coverUrl
 
   try {
     let hId = highlightId
@@ -135,10 +142,11 @@ export async function POST(req: NextRequest) {
     if (hId) {
       await dbDelete(`milestones?highlight_id=eq.${hId}`)
       if (milestones.length > 0) {
-        await dbPost('milestones', milestones.map((m: { title: string; is_completed: boolean }, i: number) => ({
+        await dbPost('milestones', milestones.map((m: { title: string; titleTranslations?: Record<string, unknown>; is_completed: boolean }, i: number) => ({
           highlight_id: hId,
           profile_id: profileId,
           title: m.title,
+          title_translations: m.titleTranslations ?? {},
           is_completed: m.is_completed,
           completed_at: m.is_completed ? new Date().toISOString() : null,
           order_index: i,

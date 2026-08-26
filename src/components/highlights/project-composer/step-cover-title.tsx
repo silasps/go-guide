@@ -2,12 +2,14 @@
 
 import { useRef } from 'react'
 import { useTranslations } from 'next-intl'
+import { toast } from 'sonner'
 import { ImagePlus } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { LocaleContentTabs } from '@/components/dashboard/locale-content-tabs'
 import { createMediaDraft } from '@/components/shared/media-editor/types'
 import { ImageCropEditor } from '@/components/shared/media-editor/image-crop-editor'
+import { getMediaType, validateVideo, validateVideoDuration } from '@/lib/media/compress'
 import type { useProjectComposer } from './use-project-composer'
 
 interface Props {
@@ -23,9 +25,17 @@ export function StepCoverTitle({ composer }: Props) {
     descTranslations, setDescTranslations, setDescSources, translateField,
   } = composer
 
-  function handleFile(file: File | undefined) {
+  async function handleFile(file: File | undefined) {
     if (!file) return
-    setCoverMedia(createMediaDraft(file, 'image'))
+    const mediaType = getMediaType(file)
+    if (mediaType === 'unknown') { toast.error(t('coverUnsupportedFormat')); return }
+    if (mediaType === 'video') {
+      const validation = validateVideo(file)
+      if (!validation.valid) { toast.error(validation.error!); return }
+      const durationCheck = await validateVideoDuration(file)
+      if (!durationCheck.valid) { toast.error(durationCheck.error!); return }
+    }
+    setCoverMedia(createMediaDraft(file, mediaType))
   }
 
   return (
@@ -36,17 +46,21 @@ export function StepCoverTitle({ composer }: Props) {
           <span className="text-xs text-muted-foreground">{t('coverHint')}</span>
         </div>
 
-        <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
+        <input ref={inputRef} type="file" accept="image/*,video/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
 
         {coverMedia ? (
           <div className="space-y-2">
-            <ImageCropEditor
-              media={coverMedia}
-              aspect={coverAspect}
-              onAspectChange={setCoverAspect}
-              onPositionChange={(position) => setCoverMedia((prev) => (prev ? { ...prev, position } : prev))}
-              onZoomChange={(zoom) => setCoverMedia((prev) => (prev ? { ...prev, zoom } : prev))}
-            />
+            {coverMedia.type === 'video' ? (
+              <video src={coverMedia.previewUrl} controls className="w-full aspect-video rounded-lg bg-black object-cover" />
+            ) : (
+              <ImageCropEditor
+                media={coverMedia}
+                aspect={coverAspect}
+                onAspectChange={setCoverAspect}
+                onPositionChange={(position) => setCoverMedia((prev) => (prev ? { ...prev, position } : prev))}
+                onZoomChange={(zoom) => setCoverMedia((prev) => (prev ? { ...prev, zoom } : prev))}
+              />
+            )}
             <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()}>
               {t('changeCover')}
             </Button>

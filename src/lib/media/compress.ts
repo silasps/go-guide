@@ -10,7 +10,7 @@ const IMAGE_OPTIONS = {
 
 export const VIDEO_MAX_SIZE_MB = 500
 export const VIDEO_MAX_SIZE_BYTES = VIDEO_MAX_SIZE_MB * 1024 * 1024
-export const VIDEO_MAX_DURATION_SECONDS = 30
+export const VIDEO_MAX_DURATION_SECONDS = 60
 
 export async function compressImage(file: File): Promise<File> {
   if (!file.type.startsWith('image/')) return file

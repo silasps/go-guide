@@ -81,7 +81,7 @@ export default async function AICopilotPage() {
                 <p className="text-xs text-muted-foreground mt-1">{t('translateCost')}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Link href="/dashboard/publicacoes/nova" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>
+                <Link href={`/${profile!.username}`} className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>
                   {t('translateCtaPosts')}
                 </Link>
                 <Link href="/dashboard/configuracoes" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>

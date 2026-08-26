@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
+import { coverThumbnailSrc } from '@/lib/media/bunny-thumbnail'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
@@ -99,7 +100,7 @@ export function HeaderSearch() {
                 >
                   <div className="shrink-0 h-8 w-8 rounded-md overflow-hidden bg-muted">
                     {p.cover_url && (
-                      <Image src={p.cover_url} alt="" width={32} height={32} className="object-cover h-full w-full" style={{ objectPosition: p.cover_position ?? '50% 50%' }} />
+                      <Image src={coverThumbnailSrc(p.cover_url)} alt="" width={32} height={32} className="object-cover h-full w-full" style={{ objectPosition: p.cover_position ?? '50% 50%' }} />
                     )}
                   </div>
                   <div className="min-w-0">

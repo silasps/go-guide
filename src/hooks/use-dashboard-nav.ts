@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/client'
 import { UserRole } from '@/types/database'
 import {
   Home,
-  FileText,
   FolderOpen,
   Users,
   Heart,
@@ -38,7 +37,6 @@ export function useNav(role: UserRole) {
   return [
     feedItem,
     { href: '/dashboard/painel', label: t('overview'), icon: LayoutDashboard, exact: false },
-    { href: '/dashboard/publicacoes', label: t('posts'), icon: FileText, exact: false },
     { href: '/dashboard/projetos', label: t('projects'), icon: FolderOpen, exact: false },
     { href: '/dashboard/parceiros', label: t('partners'), icon: Users, exact: false },
     { href: '/dashboard/oracoes', label: t('prayers'), icon: Heart, exact: false },

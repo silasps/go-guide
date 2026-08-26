@@ -8,30 +8,19 @@ import { Highlight, Milestone, ProjectBudgetCategory, ProjectGalleryImage } from
 import type { Locale } from '@/i18n/config'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { toMasked, fromMasked, reformatMasked, CURRENCIES } from '@/lib/currency-mask'
 import { CoverEditor, parsePosition, uniqueFileName } from './cover-editor'
+import { uploadVideoToBunny } from '@/lib/media/upload-bunny-video'
 import { MilestonesEditor, type MilestoneDraft } from './milestones-editor'
 import { BudgetCategoriesEditor, type BudgetCategoryDraft } from './budget-categories-editor'
 import { GalleryEditor, type GalleryImageDraft } from './gallery-editor'
 import { SupportTypesPicker } from './support-types-picker'
 import { LocaleContentTabs } from '@/components/dashboard/locale-content-tabs'
 import { PROJECT_CATEGORIES } from '@/lib/highlights/project-categories'
-
-function initialTranslations(translations: Partial<Record<Locale, { content: string }>> | undefined) {
-  const t: Partial<Record<Locale, string>> = {}
-  for (const [locale, v] of Object.entries(translations ?? {})) t[locale as Locale] = v.content
-  return t
-}
-
-function initialSources(translations: Partial<Record<Locale, { source: 'ai' | 'human' }>> | undefined) {
-  const s: Partial<Record<Locale, 'ai' | 'human'>> = {}
-  for (const [locale, v] of Object.entries(translations ?? {})) s[locale as Locale] = v.source
-  return s
-}
+import { initialTranslations, initialSources, buildTranslationsPayload, translateContent } from '@/lib/i18n/content-translations'
 
 interface Props {
   highlight?: Highlight & { milestones?: Milestone[]; budgetCategories?: ProjectBudgetCategory[]; galleryImages?: ProjectGalleryImage[] }
@@ -49,6 +38,10 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
   const [titleSources, setTitleSources] = useState(() => initialSources(highlight?.title_translations))
   const [descTranslations, setDescTranslations] = useState(() => initialTranslations(highlight?.description_translations))
   const [descSources, setDescSources] = useState(() => initialSources(highlight?.description_translations))
+  const [scriptureTranslations, setScriptureTranslations] = useState(() => initialTranslations(highlight?.scripture_translations))
+  const [scriptureSources, setScriptureSources] = useState(() => initialSources(highlight?.scripture_translations))
+  const [letterTranslations, setLetterTranslations] = useState(() => initialTranslations(highlight?.letter_translations))
+  const [letterSources, setLetterSources] = useState(() => initialSources(highlight?.letter_translations))
 
   async function translateField(
     text: string, locale: Locale,
@@ -57,23 +50,14 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
   ) {
     if (!text.trim()) return
     try {
-      const res = await fetch('/api/ai/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profileId, sourceLocale: originalLocale, targetLocales: [locale], text }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        toast.error(data.error === 'insufficient_ai_credits' ? 'Créditos de IA insuficientes.' : 'Erro ao traduzir.')
-        return
-      }
-      const translated = data.translations?.[locale]
+      const translated = await translateContent(profileId, originalLocale, locale, text)
       if (translated) {
         setTranslations((prev) => ({ ...prev, [locale]: translated }))
         setSources((prev) => ({ ...prev, [locale]: 'ai' }))
       }
-    } catch {
-      toast.error('Erro ao traduzir.')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : ''
+      toast.error(msg === 'insufficient_ai_credits' ? 'Créditos de IA insuficientes.' : 'Erro ao traduzir.')
     }
   }
   const [goalTypes, setGoalTypes] = useState<string[]>(
@@ -92,6 +76,7 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
   const [currency, setCurrency] = useState(initialCurrency)
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [coverPreview, setCoverPreview] = useState<string>(highlight?.cover_url ?? '')
+  const [coverMediaType, setCoverMediaType] = useState<'image' | 'video'>(highlight?.cover_media_type ?? 'image')
   const [position, setPosition] = useState<{ x: number; y: number }>(
     parsePosition(highlight?.cover_position ?? '50% 50%')
   )
@@ -102,7 +87,15 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
   const [status, setStatus] = useState<'active' | 'hidden' | 'completed'>(
     (highlight?.status as 'active' | 'hidden' | 'completed') ?? 'active'
   )
-  const [milestones, setMilestones] = useState<MilestoneDraft[]>(highlight?.milestones ?? [])
+  const [milestones, setMilestones] = useState<MilestoneDraft[]>(
+    (highlight?.milestones ?? []).map(m => ({
+      id: m.id,
+      title: m.title,
+      is_completed: m.is_completed,
+      translations: initialTranslations(m.title_translations),
+      sources: initialSources(m.title_translations),
+    }))
+  )
 
   const [budgetMode, setBudgetMode] = useState<'single' | 'detailed'>(
     (highlight?.budgetCategories?.length ?? 0) > 0 ? 'detailed' : 'single'
@@ -137,13 +130,21 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
       try {
         const supabase = createClient()
         const { data: { user: currentUser } } = await supabase.auth.getUser()
-        let cover_url = highlight?.cover_url ?? null
+        let cover_url: string | null | undefined = highlight?.cover_url ?? null
+        let cover_status: 'ready' | 'processing' = 'ready'
+        let cover_bunny_video_id: string | null = highlight?.cover_bunny_video_id ?? null
 
-        if (coverFile) {
+        if (coverFile && coverMediaType === 'video') {
+          const { bunnyVideoId } = await uploadVideoToBunny(coverFile)
+          cover_url = undefined
+          cover_status = 'processing'
+          cover_bunny_video_id = bunnyVideoId
+        } else if (coverFile) {
           const path = `${currentUser!.id}/highlights/${uniqueFileName('webp')}`
           const { error } = await supabase.storage.from('media').upload(path, coverFile, { upsert: true })
           if (error) throw error
           cover_url = supabase.storage.from('media').getPublicUrl(path).data.publicUrl
+          cover_bunny_video_id = null
         }
 
         const cover_position = `${Math.round(position.x)}% ${Math.round(position.y)}%`
@@ -162,11 +163,7 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
         const isDetailedBudget = hasFinancial && budgetMode === 'detailed'
 
         const buildTranslations = (translations: Partial<Record<Locale, string>>, sources: Partial<Record<Locale, 'ai' | 'human'>>) =>
-          Object.fromEntries(
-            Object.entries(translations)
-              .filter(([locale, text]) => locale !== originalLocale && text?.trim())
-              .map(([locale, text]) => [locale, { content: text!.trim(), source: sources[locale as Locale] ?? 'human', translated_at: new Date().toISOString() }])
-          )
+          buildTranslationsPayload(originalLocale, translations, sources)
 
         const res = await fetch('/api/highlights', {
           method: 'POST',
@@ -186,12 +183,22 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
             currency,
             coverUrl: cover_url,
             coverPosition: cover_position,
+            coverMediaType,
+            coverStatus: cover_status,
+            coverBunnyVideoId: cover_bunny_video_id,
             tripStartDate: tripStartDate || null,
             fundingDeadline: fundingDeadline || null,
             scripture: scripture.trim(),
+            scriptureTranslations: buildTranslations(scriptureTranslations, scriptureSources),
             letter: letter.trim(),
+            letterTranslations: buildTranslations(letterTranslations, letterSources),
             status,
-            milestones,
+            milestones: milestones.map(m => ({
+              id: m.id,
+              title: m.title,
+              is_completed: m.is_completed,
+              titleTranslations: buildTranslations(m.translations, m.sources),
+            })),
             budgetCategories: isDetailedBudget
               ? budgetCategories
                   .filter(b => parseFloat(fromMasked(b.target_amount, currency)) > 0)
@@ -236,10 +243,12 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
             <CoverEditor
               initialUrl={coverPreview}
               initialPosition={position}
-              onChange={(file, previewUrl, pos) => {
+              initialMediaType={coverMediaType}
+              onChange={(file, previewUrl, pos, mediaType) => {
                 if (file) setCoverFile(file)
                 setCoverPreview(previewUrl)
                 setPosition(pos)
+                setCoverMediaType(mediaType)
               }}
             />
             {coverPreview && (
@@ -402,11 +411,14 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
           {/* Versículo */}
           <div className="space-y-2">
             <Label htmlFor="scripture">Versículo / palavra</Label>
-            <Textarea
-              id="scripture"
-              value={scripture}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setScripture(e.target.value)}
-              placeholder="Ex: Jeremias 29:11 — Porque eu sei os planos que tenho para vós..."
+            <LocaleContentTabs
+              originalLocale={originalLocale}
+              originalText={scripture}
+              onOriginalChange={setScripture}
+              translations={scriptureTranslations}
+              onTranslationChange={(locale, value) => { setScriptureTranslations((prev) => ({ ...prev, [locale]: value })); setScriptureSources((prev) => ({ ...prev, [locale]: 'human' })) }}
+              onTranslateWithAi={(locale) => translateField(scripture, locale, setScriptureTranslations, setScriptureSources)}
+              originalPlaceholder="Ex: Jeremias 29:11 — Porque eu sei os planos que tenho para vós..."
               rows={3}
             />
           </div>
@@ -415,11 +427,14 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
           <div className="space-y-2">
             <Label htmlFor="letter">A história por trás deste projeto</Label>
             <p className="text-xs text-muted-foreground">Conte o que Deus falou, por que isso importa e como surgiu. Tanto novos visitantes quanto parceiros antigos vão ler isso.</p>
-            <Textarea
-              id="letter"
-              value={letter}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setLetter(e.target.value)}
-              placeholder="Queridos amigos e parceiros..."
+            <LocaleContentTabs
+              originalLocale={originalLocale}
+              originalText={letter}
+              onOriginalChange={setLetter}
+              translations={letterTranslations}
+              onTranslationChange={(locale, value) => { setLetterTranslations((prev) => ({ ...prev, [locale]: value })); setLetterSources((prev) => ({ ...prev, [locale]: 'human' })) }}
+              onTranslateWithAi={(locale) => translateField(letter, locale, setLetterTranslations, setLetterSources)}
+              originalPlaceholder="Queridos amigos e parceiros..."
               rows={8}
             />
           </div>
@@ -427,7 +442,7 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
           {/* Marcos */}
           <div className="space-y-3">
             <Label>Marcos do projeto</Label>
-            <MilestonesEditor milestones={milestones} onChange={setMilestones} />
+            <MilestonesEditor milestones={milestones} onChange={setMilestones} originalLocale={originalLocale} profileId={profileId} />
           </div>
 
           {/* Galeria de fotos — imagens avulsas que representam o projeto,

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import { coverThumbnailSrc } from '@/lib/media/bunny-thumbnail'
 import { getLocale } from 'next-intl/server'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
@@ -48,7 +49,7 @@ export default async function ExplorarPage() {
           .order('created_at', { ascending: false })
           .limit(12),
         supabase.from('posts')
-          .select('*, profile:profiles(id, username, display_name, avatar_url, accent_color), highlight:highlights(title, slug, category, cover_url)')
+          .select('*, profile:profiles(id, username, display_name, avatar_url, accent_color, user_role), highlight:highlights(title, slug, category, cover_url)')
           .in('profile_id', publicIds)
           .eq('is_draft', false)
           .order('published_at', { ascending: false })
@@ -72,7 +73,7 @@ export default async function ExplorarPage() {
 
       <main className="flex-1 max-w-2xl lg:max-w-4xl mx-auto w-full px-4 py-8 space-y-8">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold">Explorar</h1>
+          <h1 className="font-heading text-2xl font-bold">Explorar</h1>
           <p className="text-muted-foreground text-sm">Veja o que missionários estão fazendo agora pelo go→guide.</p>
         </div>
 
@@ -98,7 +99,7 @@ export default async function ExplorarPage() {
                       >
                         <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
                           {p.cover_url ? (
-                            <Image src={p.cover_url} alt={title} fill sizes="50vw" className="object-cover group-hover:scale-105 transition-transform" style={{ objectPosition: p.cover_position ?? '50% 50%' }} />
+                            <Image src={coverThumbnailSrc(p.cover_url)} alt={title} fill sizes="50vw" className="object-cover group-hover:scale-105 transition-transform" style={{ objectPosition: p.cover_position ?? '50% 50%' }} />
                           ) : (
                             <ProjectCoverFallback category={p.category} />
                           )}

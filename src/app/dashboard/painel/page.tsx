@@ -36,7 +36,7 @@ export default async function DashboardPage() {
 
   const stats = [
     { label: t('statPartners'), value: partnersCount ?? 0, icon: Users, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/40', href: '/dashboard/parceiros' },
-    { label: t('statPosts'), value: postsCount ?? 0, icon: FileText, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/40', href: '/dashboard/publicacoes' },
+    { label: t('statPosts'), value: postsCount ?? 0, icon: FileText, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/40', href: `/${profile?.username}` },
     { label: t('statPrayers'), value: prayerCount ?? 0, icon: Heart, color: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-950/40', href: '/dashboard/oracoes' },
     { label: t('statAiCredits'), value: profile?.ai_credits ?? 0, icon: Sparkles, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-950/40', href: '/planos' },
   ]
@@ -88,7 +88,7 @@ export default async function DashboardPage() {
           <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-semibold">{t('recentPosts')}</CardTitle>
             <Link
-              href="/dashboard/publicacoes"
+              href={`/${profile?.username}`}
               className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
             >
               {t('viewAll')} <ArrowRight className="h-3 w-3" />

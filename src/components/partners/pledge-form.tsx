@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/media/compress'
+import { usePendingAction } from '@/hooks/use-pending-action'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -27,15 +28,18 @@ interface Props {
   isRecurring: boolean
   defaultCurrency: string
   paymentOptions: PaymentOption[]
+  stripeAvailable?: boolean
   budgetCategories?: BudgetCategoryOption[]
   initialCategoryId?: string | null
   onBecomePartner?: () => void
 }
 
-export function PledgeForm({ profileId, missionaryName, highlightId, highlightTitle, isRecurring, defaultCurrency, paymentOptions, budgetCategories, initialCategoryId, onBecomePartner }: Props) {
+export function PledgeForm({ profileId, missionaryName, highlightId, highlightTitle, isRecurring, defaultCurrency, paymentOptions, stripeAvailable = false, budgetCategories, initialCategoryId, onBecomePartner }: Props) {
   const t = useTranslations('PledgeForm')
   const [done, setDone] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [showManual, setShowManual] = useState(!stripeAvailable)
+  const { isPending: startingCheckout, run: runCheckout } = usePendingAction()
   const [amount, setAmount] = useState('')
   const [categoryId, setCategoryId] = useState<string | null>(initialCategoryId ?? null)
   const [optionId, setOptionId] = useState(paymentOptions[0]?.id ?? 'other')
@@ -53,6 +57,9 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
   const method = selectedOption?.method ?? 'other'
   const isConfigured = !!selectedOption?.value.trim()
   const currency = isConfigured ? selectedOption!.currency : freeCurrency
+  // Na aba Stripe não há método manual selecionado, então a moeda é sempre livre.
+  const activeCurrency = showManual ? currency : freeCurrency
+  const showCurrencySelect = showManual ? !isConfigured : true
 
   async function handleProofSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -60,6 +67,32 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
     const compressed = await compressImage(file)
     setProofFile(compressed)
     setProofPreview(URL.createObjectURL(compressed))
+  }
+
+  function handleStripeCheckout() {
+    const parsedAmount = parseFloat(fromMasked(amount, freeCurrency))
+    if (!parsedAmount || parsedAmount <= 0) { toast.error(t('errorAmount')); return }
+    if (!isAnonymous && !name.trim()) { toast.error(t('errorName')); return }
+    runCheckout(true, async () => {
+      const res = await fetch('/api/stripe/checkout-once', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profileId,
+          amount: parsedAmount,
+          currency: freeCurrency,
+          highlightId,
+          budgetCategoryId: categoryId ?? undefined,
+          isAnonymous,
+          name: isAnonymous ? undefined : name.trim(),
+          email: isAnonymous ? undefined : email.trim(),
+          message: message.trim(),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.url) { toast.error(t('errorCheckout')); return }
+      window.location.href = data.url
+    })
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -137,119 +170,137 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
           {isRecurring ? t('titleRecurring') : t('title', { highlightTitle: highlightTitle ? ` — ${highlightTitle}` : '' })}
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <p className="text-xs text-muted-foreground -mt-2">
-            {t('intro', { name: missionaryName })}
-          </p>
+      <CardContent className="space-y-4">
+        <p className="text-xs text-muted-foreground -mt-2">
+          {t('intro', { name: missionaryName })}
+        </p>
 
-          <div className="space-y-2">
-            <Label>{t('methodLabel')}</Label>
-            <select
-              value={optionId}
-              onChange={(e) => { setOptionId(e.target.value); setAmount('') }}
-              className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
-            >
-              {paymentOptions.map(opt => (
-                <option key={opt.id} value={opt.id}>{opt.label}{opt.value.trim() ? ` (${opt.currency})` : ''}</option>
-              ))}
-            </select>
-            {selectedOption && (
-              <PaymentMethodInstructions
-                method={selectedOption.method}
-                label={selectedOption.label}
-                value={selectedOption.value}
-                details={selectedOption.details}
-                missionaryName={missionaryName}
-                otherDescription={otherDescription}
-                onOtherDescriptionChange={setOtherDescription}
-              />
+        {highlightId && budgetCategories && budgetCategories.length > 0 && (
+          <BudgetCategorySelect
+            categories={budgetCategories}
+            value={categoryId}
+            onChange={setCategoryId}
+            currency={defaultCurrency}
+            fieldLabel={t('whereToInvestLabel')}
+            generalLabel={t('whereToInvestGeneral')}
+            missingLabel={(amount) => t('missingAmount', { amount })}
+          />
+        )}
+
+        <div className="space-y-2">
+          <Label className="flex items-center gap-1.5">
+            {t('amountLabelPlain')} *
+            {showCurrencySelect ? (
+              <select
+                value={freeCurrency}
+                onChange={(e) => setFreeCurrency(e.target.value)}
+                className="h-5 rounded border border-input bg-transparent px-1 text-xs font-normal outline-none focus-visible:border-ring"
+              >
+                {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            ) : (
+              <span className="text-muted-foreground font-normal">({activeCurrency})</span>
             )}
-          </div>
+          </Label>
+          <Input inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, activeCurrency))} placeholder="0,00" required />
+        </div>
 
-          {highlightId && budgetCategories && budgetCategories.length > 0 && (
-            <BudgetCategorySelect
-              categories={budgetCategories}
-              value={categoryId}
-              onChange={setCategoryId}
-              currency={defaultCurrency}
-              fieldLabel={t('whereToInvestLabel')}
-              generalLabel={t('whereToInvestGeneral')}
-              missingLabel={(amount) => t('missingAmount', { amount })}
-            />
-          )}
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={isAnonymous} onChange={(e) => setIsAnonymous(e.target.checked)} className="rounded border-input" />
+          {t('anonymousLabel')}
+        </label>
 
-          <div className="grid grid-cols-2 gap-3">
+        {!isAnonymous && (
+          <>
             <div className="space-y-2">
-              <Label className="flex items-center gap-1.5">
-                {t('amountLabelPlain')} *
-                {isConfigured ? (
-                  <span className="text-muted-foreground font-normal">({currency})</span>
-                ) : (
-                  <select
-                    value={freeCurrency}
-                    onChange={(e) => setFreeCurrency(e.target.value)}
-                    className="h-5 rounded border border-input bg-transparent px-1 text-xs font-normal outline-none focus-visible:border-ring"
-                  >
-                    {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                )}
-              </Label>
-              <Input inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, currency))} placeholder="0,00" required />
+              <Label>{t('nameLabel')} *</Label>
+              <Input value={name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)} placeholder={t('namePlaceholder')} required={!isAnonymous} />
             </div>
+            <div className="space-y-2">
+              <Label>{t('emailLabel')}</Label>
+              <Input type="email" value={email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} placeholder={t('emailPlaceholder')} />
+            </div>
+          </>
+        )}
+
+        <div className="space-y-2">
+          <Label>{t('messageLabel', { name: missionaryName })}</Label>
+          <Textarea value={message} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setMessage(e.target.value)} placeholder={t('messagePlaceholder')} rows={2} />
+        </div>
+
+        {stripeAvailable && !showManual && (
+          <div className="space-y-2 pt-1 border-t">
+            <Button type="button" variant="support" className="w-full mt-3" onClick={handleStripeCheckout} disabled={startingCheckout}>
+              {startingCheckout && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t('stripeCta')}
+            </Button>
+            <button type="button" onClick={() => setShowManual(true)} className="w-full text-center text-xs text-muted-foreground hover:text-foreground">
+              {t('preferManual')}
+            </button>
+          </div>
+        )}
+
+        {showManual && (
+          <form onSubmit={handleSubmit} className="space-y-4 pt-1 border-t">
+            <div className="space-y-2 pt-3">
+              <Label>{t('methodLabel')}</Label>
+              <select
+                value={optionId}
+                onChange={(e) => { setOptionId(e.target.value); setAmount('') }}
+                className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
+              >
+                {paymentOptions.map(opt => (
+                  <option key={opt.id} value={opt.id}>{opt.label}{opt.value.trim() ? ` (${opt.currency})` : ''}</option>
+                ))}
+              </select>
+              {selectedOption && (
+                <PaymentMethodInstructions
+                  method={selectedOption.method}
+                  label={selectedOption.label}
+                  value={selectedOption.value}
+                  details={selectedOption.details}
+                  missionaryName={missionaryName}
+                  otherDescription={otherDescription}
+                  onOtherDescriptionChange={setOtherDescription}
+                />
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label>{t('dateLabel')}</Label>
               <Input type="date" value={date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDate(e.target.value)} />
             </div>
-          </div>
 
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={isAnonymous} onChange={(e) => setIsAnonymous(e.target.checked)} className="rounded border-input" />
-            {t('anonymousLabel')}
-          </label>
-
-          {!isAnonymous && (
-            <>
-              <div className="space-y-2">
-                <Label>{t('nameLabel')} *</Label>
-                <Input value={name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)} placeholder={t('namePlaceholder')} required={!isAnonymous} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('emailLabel')}</Label>
-                <Input type="email" value={email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} placeholder={t('emailPlaceholder')} />
-              </div>
-            </>
-          )}
-
-          <div className="space-y-2">
-            <Label>{t('messageLabel', { name: missionaryName })}</Label>
-            <Textarea value={message} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setMessage(e.target.value)} placeholder={t('messagePlaceholder')} rows={2} />
-          </div>
-
-          <div className="space-y-2">
-            <Label>{t('proofLabel')}</Label>
-            {proofPreview ? (
-              <div className="relative h-32 w-full">
-                <Image src={proofPreview} alt="comprovante" fill className="object-cover rounded-lg" />
-                <label className="absolute bottom-2 right-2 cursor-pointer">
-                  <div className="bg-black/60 text-white text-xs px-2 py-1 rounded-lg hover:bg-black/80 transition-colors">{t('proofChange')}</div>
+            <div className="space-y-2">
+              <Label>{t('proofLabel')}</Label>
+              {proofPreview ? (
+                <div className="relative h-32 w-full">
+                  <Image src={proofPreview} alt="comprovante" fill className="object-cover rounded-lg" />
+                  <label className="absolute bottom-2 right-2 cursor-pointer">
+                    <div className="bg-black/60 text-white text-xs px-2 py-1 rounded-lg hover:bg-black/80 transition-colors">{t('proofChange')}</div>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleProofSelect} />
+                  </label>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center gap-1.5 h-20 rounded-lg border border-dashed cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
+                  <Upload className="h-4 w-4" />
+                  <span className="text-xs">{t('proofAttach')}</span>
                   <input type="file" accept="image/*" className="hidden" onChange={handleProofSelect} />
                 </label>
-              </div>
-            ) : (
-              <label className="flex flex-col items-center justify-center gap-1.5 h-20 rounded-lg border border-dashed cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
-                <Upload className="h-4 w-4" />
-                <span className="text-xs">{t('proofAttach')}</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleProofSelect} />
-              </label>
-            )}
-          </div>
+              )}
+            </div>
 
-          <Button type="submit" variant="support" className="w-full" disabled={saving}>
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {t('submit')}
-          </Button>
-        </form>
+            <Button type="submit" variant="support" className="w-full" disabled={saving}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t('submit')}
+            </Button>
+            {stripeAvailable && (
+              <button type="button" onClick={() => setShowManual(false)} className="w-full text-center text-xs text-muted-foreground hover:text-foreground">
+                {t('preferStripe')}
+              </button>
+            )}
+          </form>
+        )}
       </CardContent>
     </Card>
   )

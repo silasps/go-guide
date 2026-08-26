@@ -46,6 +46,7 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
         isRecurring={false}
         defaultCurrency={defaultCurrency}
         paymentOptions={paymentOptions}
+        stripeAvailable={stripeAvailable}
         budgetCategories={choice === 'financial_once' ? budgetCategories : undefined}
         initialCategoryId={choice === 'financial_once' ? initialCategoryId : undefined}
         onBecomePartner={() => setChoice('financial_ongoing')}

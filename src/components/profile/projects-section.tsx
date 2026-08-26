@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import { coverThumbnailSrc } from '@/lib/media/bunny-thumbnail'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 import { Highlight } from '@/types/database'
@@ -41,7 +42,7 @@ export async function ProjectsSection({ projects, username, accentColor, visitor
                   <div className="h-full w-full rounded-full overflow-hidden bg-muted">
                     {p.cover_url ? (
                       <Image
-                        src={p.cover_url}
+                        src={coverThumbnailSrc(p.cover_url)}
                         alt={title}
                         width={64}
                         height={64}

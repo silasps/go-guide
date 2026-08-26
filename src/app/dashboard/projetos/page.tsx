@@ -17,7 +17,7 @@ export default async function ProjetosPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold">Projetos</h1>
+          <h1 className="font-heading text-xl font-semibold">Projetos</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Missões, obras e campanhas em andamento</p>
         </div>
         <NewProjectButton label="Novo projeto" className="hidden md:inline-flex shrink-0" />

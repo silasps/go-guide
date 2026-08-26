@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Be_Vietnam_Pro } from 'next/font/google'
 import { NextIntlClientProvider } from 'next-intl'
 import { getLocale, getMessages, getTranslations } from 'next-intl/server'
 import './globals.css'
@@ -11,6 +11,12 @@ import { SplashScreen } from '@/components/splash-screen'
 
 const inter = Inter({
   variable: '--font-sans',
+  subsets: ['latin'],
+})
+
+const beVietnamPro = Be_Vietnam_Pro({
+  variable: '--font-heading-sans',
+  weight: ['600', '700'],
   subsets: ['latin'],
 })
 
@@ -54,7 +60,7 @@ export default async function RootLayout({
   const messages = await getMessages()
 
   return (
-    <html lang={locale} className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang={locale} className={`${inter.variable} ${beVietnamPro.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {/* Preload dos frames de passo da splash — React 19 içça <link> pro <head>
             de onde quer que seja renderizado; evita pop-in no primeiro loop. */}

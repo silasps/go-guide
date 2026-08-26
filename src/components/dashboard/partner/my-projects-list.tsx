@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import { coverThumbnailSrc } from '@/lib/media/bunny-thumbnail'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 import { Highlight, Profile } from '@/types/database'
@@ -39,7 +40,7 @@ export async function MyProjectsList({ projects }: { projects: ProjectWithProfil
             <div className="flex items-center gap-3">
               {p.cover_url ? (
                 <div className="relative h-12 w-12 rounded-xl overflow-hidden bg-muted shrink-0">
-                  <Image src={p.cover_url} alt={p.title} fill className="object-cover" style={{ objectPosition: p.cover_position }} />
+                  <Image src={coverThumbnailSrc(p.cover_url)} alt={p.title} fill className="object-cover" style={{ objectPosition: p.cover_position }} />
                 </div>
               ) : (
                 <div

@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getLocale } from 'next-intl/server'
 import type { Metadata } from 'next'
 import Image from 'next/image'
+import { InstagramVideoPlayer } from '@/components/shared/instagram-video-player'
+import { coverThumbnailSrc } from '@/lib/media/bunny-thumbnail'
 import Link from 'next/link'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
@@ -17,6 +19,8 @@ import { FundingProjectionCard } from '@/components/highlights/funding-projectio
 import type { PaymentMethodType, PostWithProfile } from '@/types/database'
 import { enrichWithEngagement } from '@/lib/posts/enrich-with-engagement'
 import { ProfilePostsGrid } from '@/components/shared/profile-posts-grid'
+import { PostComposerProvider } from '@/components/dashboard/post-composer-provider'
+import { ProjectComposerProvider } from '@/components/highlights/project-composer/project-composer-provider'
 import { getProfileViewerContext } from '@/lib/profile/viewer-context'
 import { CopyableValue } from '@/components/partners/payment-method-instructions'
 import { CoverTitleEditSection } from '@/components/highlights/cover-title-edit-section'
@@ -119,7 +123,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
   if (profile.privacy_mode === 'stealth') notFound()
 
   const supabase = await createClient()
-  const { canEdit } = await getProfileViewerContext(username)
+  const { canEdit, viewerUserId } = await getProfileViewerContext(username)
 
   const { data: paymentMethods } = await supabase
     .from('payment_methods')
@@ -146,6 +150,8 @@ export default async function ProjetoPublicoPage({ params }: Props) {
   const visitorLocale = (await getLocale()) as Locale
   const localizedTitle = resolveLocalizedText(project.title, project.original_locale, project.title_translations, visitorLocale).text ?? project.title
   const localizedDescription = resolveLocalizedText(project.description, project.original_locale, project.description_translations, visitorLocale).text
+  const localizedScripture = resolveLocalizedText(project.scripture, project.original_locale, project.scripture_translations, visitorLocale).text
+  const localizedLetter = resolveLocalizedText(project.letter, project.original_locale, project.letter_translations, visitorLocale).text
 
   const [{ data: milestones }, { data: updates }, { data: budgetCategories }, { data: galleryImages }, { data: pastProjects }, { count: supporterCount }] = await Promise.all([
     supabase.from('milestones').select('*').eq('highlight_id', project.id).order('order_index'),
@@ -184,6 +190,10 @@ export default async function ProjetoPublicoPage({ params }: Props) {
   const hasFinancial = types.includes('financial')
   const completedCount = milestones?.filter(m => m.is_completed).length ?? 0
   const totalMilestones = milestones?.length ?? 0
+  const localizedMilestones = (milestones ?? []).map(m => ({
+    ...m,
+    localizedTitle: resolveLocalizedText(m.title, project.original_locale, m.title_translations, visitorLocale).text ?? m.title,
+  }))
 
   const activeSupportTypes = SUPPORT_TYPES.filter(t => {
     if (!types.includes(t.key)) return false
@@ -192,8 +202,11 @@ export default async function ProjetoPublicoPage({ params }: Props) {
   })
 
   const snapshot: HighlightSnapshot = {
+    originalLocale: project.original_locale,
     title: project.title,
+    titleTranslations: project.title_translations ?? {},
     description: project.description ?? '',
+    descriptionTranslations: project.description_translations ?? {},
     goalTypes: types,
     category: project.category ?? [],
     goalAmount: project.goal_amount,
@@ -201,12 +214,17 @@ export default async function ProjetoPublicoPage({ params }: Props) {
     currency: project.currency,
     coverUrl: project.cover_url,
     coverPosition: project.cover_position,
+    coverMediaType: project.cover_media_type,
+    coverStatus: project.cover_status,
+    coverBunnyVideoId: project.cover_bunny_video_id,
     tripStartDate: project.trip_start_date,
     fundingDeadline: project.funding_deadline,
     scripture: project.scripture ?? '',
+    scriptureTranslations: project.scripture_translations ?? {},
     letter: project.letter ?? '',
+    letterTranslations: project.letter_translations ?? {},
     status: project.status,
-    milestones: (milestones ?? []).map(m => ({ id: m.id, title: m.title, is_completed: m.is_completed })),
+    milestones: (milestones ?? []).map(m => ({ id: m.id, title: m.title, titleTranslations: m.title_translations ?? {}, is_completed: m.is_completed })),
     budgetCategories: (budgetCategories ?? []).map(b => ({ category_type: b.category_type, custom_label: b.custom_label, description: b.description, target_amount: b.target_amount })),
     galleryImages: (galleryImages ?? []).map(g => g.image_url),
   }
@@ -220,7 +238,9 @@ export default async function ProjetoPublicoPage({ params }: Props) {
           <>
             {/* Hero: capa 16:9 + avatar sobreposto */}
             <div className="relative aspect-video rounded-2xl overflow-hidden">
-              {project.cover_url ? (
+              {project.cover_media_type === 'video' ? (
+                <InstagramVideoPlayer src={project.cover_url ?? ''} status={project.cover_status} className="absolute inset-0" showFullscreenButton />
+              ) : project.cover_url ? (
                 <Image src={project.cover_url} alt={localizedTitle} fill className="object-cover" style={{ objectPosition: project.cover_position ?? '50% 50%' }} />
               ) : (
                 <ProjectCoverFallback category={project.category} />
@@ -237,7 +257,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
             {/* Cabeçalho */}
             <div className="space-y-3 mt-3">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl font-bold flex-1 min-w-0">{localizedTitle}</h1>
+                <h1 className="font-heading text-2xl font-bold flex-1 min-w-0">{localizedTitle}</h1>
                 {/* Status precisa ficar visível E editável direto daqui —
                     não só dentro do formulário de edição de datas
                     (feedback direto do usuário). */}
@@ -251,8 +271,8 @@ export default async function ProjetoPublicoPage({ params }: Props) {
                   copiedLabel="Link do projeto copiado"
                 />
               </div>
-              {project.scripture && (
-                <p className="text-sm italic text-muted-foreground border-l-2 border-primary/40 pl-3">{project.scripture}</p>
+              {localizedScripture && (
+                <p className="text-sm italic text-muted-foreground border-l-2 border-primary/40 pl-3">{localizedScripture}</p>
               )}
             </div>
           </>
@@ -444,13 +464,13 @@ export default async function ProjetoPublicoPage({ params }: Props) {
             <MilestonesEditSection {...sectionProps}>
               {totalMilestones > 0 ? (
                 <ul className="space-y-2">
-                  {milestones!.map(m => (
+                  {localizedMilestones.map(m => (
                     <li key={m.id} className="flex items-center gap-2.5 text-sm">
                       {m.is_completed
                         ? <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
                         : <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
                       }
-                      <span className={m.is_completed ? 'text-muted-foreground line-through' : ''}>{m.title}</span>
+                      <span className={m.is_completed ? 'text-muted-foreground line-through' : ''}>{m.localizedTitle}</span>
                     </li>
                   ))}
                 </ul>
@@ -487,9 +507,9 @@ export default async function ProjetoPublicoPage({ params }: Props) {
           <div id="project-story" className="rounded-2xl border bg-card p-5 space-y-3">
             <h2 className="font-semibold">A história por trás deste projeto</h2>
             <LetterEditSection {...sectionProps}>
-              {project.letter ? (
+              {localizedLetter ? (
                 <div className="prose prose-sm dark:prose-invert max-w-none">
-                  {(project.letter as string).split('\n').filter((l: string) => l.trim()).map((para: string, i: number) => (
+                  {localizedLetter.split('\n').filter((l: string) => l.trim()).map((para: string, i: number) => (
                     <p key={i} className="text-sm leading-relaxed text-foreground/80 mb-3">{para}</p>
                   ))}
                 </div>
@@ -513,7 +533,21 @@ export default async function ProjetoPublicoPage({ params }: Props) {
           <div className="rounded-2xl border bg-card overflow-hidden">
             <h2 className="font-semibold p-5 pb-3">Atualizações</h2>
             <div className="px-4">
-              <ProfilePostsGrid posts={updatesWithProfile} visitorLocale={visitorLocale} canEdit={canEdit} />
+              {canEdit && viewerUserId ? (
+                <ProjectComposerProvider profileId={profile.id}>
+                  <PostComposerProvider
+                    profileId={profile.id}
+                    userId={viewerUserId}
+                    displayName={profile.display_name}
+                    avatarUrl={profile.avatar_url}
+                    originalLocale={profile.locale}
+                  >
+                    <ProfilePostsGrid posts={updatesWithProfile} visitorLocale={visitorLocale} canEdit={canEdit} />
+                  </PostComposerProvider>
+                </ProjectComposerProvider>
+              ) : (
+                <ProfilePostsGrid posts={updatesWithProfile} visitorLocale={visitorLocale} canEdit={canEdit} />
+              )}
             </div>
           </div>
         )}
@@ -532,7 +566,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
                   <Link key={p.id} href={`/${username}/projetos/${p.slug ?? p.id}`} className="space-y-1.5 group">
                     <div className="relative aspect-square rounded-xl overflow-hidden bg-muted">
                       {p.cover_url ? (
-                        <Image src={p.cover_url} alt={pTitle} fill className="object-cover group-hover:scale-105 transition-transform" style={{ objectPosition: p.cover_position ?? '50% 50%' }} />
+                        <Image src={coverThumbnailSrc(p.cover_url)} alt={pTitle} fill className="object-cover group-hover:scale-105 transition-transform" style={{ objectPosition: p.cover_position ?? '50% 50%' }} />
                       ) : (
                         <ProjectCoverFallback category={p.category} />
                       )}

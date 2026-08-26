@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getLocale, getTranslations } from 'next-intl/server'
 import Image from 'next/image'
+import { coverThumbnailSrc } from '@/lib/media/bunny-thumbnail'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -114,7 +115,7 @@ function ProjectCard({ p, username, accentColor, visitorLocale, completed = fals
       <div className="relative aspect-[4/3] bg-muted">
         {p.cover_url ? (
           <Image
-            src={p.cover_url}
+            src={coverThumbnailSrc(p.cover_url)}
             alt={title}
             fill
             sizes="50vw"

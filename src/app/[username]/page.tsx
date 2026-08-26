@@ -9,12 +9,15 @@ import { ProjectsSection } from '@/components/profile/projects-section'
 import { ProfileCTA } from '@/components/profile/profile-cta'
 import { ProfileOwnerActions } from '@/components/profile/profile-owner-actions'
 import { ProfileContentTabs } from '@/components/profile/profile-content-tabs'
+import { PostComposerProvider } from '@/components/dashboard/post-composer-provider'
+import { ProjectComposerProvider } from '@/components/highlights/project-composer/project-composer-provider'
 import { enrichWithEngagement } from '@/lib/posts/enrich-with-engagement'
 import type { PostWithProfile, Profile } from '@/types/database'
 import { SkCardGrid, SkFeedPosts } from '@/components/ui/skeleton'
 import { getProfile } from '@/lib/profile/get-profile'
 import { getProfileViewerContext } from '@/lib/profile/viewer-context'
 import { getFollowCounts } from '@/app/dashboard/feed/follows-list-actions'
+import { markNotificationTypesRead } from '@/lib/notifications/mark-read'
 
 interface Props {
   params: Promise<{ username: string }>
@@ -131,9 +134,18 @@ async function ProjectsSectionAsync({ profileId, username, accentColor, visitorL
 
 async function ProfileContentAsync({ profile, visitorLocale, canEdit, deepLinkPostId, deepLinkComments }: { profile: Profile; visitorLocale: Locale; canEdit: boolean; deepLinkPostId?: string; deepLinkComments: boolean }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const t = await getTranslations('PublicProfile')
+  const [{ data: { user } }, { viewerUserId }] = await Promise.all([
+    supabase.auth.getUser(),
+    getProfileViewerContext(profile.username),
+  ])
   const isMissionary = profile.user_role === 'missionary'
+
+  // Dono/gestor vendo o próprio perfil — mesmo gatilho que a antiga página
+  // /dashboard/publicacoes tinha ao abrir, agora que editar acontece direto
+  // aqui.
+  if (canEdit && user) {
+    await markNotificationTypesRead(supabase, user.id, ['new_post', 'highlight_update'])
+  }
 
   const [{ data: posts }, { data: projects }, { data: historyBlocks }] = await Promise.all([
     supabase
@@ -156,26 +168,41 @@ async function ProfileContentAsync({ profile, visitorLocale, canEdit, deepLinkPo
   const engagement = await enrichWithEngagement(supabase, posts.map((p) => p.id), user?.id)
   const postsWithProfile = posts.map((post) => ({
     ...post,
-    profile: { id: profile.id, username: profile.username, display_name: profile.display_name, avatar_url: profile.avatar_url, accent_color: profile.accent_color },
+    profile: { id: profile.id, username: profile.username, display_name: profile.display_name, avatar_url: profile.avatar_url, accent_color: profile.accent_color, user_role: profile.user_role },
     ...engagement.get(post.id)!,
   })) as unknown as PostWithProfile[]
 
+  const tabs = (
+    <ProfileContentTabs
+      posts={postsWithProfile}
+      projects={projects ?? []}
+      historyBlocks={historyBlocks ?? []}
+      username={profile.username}
+      accentColor={profile.accent_color}
+      visitorLocale={visitorLocale}
+      showProjects={isMissionary && (projects ?? []).length > 0}
+      showHistory={isMissionary && (historyBlocks ?? []).length > 0}
+      canEdit={canEdit}
+      deepLinkPostId={deepLinkPostId}
+      deepLinkComments={deepLinkComments}
+    />
+  )
+
   return (
     <div className="space-y-3">
-      <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">{t('postsHeading')}</h2>
-      <ProfileContentTabs
-        posts={postsWithProfile}
-        projects={projects ?? []}
-        historyBlocks={historyBlocks ?? []}
-        username={profile.username}
-        accentColor={profile.accent_color}
-        visitorLocale={visitorLocale}
-        showProjects={isMissionary && (projects ?? []).length > 0}
-        showHistory={isMissionary && (historyBlocks ?? []).length > 0}
-        canEdit={canEdit}
-        deepLinkPostId={deepLinkPostId}
-        deepLinkComments={deepLinkComments}
-      />
+      {canEdit && viewerUserId ? (
+        <ProjectComposerProvider profileId={profile.id}>
+          <PostComposerProvider
+            profileId={profile.id}
+            userId={viewerUserId}
+            displayName={profile.display_name}
+            avatarUrl={profile.avatar_url}
+            originalLocale={profile.locale}
+          >
+            {tabs}
+          </PostComposerProvider>
+        </ProjectComposerProvider>
+      ) : tabs}
     </div>
   )
 }

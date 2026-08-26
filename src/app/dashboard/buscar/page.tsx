@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import Image from 'next/image'
+import { coverThumbnailSrc } from '@/lib/media/bunny-thumbnail'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
@@ -87,7 +88,7 @@ function BuscarPageInner() {
               >
                 <div className="shrink-0 h-12 w-12 rounded-lg overflow-hidden bg-muted">
                   {p.cover_url ? (
-                    <Image src={p.cover_url} alt="" width={48} height={48} className="object-cover h-full w-full" style={{ objectPosition: p.cover_position ?? '50% 50%' }} />
+                    <Image src={coverThumbnailSrc(p.cover_url)} alt="" width={48} height={48} className="object-cover h-full w-full" style={{ objectPosition: p.cover_position ?? '50% 50%' }} />
                   ) : (
                     <div className="h-full w-full flex items-center justify-center text-lg" style={{ backgroundColor: p.profile.accent_color + '20' }}>🌍</div>
                   )}

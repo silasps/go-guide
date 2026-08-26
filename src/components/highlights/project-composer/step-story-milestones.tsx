@@ -2,11 +2,11 @@
 
 import { useTranslations } from 'next-intl'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'
 import { MilestonesEditor } from '@/components/highlights/milestones-editor'
+import { LocaleContentTabs } from '@/components/dashboard/locale-content-tabs'
 import type { useProjectComposer } from './use-project-composer'
 
 interface Props {
@@ -16,9 +16,12 @@ interface Props {
 export function StepStoryMilestones({ composer }: Props) {
   const t = useTranslations('ProjectComposer')
   const {
+    profileId, originalLocale,
     tripStartDate, setTripStartDate, fundingDeadline, setFundingDeadline,
-    scripture, setScripture, letter, setLetter,
+    scripture, setScripture, scriptureTranslations, setScriptureTranslations, setScriptureSources,
+    letter, setLetter, letterTranslations, setLetterTranslations, setLetterSources,
     milestones, setMilestones,
+    translateField,
     saving, handleSave,
   } = composer
 
@@ -37,11 +40,14 @@ export function StepStoryMilestones({ composer }: Props) {
 
       <div className="space-y-2">
         <Label htmlFor="scripture">{t('scriptureLabel')}</Label>
-        <Textarea
-          id="scripture"
-          value={scripture}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setScripture(e.target.value)}
-          placeholder={t('scripturePlaceholder')}
+        <LocaleContentTabs
+          originalLocale={originalLocale}
+          originalText={scripture}
+          onOriginalChange={setScripture}
+          translations={scriptureTranslations}
+          onTranslationChange={(locale, value) => { setScriptureTranslations((prev) => ({ ...prev, [locale]: value })); setScriptureSources((prev) => ({ ...prev, [locale]: 'human' })) }}
+          onTranslateWithAi={(locale) => translateField(scripture, locale, setScriptureTranslations, setScriptureSources)}
+          originalPlaceholder={t('scripturePlaceholder')}
           rows={3}
         />
       </div>
@@ -49,18 +55,21 @@ export function StepStoryMilestones({ composer }: Props) {
       <div className="space-y-2">
         <Label htmlFor="letter">{t('letterLabel')}</Label>
         <p className="text-xs text-muted-foreground">{t('letterHint')}</p>
-        <Textarea
-          id="letter"
-          value={letter}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setLetter(e.target.value)}
-          placeholder={t('letterPlaceholder')}
+        <LocaleContentTabs
+          originalLocale={originalLocale}
+          originalText={letter}
+          onOriginalChange={setLetter}
+          translations={letterTranslations}
+          onTranslationChange={(locale, value) => { setLetterTranslations((prev) => ({ ...prev, [locale]: value })); setLetterSources((prev) => ({ ...prev, [locale]: 'human' })) }}
+          onTranslateWithAi={(locale) => translateField(letter, locale, setLetterTranslations, setLetterSources)}
+          originalPlaceholder={t('letterPlaceholder')}
           rows={6}
         />
       </div>
 
       <div className="space-y-3">
         <Label>{t('milestonesLabel')}</Label>
-        <MilestonesEditor milestones={milestones} onChange={setMilestones} />
+        <MilestonesEditor milestones={milestones} onChange={setMilestones} originalLocale={originalLocale} profileId={profileId} />
       </div>
 
       <div className="flex justify-end pt-2 border-t">

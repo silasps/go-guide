@@ -18,6 +18,14 @@ export function useComposer() {
   return ctx
 }
 
+// Variante que não quebra fora do provider — usada em componentes
+// compartilhados (como PostCard) que renderizam tanto dentro de árvores
+// com o provider (perfil próprio, /dashboard) quanto sem ele (/explorar,
+// feed de outros perfis), onde a ação de editar nem aparece.
+export function useOptionalComposer() {
+  return useContext(ComposerContext)
+}
+
 interface Props {
   profileId: string
   userId: string

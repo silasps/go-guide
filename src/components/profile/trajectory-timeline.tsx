@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import { coverThumbnailSrc } from '@/lib/media/bunny-thumbnail'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils'
 import { resolveLocalizedText } from '@/lib/i18n/resolve-content-locale'
@@ -37,7 +38,7 @@ export function TrajectoryTimeline({ username, projects, visitorLocale }: { user
             <div className="flex gap-3 p-3 rounded-xl border bg-card group-hover:bg-muted/50 transition-colors">
               <div className="relative h-16 w-16 rounded-lg overflow-hidden shrink-0">
                 {p.cover_url ? (
-                  <Image src={p.cover_url} alt={title} fill className="object-cover" style={{ objectPosition: p.cover_position }} />
+                  <Image src={coverThumbnailSrc(p.cover_url)} alt={title} fill className="object-cover" style={{ objectPosition: p.cover_position }} />
                 ) : (
                   <ProjectCoverFallback />
                 )}

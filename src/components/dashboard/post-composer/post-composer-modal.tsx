@@ -84,7 +84,7 @@ export function PostComposerModal({ open, onOpenChange, post, profileId, userId,
         open={discardConfirmOpen}
         onOpenChange={setDiscardConfirmOpen}
         onDiscard={() => { setDiscardConfirmOpen(false); close() }}
-        title={t('discardTitle')}
+        title={post ? t('discardTitleEdit') : t('discardTitle')}
         description={t('discardDescription')}
         cancelLabel={t('discardCancel')}
         confirmLabel={t('discardConfirm')}

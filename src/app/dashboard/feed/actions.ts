@@ -41,7 +41,7 @@ export async function getFeedPage(cursor: string | null): Promise<{
 
   let query = supabase
     .from('posts')
-    .select('*, profile:profiles(id, username, display_name, avatar_url, accent_color), highlight:highlights(title, slug, category, cover_url)')
+    .select('*, profile:profiles(id, username, display_name, avatar_url, accent_color, user_role), highlight:highlights(title, slug, category, cover_url)')
     .in('profile_id', Array.from(profileIds))
     .eq('is_draft', false)
     .order('published_at', { ascending: false })

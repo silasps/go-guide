@@ -10,10 +10,12 @@ import { fromMasked, reformatMasked, CURRENCIES } from '@/lib/currency-mask'
 import { uniqueFileName } from '@/components/highlights/cover-editor'
 import { compressImage } from '@/lib/media/compress'
 import { bakeImage } from '@/lib/media/bake-image'
+import { uploadVideoToBunny } from '@/lib/media/upload-bunny-video'
 import { resolveCssFilter, type MediaDraft } from '@/components/shared/media-editor/types'
 import type { MilestoneDraft } from '@/components/highlights/milestones-editor'
 import type { BudgetCategoryDraft } from '@/components/highlights/budget-categories-editor'
 import { GOAL_TYPE_OPTIONS } from '@/components/highlights/support-types-picker'
+import { buildTranslationsPayload, translateContent } from '@/lib/i18n/content-translations'
 import type { MediaAspectRatio } from '@/types/database'
 import type { Locale } from '@/i18n/config'
 
@@ -40,6 +42,10 @@ export function useProjectComposer({ profileId, onSaved }: Options) {
   const [titleSources, setTitleSources] = useState<Partial<Record<Locale, 'ai' | 'human'>>>({})
   const [descTranslations, setDescTranslations] = useState<Partial<Record<Locale, string>>>({})
   const [descSources, setDescSources] = useState<Partial<Record<Locale, 'ai' | 'human'>>>({})
+  const [scriptureTranslations, setScriptureTranslations] = useState<Partial<Record<Locale, string>>>({})
+  const [scriptureSources, setScriptureSources] = useState<Partial<Record<Locale, 'ai' | 'human'>>>({})
+  const [letterTranslations, setLetterTranslations] = useState<Partial<Record<Locale, string>>>({})
+  const [letterSources, setLetterSources] = useState<Partial<Record<Locale, 'ai' | 'human'>>>({})
 
   async function translateField(
     text: string, locale: Locale,
@@ -48,14 +54,7 @@ export function useProjectComposer({ profileId, onSaved }: Options) {
   ) {
     if (!text.trim()) return
     try {
-      const res = await fetch('/api/ai/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profileId, sourceLocale: originalLocale, targetLocales: [locale], text }),
-      })
-      const data = await res.json()
-      if (!res.ok) { toast.error(t('saveError')); return }
-      const translated = data.translations?.[locale]
+      const translated = await translateContent(profileId, originalLocale, locale, text)
       if (translated) {
         setTranslations((prev) => ({ ...prev, [locale]: translated }))
         setSources((prev) => ({ ...prev, [locale]: 'ai' }))
@@ -104,9 +103,18 @@ export function useProjectComposer({ profileId, onSaved }: Options) {
       try {
         const supabase = createClient()
         const { data: { user: currentUser } } = await supabase.auth.getUser()
-        let cover_url: string | null = null
+        let cover_url: string | null | undefined = null
+        let cover_media_type: 'image' | 'video' = 'image'
+        let cover_status: 'ready' | 'processing' = 'ready'
+        let cover_bunny_video_id: string | null = null
 
-        if (coverMedia) {
+        if (coverMedia?.type === 'video') {
+          const { bunnyVideoId } = await uploadVideoToBunny(coverMedia.file)
+          cover_url = undefined
+          cover_media_type = 'video'
+          cover_status = 'processing'
+          cover_bunny_video_id = bunnyVideoId
+        } else if (coverMedia) {
           // Mesmo pipeline do composer de post: recorte/zoom/filtro escolhidos
           // na tela já saem "assados" no arquivo final (canvas), então não
           // precisa guardar crop separado — cover_position fica sempre centro.
@@ -131,11 +139,7 @@ export function useProjectComposer({ profileId, onSaved }: Options) {
         const isDetailedBudget = hasFinancial && budgetMode === 'detailed'
 
         const buildTranslations = (translations: Partial<Record<Locale, string>>, sources: Partial<Record<Locale, 'ai' | 'human'>>) =>
-          Object.fromEntries(
-            Object.entries(translations)
-              .filter(([locale, text]) => locale !== originalLocale && text?.trim())
-              .map(([locale, text]) => [locale, { content: text!.trim(), source: sources[locale as Locale] ?? 'human', translated_at: new Date().toISOString() }])
-          )
+          buildTranslationsPayload(originalLocale, translations, sources)
 
         const res = await fetch('/api/highlights', {
           method: 'POST',
@@ -154,12 +158,22 @@ export function useProjectComposer({ profileId, onSaved }: Options) {
             currency,
             coverUrl: cover_url,
             coverPosition: cover_position,
+            coverMediaType: cover_media_type,
+            coverStatus: cover_status,
+            coverBunnyVideoId: cover_bunny_video_id,
             tripStartDate: tripStartDate || null,
             fundingDeadline: fundingDeadline || null,
             scripture: scripture.trim(),
+            scriptureTranslations: buildTranslations(scriptureTranslations, scriptureSources),
             letter: letter.trim(),
+            letterTranslations: buildTranslations(letterTranslations, letterSources),
             status: 'active',
-            milestones,
+            milestones: milestones.map((m) => ({
+              id: m.id,
+              title: m.title,
+              is_completed: m.is_completed,
+              titleTranslations: buildTranslations(m.translations, m.sources),
+            })),
             budgetCategories: isDetailedBudget
               ? budgetCategories
                   .filter((b) => parseFloat(fromMasked(b.target_amount, currency)) > 0)
@@ -188,6 +202,7 @@ export function useProjectComposer({ profileId, onSaved }: Options) {
   }
 
   return {
+    profileId,
     step, setStep,
     title, setTitle,
     description, setDescription,
@@ -204,7 +219,9 @@ export function useProjectComposer({ profileId, onSaved }: Options) {
     tripStartDate, setTripStartDate,
     fundingDeadline, setFundingDeadline,
     scripture, setScripture,
+    scriptureTranslations, setScriptureTranslations, scriptureSources, setScriptureSources,
     letter, setLetter,
+    letterTranslations, setLetterTranslations, letterSources, setLetterSources,
     milestones, setMilestones,
     budgetMode, setBudgetMode,
     budgetCategories, setBudgetCategories,

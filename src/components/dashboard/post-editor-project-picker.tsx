@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import { coverThumbnailSrc } from '@/lib/media/bunny-thumbnail'
 import { useTranslations } from 'next-intl'
 import { getLinkableProjects } from '@/app/dashboard/publicacoes/actions'
 import {
@@ -47,7 +48,7 @@ export function PostEditorProjectPicker({ profileId, value, onChange }: Props) {
       <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-2.5 py-1.5 w-fit">
         <div className="h-5 w-5 shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
           {selected.cover_url ? (
-            <Image src={selected.cover_url} alt="" width={20} height={20} className="h-full w-full object-cover" />
+            <Image src={coverThumbnailSrc(selected.cover_url)} alt="" width={20} height={20} className="h-full w-full object-cover" />
           ) : (
             <FolderOpen className="h-3 w-3 text-muted-foreground" />
           )}
@@ -74,7 +75,7 @@ export function PostEditorProjectPicker({ profileId, value, onChange }: Props) {
           <DropdownMenuItem key={project.id} onClick={() => onChange(project.id)} className="gap-2">
             <div className="h-5 w-5 shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
               {project.cover_url ? (
-                <Image src={project.cover_url} alt="" width={20} height={20} className="h-full w-full object-cover" />
+                <Image src={coverThumbnailSrc(project.cover_url)} alt="" width={20} height={20} className="h-full w-full object-cover" />
               ) : (
                 <FolderOpen className="h-3 w-3 text-muted-foreground" />
               )}

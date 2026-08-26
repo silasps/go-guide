@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/media/compress'
 import { bakeImage } from '@/lib/media/bake-image'
+import { uploadVideoToBunny } from '@/lib/media/upload-bunny-video'
 import { savePost } from '@/app/dashboard/publicacoes/actions'
 import { usePendingAction } from '@/hooks/use-pending-action'
 import { useProjectComposer } from '@/components/highlights/project-composer/project-composer-provider'
@@ -102,30 +103,35 @@ export function usePostComposer({ post, profileId, userId, originalLocale, onSav
     )
   }
 
-  async function uploadMedia(): Promise<string[]> {
-    if (!mediaFiles.length) return []
+  async function uploadMedia(): Promise<{ urls: string[]; bunnyVideoId: string | null }> {
+    if (!mediaFiles.length) return { urls: [], bunnyVideoId: null }
+
+    // Vídeo tem pipeline próprio (Bunny Stream — convertido em HLS de forma
+    // assíncrona), não vai pro Supabase Storage. Só existe quando é o único
+    // arquivo do post (postType 'video').
+    if (mediaFiles[0].type === 'video') {
+      setUploadProgress(0)
+      const { bunnyVideoId } = await uploadVideoToBunny(mediaFiles[0].file, (pct) => setUploadProgress(pct))
+      return { urls: [], bunnyVideoId }
+    }
+
     const supabase = createClient()
     const urls: string[] = []
     setUploadProgress(0)
 
     for (let i = 0; i < mediaFiles.length; i++) {
       const media = mediaFiles[i]
-      let fileToUpload = media.file
+      const baked = await bakeImage({
+        previewUrl: media.previewUrl,
+        fileName: media.file.name,
+        position: media.position,
+        zoom: media.zoom,
+        aspect,
+        cssFilter: resolveCssFilter(media),
+      })
+      const fileToUpload = await compressImage(baked)
 
-      if (media.type === 'image') {
-        const baked = await bakeImage({
-          previewUrl: media.previewUrl,
-          fileName: media.file.name,
-          position: media.position,
-          zoom: media.zoom,
-          aspect,
-          cssFilter: resolveCssFilter(media),
-        })
-        fileToUpload = await compressImage(baked)
-      }
-
-      const ext = media.type === 'video' ? media.file.name.split('.').pop() : 'webp'
-      const path = `${userId}/${Date.now()}-${i}.${ext}`
+      const path = `${userId}/${Date.now()}-${i}.webp`
       const { error } = await supabase.storage.from('media').upload(path, fileToUpload, { contentType: fileToUpload.type, upsert: false })
       if (error) throw new Error(error.message)
 
@@ -134,7 +140,7 @@ export function usePostComposer({ post, profileId, userId, originalLocale, onSav
       setUploadProgress(Math.round(((i + 1) / mediaFiles.length) * 100))
     }
 
-    return urls
+    return { urls, bunnyVideoId: null }
   }
 
   async function handleTranslateWithAi(locale: Locale) {
@@ -176,9 +182,9 @@ export function usePostComposer({ post, profileId, userId, originalLocale, onSav
 
     run(true, async () => {
       try {
-        const newUrls = await uploadMedia()
+        const { urls: newUrls, bunnyVideoId } = await uploadMedia()
         setUploadProgress(null)
-        const mediaUrls = [...existingUrls, ...newUrls]
+        const mediaUrls = bunnyVideoId ? [] : [...existingUrls, ...newUrls]
 
         const offsetTags = tags.map((tag) => ({
           mediaIndex: tag.mediaIndex,
@@ -194,6 +200,8 @@ export function usePostComposer({ post, profileId, userId, originalLocale, onSav
           type: postType,
           content,
           mediaUrls,
+          mediaBunnyVideoId: bunnyVideoId,
+          mediaStatus: bunnyVideoId ? 'processing' : 'ready',
           mediaAspectRatio: aspect,
           location,
           isDraft: mode === 'draft',
