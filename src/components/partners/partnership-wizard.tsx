@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { PledgeForm } from './pledge-form'
 import { RecurringPledgeForm } from './recurring-pledge-form'
 import { PartnershipForm } from './partnership-form'
@@ -38,6 +39,26 @@ interface Props {
 
 export function PartnershipWizard({ profileId, username, initialChoice, missionaryName, missionStartYear, highlightId, highlightTitle, defaultCurrency, paymentOptions, budgetCategories, initialCategoryId, hasFinancialOptions, stripeAvailable, profileAvatarUrl, highlightCoverUrl, highlightCoverPosition, user }: Props) {
   const [choice, setChoice] = useState<Choice | null>(initialChoice ?? null)
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  // Sem isso, o passo do wizard só existe no estado do React — ao ir pro
+  // Stripe Checkout (navegação de página de verdade, sai do app) e clicar
+  // em "voltar" lá, o histórico do navegador volta pra URL de /parceria tal
+  // como ela estava (sem `choice`), recarregando do zero na lista inicial
+  // em vez de voltar pra tela em que o usuário realmente estava (pedido
+  // direto do usuário). `replace` (não `push`) pra não empilhar uma entrada
+  // de histórico a cada clique dentro do wizard, só manter a URL atual em
+  // sincronia com o passo atual.
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (choice) params.set('choice', choice)
+    else params.delete('choice')
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [choice])
 
   if (choice === 'financial_once' || choice === 'financial_once_general') {
     return (
