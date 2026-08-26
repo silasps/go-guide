@@ -18,7 +18,7 @@ import { formatCurrency } from '@/lib/utils'
 import { PaymentMethodInstructions } from './payment-method-instructions'
 import { BudgetCategorySelect, type BudgetCategoryOption } from './budget-category-select'
 import { AmountChips } from './amount-chips'
-import { PaymentModeTabs } from './payment-mode-tabs'
+import { PaymentMethodCards } from './payment-method-cards'
 import { DonationSummary } from './donation-summary'
 import { DonationHero } from './donation-hero'
 
@@ -50,19 +50,25 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
   const t = useTranslations('RecurringPledge')
   const tPledge = useTranslations('PledgeForm')
   const [done, setDone] = useState(false)
-  const [showManual, setShowManual] = useState(!stripeAvailable)
   const [amount, setAmount] = useState('')
   const [categoryId, setCategoryId] = useState<string | null>(initialCategoryId ?? null)
-  const [optionId, setOptionId] = useState(paymentOptions[0]?.id ?? 'other')
+  const [optionId, setOptionId] = useState(stripeAvailable ? 'stripe' : (paymentOptions[0]?.id ?? 'other'))
   const [reminderOptIn, setReminderOptIn] = useState(true)
   const { isPending: startingCheckout, run: runCheckout } = usePendingAction()
   const { isPending: savingManual, run: runManual } = usePendingAction()
 
   const [freeCurrency, setFreeCurrency] = useState(currency)
-  const selectedOption = paymentOptions.find(o => o.id === optionId)
+  const allOptions: PaymentOption[] = stripeAvailable
+    ? [{ id: 'stripe', method: 'stripe', label: t('cardTab'), value: '', details: null, currency }, ...paymentOptions]
+    : paymentOptions
+  const selectedOption = allOptions.find(o => o.id === optionId)
   const method = selectedOption?.method ?? 'other'
-  const isManualConfigured = !!selectedOption?.value.trim()
-  const activeCurrency = showManual ? (isManualConfigured ? selectedOption!.currency : freeCurrency) : currency
+  const isStripe = method === 'stripe'
+  const isManualConfigured = !isStripe && !!selectedOption?.value.trim()
+  // Recorrência via Stripe é sempre na moeda do projeto (fixa, ver
+  // checkout-recurring/route.ts) — moeda livre só existe pro caminho
+  // manual sem um valor configurado.
+  const activeCurrency = isStripe ? currency : (isManualConfigured ? selectedOption!.currency : freeCurrency)
   const parsedAmountPreview = parseFloat(fromMasked(amount, activeCurrency))
   const amountFormatted = amount && !isNaN(parsedAmountPreview) ? formatCurrency(parsedAmountPreview, activeCurrency) : ''
 
@@ -201,7 +207,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
         <div className="space-y-2">
           <Label className="flex items-center gap-1.5">
             {t('amountLabelPlain')} *
-            {(!showManual || isManualConfigured) ? (
+            {(isStripe || isManualConfigured) ? (
               <span className="text-muted-foreground font-normal">({activeCurrency})</span>
             ) : (
               <select
@@ -217,51 +223,37 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
           <Input inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, activeCurrency))} placeholder={tPledge('customAmountPlaceholder')} required />
         </div>
 
-        {stripeAvailable && (
-          <PaymentModeTabs
-            cardActive={!showManual}
-            onSelectCard={() => setShowManual(false)}
-            onSelectManual={() => setShowManual(true)}
-            cardLabel={t('cardTab')}
-            manualLabel={t('manualTab')}
-          />
-        )}
+        <div className="space-y-3 border-t border-border pt-4">
+          <h2 className="text-sm font-semibold">{tPledge('sectionPaymentTitle')}</h2>
+          <PaymentMethodCards options={allOptions} value={optionId} onChange={(id) => { setOptionId(id); setAmount('') }} />
 
-        {showManual && (
-          <form id="recurring-manual-form" onSubmit={handleManualSubmit} className="space-y-4">
-            <p className="text-xs text-muted-foreground">{t('manualDescription')}</p>
-            <div className="space-y-2">
-              <Label>{t('methodLabel')}</Label>
-              <select
-                value={optionId}
-                onChange={(e) => { setOptionId(e.target.value); setAmount('') }}
-                className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
-              >
-                {paymentOptions.map(opt => (
-                  <option key={opt.id} value={opt.id}>{opt.label}{opt.value.trim() ? ` (${opt.currency})` : ''}</option>
-                ))}
-              </select>
-              {selectedOption && (
-                <PaymentMethodInstructions
-                  method={selectedOption.method}
-                  label={selectedOption.label}
-                  value={selectedOption.value}
-                  details={selectedOption.details}
-                  missionaryName={missionaryName}
-                />
-              )}
-            </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={reminderOptIn} onChange={(e) => setReminderOptIn(e.target.checked)} className="rounded border-input" />
-              {t('reminderOptInLabel')}
-            </label>
-          </form>
-        )}
+          {isStripe ? (
+            <p className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">{tPledge('stripeInlineNote')}</p>
+          ) : selectedOption && (
+            <PaymentMethodInstructions
+              method={selectedOption.method}
+              label={selectedOption.label}
+              value={selectedOption.value}
+              details={selectedOption.details}
+              missionaryName={missionaryName}
+            />
+          )}
+
+          {!isStripe && (
+            <form id="recurring-manual-form" onSubmit={handleManualSubmit} className="space-y-4">
+              <p className="text-xs text-muted-foreground">{t('manualDescription')}</p>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={reminderOptIn} onChange={(e) => setReminderOptIn(e.target.checked)} className="rounded border-input" />
+                {t('reminderOptInLabel')}
+              </label>
+            </form>
+          )}
+        </div>
       </div>
 
       <footer className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background">
         <div className="mx-auto max-w-md p-4 pb-[calc(env(safe-area-inset-bottom)+16px)]">
-          {!showManual ? (
+          {isStripe ? (
             <Button type="button" variant="support" className="w-full" onClick={handleStripeCheckout} disabled={startingCheckout}>
               {startingCheckout && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t('stripeCta')}
