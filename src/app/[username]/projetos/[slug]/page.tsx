@@ -252,28 +252,30 @@ export default async function ProjetoPublicoPage({ params }: Props) {
                 </Avatar>
                 <span className="text-white text-xs font-medium">{profile.display_name}</span>
               </div>
-              {/* Status + compartilhar sobrepostos na capa (não espremidos
-                  ao lado do título) — fundo opaco garante contraste com
-                  qualquer foto, e o alvo de toque fica bem maior que os
-                  ícones/badges soltos de antes (o usuário achou pequenos
-                  demais e quase invisíveis). */}
-              <div className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full bg-background/95 backdrop-blur-sm p-1 shadow-sm">
-                <StatusBadge {...sectionProps} className="h-6 px-2.5 text-[13px]" />
+            </div>
+
+            {/* Cabeçalho — status e compartilhar ficam aqui, não sobrepostos
+                na foto: em fotos de pessoas (retratos), um pill opaco no
+                canto acaba cobrindo rosto/cabeça imprevisivelmente (a capa é
+                enviada livremente por cada missionário, sem controle sobre
+                o enquadramento). Benchmark (GoFundMe/Kickstarter): esses
+                controles ficam sempre na área de conteúdo, nunca por cima
+                da imagem — só identidade/marca (o pill do avatar acima)
+                costuma ficar sobre a foto. */}
+            <div className="space-y-3 mt-3">
+              <div className="flex items-center gap-2">
+                <h1 className="font-heading text-2xl font-bold flex-1 min-w-0">{localizedTitle}</h1>
+                <StatusBadge {...sectionProps} className="h-6 px-2.5 text-[13px] shrink-0" />
                 <ShareButton
                   iconOnly
-                  variant="ghost"
-                  className="h-8 w-8"
+                  variant="outline"
+                  className="h-8 w-8 shrink-0"
                   url={`${SITE_URL}/${username}/projetos/${project.slug ?? project.id}`}
                   title={localizedTitle}
                   label="Compartilhar projeto"
                   copiedLabel="Link do projeto copiado"
                 />
               </div>
-            </div>
-
-            {/* Cabeçalho */}
-            <div className="space-y-3 mt-3">
-              <h1 className="font-heading text-2xl font-bold">{localizedTitle}</h1>
               {localizedScripture && (
                 <p className="text-sm italic text-muted-foreground border-l-2 border-primary/40 pl-3">{localizedScripture}</p>
               )}
