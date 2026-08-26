@@ -6,6 +6,7 @@ import { getInitials } from '@/lib/utils'
 import { resolveLocalizedText } from '@/lib/i18n/resolve-content-locale'
 import type { Locale } from '@/i18n/config'
 import { MapPin, Link2 } from 'lucide-react'
+import { ProfileStats } from './profile-stats'
 
 interface Props {
   profile: Profile
@@ -33,12 +34,6 @@ export async function ProfileHeader({ profile, postsCount, projectsCount, achiev
   const bio = resolveLocalizedText(profile.bio, profile.bio_locale, profile.bio_translations, locale).text
   const showFollows = profile.user_role === 'missionary' && followersCount !== undefined && followingCount !== undefined
 
-  const stats = [
-    { value: postsCount, label: t('statsPosts') },
-    { value: projectsCount, label: t('statsProjects') },
-    { value: achievementsCount, label: t('statsAchievements') },
-  ]
-
   return (
     <div className="space-y-4">
       {/* Avatar + estatísticas, estilo Instagram */}
@@ -64,14 +59,12 @@ export async function ProfileHeader({ profile, postsCount, projectsCount, achiev
           )}
         </div>
 
-        <div className="flex-1 grid grid-cols-3 text-center">
-          {stats.map(({ value, label }) => (
-            <div key={label}>
-              <div className="text-base font-semibold leading-tight">{value}</div>
-              <div className="text-xs text-muted-foreground">{label}</div>
-            </div>
-          ))}
-        </div>
+        <ProfileStats
+          postsCount={postsCount} postsLabel={t('statsPosts')}
+          projectsCount={projectsCount} projectsLabel={t('statsProjects')}
+          achievementsCount={achievementsCount} achievementsLabel={t('statsAchievements')}
+          username={profile.username}
+        />
       </div>
 
       {/* Seguidores/Seguindo — só para missionários, linha própria pra caber bem no mobile.

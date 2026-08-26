@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Grid3x3, FolderOpen, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -10,8 +9,9 @@ import type { Locale } from '@/i18n/config'
 import { ProfilePostsGrid } from '@/components/shared/profile-posts-grid'
 import { ProjectsGrid } from '@/components/profile/projects-grid'
 import { HistoryView } from '@/components/profile/history-view'
+import { useProfileTab } from './profile-tab-context'
 
-type Tab = 'posts' | 'projects' | 'history'
+export type Tab = 'posts' | 'projects' | 'history'
 
 interface Props {
   posts: PostWithProfile[]
@@ -33,7 +33,7 @@ interface Props {
  *  aparece na "grade" principal do perfil. */
 export function ProfileContentTabs({ posts, projects, historyBlocks, username, accentColor, visitorLocale, showProjects, showHistory, canEdit, deepLinkPostId, deepLinkComments }: Props) {
   const t = useTranslations('PublicProfile')
-  const [tab, setTab] = useState<Tab>('posts')
+  const { tab, setTab } = useProfileTab()
 
   const tabs = [
     { id: 'posts' as const, Icon: Grid3x3 },

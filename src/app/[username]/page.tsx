@@ -11,6 +11,7 @@ import { ProfileOwnerActions } from '@/components/profile/profile-owner-actions'
 import { ProfileContentTabs } from '@/components/profile/profile-content-tabs'
 import { PostComposerProvider } from '@/components/dashboard/post-composer-provider'
 import { ProjectComposerProvider } from '@/components/highlights/project-composer/project-composer-provider'
+import { ProfileTabProvider } from '@/components/profile/profile-tab-context'
 import { enrichWithEngagement } from '@/lib/posts/enrich-with-engagement'
 import type { PostWithProfile, Profile } from '@/types/database'
 import { SkCardGrid, SkFeedPosts } from '@/components/ui/skeleton'
@@ -21,8 +22,10 @@ import { markNotificationTypesRead } from '@/lib/notifications/mark-read'
 
 interface Props {
   params: Promise<{ username: string }>
-  searchParams: Promise<{ post?: string; comments?: string }>
+  searchParams: Promise<{ post?: string; comments?: string; tab?: string }>
 }
+
+const VALID_TABS = ['posts', 'projects', 'history'] as const
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params
@@ -52,7 +55,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProfilePage({ params, searchParams }: Props) {
   const { username } = await params
-  const { post: deepLinkPostId, comments: deepLinkComments } = await searchParams
+  const { post: deepLinkPostId, comments: deepLinkComments, tab } = await searchParams
+  const initialTab = VALID_TABS.find((t) => t === tab)
   const profile = await getProfile(username)
 
   if (!profile) notFound()
@@ -89,6 +93,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-xl mx-auto px-4 py-8 space-y-8">
+        <ProfileTabProvider initialTab={initialTab}>
         <ProfileHeader
           profile={profile}
           postsCount={postsCount ?? 0}
@@ -114,6 +119,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
             deepLinkComments={deepLinkComments === '1'}
           />
         </Suspense>
+        </ProfileTabProvider>
       </div>
     </div>
   )
@@ -189,7 +195,7 @@ async function ProfileContentAsync({ profile, visitorLocale, canEdit, deepLinkPo
   )
 
   return (
-    <div className="space-y-3">
+    <div id="conteudo" className="space-y-3 scroll-mt-16">
       {canEdit && viewerUserId ? (
         <ProjectComposerProvider profileId={profile.id}>
           <PostComposerProvider
