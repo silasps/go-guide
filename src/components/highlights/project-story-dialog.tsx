@@ -33,14 +33,14 @@ export function ProjectStoryDialog({ triggerLabel, title, closeLabel, children }
       } />
       <DialogContent
         showCloseButton={false}
-        className="fixed inset-0 translate-x-0 translate-y-0 z-50 flex flex-col w-full h-full max-h-full overflow-y-hidden max-w-none sm:max-w-none rounded-none p-0 gap-0 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:flex-none md:w-full md:h-auto md:max-w-lg md:max-h-[85vh] md:rounded-xl md:p-0 md:gap-0"
+        className="fixed top-1/2 left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-lg max-h-[85vh] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden rounded-2xl p-0"
       >
         <div className="grid grid-cols-[2rem_1fr_2rem] items-center gap-2 px-4 py-3 border-b shrink-0">
           <BackButton onClick={() => setOpen(false)} label={closeLabel} />
           <DialogTitle className="text-center text-base truncate">{title}</DialogTitle>
           <div />
         </div>
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 md:px-5 md:py-5">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4">
           {children}
         </div>
       </DialogContent>
