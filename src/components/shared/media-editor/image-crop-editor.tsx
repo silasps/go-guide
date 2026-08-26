@@ -10,7 +10,11 @@ import type { MediaAspectRatio } from '@/types/database'
 import { ASPECT_RATIOS, averageColor } from '@/lib/media/bake-image'
 import { ASPECT_RATIO_CLASS, resolveCssFilter, type MediaDraft } from './types'
 
-const ASPECT_OPTIONS: MediaAspectRatio[] = ['original', '1:1', '4:5', '16:9']
+// Sem "original": igual ao Instagram, todo envio passa por um recorte
+// padronizado (quadrado, retrato ou paisagem) — nunca fica destravado numa
+// proporção arbitrária, o que evitava o visualizador se adaptar direito
+// (feedback direto do usuário).
+const ASPECT_OPTIONS: MediaAspectRatio[] = ['1:1', '4:5', '16:9']
 
 interface Props {
   media: MediaDraft
