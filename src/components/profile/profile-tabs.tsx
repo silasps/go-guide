@@ -40,10 +40,14 @@ export function ProfileTabs({ username, hasTrajectory, isMissionary, canEdit, vi
   // navegar pro resto do perfil sem precisar voltar primeiro. Antes tinha
   // um caso especial aqui só com botão de voltar fixo sobre a capa.
 
+  // /parceria ficou 100% dono da própria chrome (cabeçalho + rodapé fixos
+  // do próprio wizard, ver partnership-wizard.tsx/pledge-form.tsx) — evita
+  // dois cabeçalhos fixos disputando o mesmo topo de tela.
+  if (pathname === `${base}/parceria`) return null
+
   const contentMaxWidth: Record<string, string> = {
     [`${base}/mensagens`]: 'max-w-lg',
     [`${base}/oracao`]: 'max-w-md',
-    [`${base}/parceria`]: 'max-w-md',
   }
   if (pathname in contentMaxWidth) {
     // Alinha o botão de voltar com a coluna de conteúdo centralizada da

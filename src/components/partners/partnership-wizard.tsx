@@ -6,6 +6,8 @@ import { RecurringPledgeForm } from './recurring-pledge-form'
 import { PartnershipForm } from './partnership-form'
 import { PledgePaymentMethod } from '@/types/database'
 import type { BudgetCategoryOption } from './budget-category-select'
+import { BackButton } from '@/components/ui/back-button'
+import { LanguageSwitcher } from '@/components/marketing/language-switcher'
 
 type Choice = 'financial_once' | 'financial_once_general' | 'financial_ongoing' | 'prayer' | 'ambassador' | 'volunteer'
 
@@ -31,10 +33,11 @@ interface Props {
   stripeAvailable: boolean
   profileAvatarUrl: string | null
   highlightCoverUrl?: string | null
+  highlightCoverPosition?: string | null
   user: SessionUser | null
 }
 
-export function PartnershipWizard({ profileId, username, initialChoice, missionaryName, missionStartYear, highlightId, highlightTitle, defaultCurrency, paymentOptions, budgetCategories, initialCategoryId, hasFinancialOptions, stripeAvailable, profileAvatarUrl, highlightCoverUrl, user }: Props) {
+export function PartnershipWizard({ profileId, username, initialChoice, missionaryName, missionStartYear, highlightId, highlightTitle, defaultCurrency, paymentOptions, budgetCategories, initialCategoryId, hasFinancialOptions, stripeAvailable, profileAvatarUrl, highlightCoverUrl, highlightCoverPosition, user }: Props) {
   const [choice, setChoice] = useState<Choice | null>(initialChoice ?? null)
 
   if (choice === 'financial_once' || choice === 'financial_once_general') {
@@ -50,8 +53,10 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
         paymentOptions={paymentOptions}
         stripeAvailable={stripeAvailable}
         heroImageUrl={choice === 'financial_once' ? (highlightCoverUrl ?? profileAvatarUrl) : profileAvatarUrl}
+        heroImagePosition={choice === 'financial_once' && highlightCoverUrl ? (highlightCoverPosition ?? undefined) : undefined}
         budgetCategories={choice === 'financial_once' ? budgetCategories : undefined}
         initialCategoryId={choice === 'financial_once' ? initialCategoryId : undefined}
+        onBack={() => setChoice(null)}
         onBecomePartner={() => setChoice('financial_ongoing')}
       />
     )
@@ -67,6 +72,8 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
         paymentOptions={paymentOptions}
         stripeAvailable={stripeAvailable}
         heroImageUrl={highlightId ? (highlightCoverUrl ?? profileAvatarUrl) : profileAvatarUrl}
+        heroImagePosition={highlightId && highlightCoverUrl ? (highlightCoverPosition ?? undefined) : undefined}
+        onBack={() => setChoice(null)}
         user={user}
         returnPath={returnPath}
         highlightId={highlightId}
@@ -76,15 +83,32 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
     )
   }
 
+  // Financial_once/financial_once_general/financial_ongoing (acima) montam sua
+  // própria tela cheia (header/footer fixos) — as demais escolhas usam o cartão
+  // centralizado tradicional, envolvido aqui.
   if (choice === 'prayer' || choice === 'ambassador' || choice === 'volunteer') {
     const typeMap = { prayer: 'prayer', ambassador: 'ambassador', volunteer: 'both' } as const
     return (
-      <PartnershipForm profileId={profileId} missionaryName={missionaryName} defaultType={typeMap[choice]} />
+      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md space-y-6">
+          <div className="flex items-center justify-between">
+            <BackButton onClick={() => setChoice(null)} label="Voltar" />
+            <LanguageSwitcher compact />
+          </div>
+          <PartnershipForm profileId={profileId} missionaryName={missionaryName} defaultType={typeMap[choice]} />
+        </div>
+      </div>
     )
   }
 
   return (
-    <div className="space-y-3">
+    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md space-y-6">
+      <div className="flex items-center justify-between">
+        <BackButton href={`/${username}`} label="Voltar ao perfil" />
+        <LanguageSwitcher compact />
+      </div>
+      <div className="space-y-3">
       <div className="text-center mb-3">
         <h1 className="text-2xl font-bold">Faça parte com {missionaryName}</h1>
         <p className="text-muted-foreground mt-2">Escolha como você quer se envolver com esta missão.</p>
@@ -164,6 +188,8 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
           <p className="text-xs text-muted-foreground">Voluntariado, habilidades ou outro tipo de ajuda</p>
         </div>
       </button>
+      </div>
+      </div>
     </div>
   )
 }

@@ -27,8 +27,8 @@ export default async function ParceriaPage({ params, searchParams }: Props) {
     supabase.from('payment_methods').select('*').eq('profile_id', profile.id).eq('is_active', true).order('sort_order'),
     supabase.auth.getUser(),
     highlight_id
-      ? supabase.from('highlights').select('id, title, currency, cover_url').eq('id', highlight_id).eq('profile_id', profile.id).single()
-      : Promise.resolve({ data: null as { id: string; title: string; currency: string; cover_url: string | null } | null }),
+      ? supabase.from('highlights').select('id, title, currency, cover_url, cover_position').eq('id', highlight_id).eq('profile_id', profile.id).single()
+      : Promise.resolve({ data: null as { id: string; title: string; currency: string; cover_url: string | null; cover_position: string | null } | null }),
     highlight_id
       ? supabase.from('project_budget_progress').select('*').eq('highlight_id', highlight_id).order('order_index')
       : Promise.resolve({ data: null }),
@@ -59,27 +59,24 @@ export default async function ParceriaPage({ params, searchParams }: Props) {
   const missionStartYear = profile.mission_start_date ? new Date(profile.mission_start_date).getFullYear() : null
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md space-y-6">
-        <PartnershipWizard
-          profileId={profile.id}
-          username={username}
-          initialChoice={initialChoice}
-          missionaryName={profile.display_name}
-          missionStartYear={missionStartYear}
-          highlightId={highlight?.id}
-          highlightTitle={highlight?.title}
-          defaultCurrency={defaultCurrency}
-          paymentOptions={paymentOptions}
-          budgetCategories={budgetCategories}
-          initialCategoryId={initialCategoryId}
-          hasFinancialOptions={true}
-          stripeAvailable={stripeAvailable}
-          profileAvatarUrl={profile.avatar_url}
-          highlightCoverUrl={highlight?.cover_url ?? null}
-          user={user ? { id: user.id, email: user.email ?? null, user_metadata: { full_name: user.user_metadata?.full_name } } : null}
-        />
-      </div>
-    </div>
+    <PartnershipWizard
+      profileId={profile.id}
+      username={username}
+      initialChoice={initialChoice}
+      missionaryName={profile.display_name}
+      missionStartYear={missionStartYear}
+      highlightId={highlight?.id}
+      highlightTitle={highlight?.title}
+      defaultCurrency={defaultCurrency}
+      paymentOptions={paymentOptions}
+      budgetCategories={budgetCategories}
+      initialCategoryId={initialCategoryId}
+      hasFinancialOptions={true}
+      stripeAvailable={stripeAvailable}
+      profileAvatarUrl={profile.avatar_url}
+      highlightCoverUrl={highlight?.cover_url ?? null}
+      highlightCoverPosition={highlight?.cover_position ?? null}
+      user={user ? { id: user.id, email: user.email ?? null, user_metadata: { full_name: user.user_metadata?.full_name } } : null}
+    />
   )
 }

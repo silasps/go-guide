@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { BackButton } from '@/components/ui/back-button'
+import { LanguageSwitcher } from '@/components/marketing/language-switcher'
 import { toast } from 'sonner'
 import { Loader2, CheckCircle } from 'lucide-react'
 import { toMasked, fromMasked, CURRENCIES } from '@/lib/currency-mask'
@@ -36,6 +38,8 @@ interface Props {
   paymentOptions: PaymentOption[]
   stripeAvailable: boolean
   heroImageUrl?: string | null
+  heroImagePosition?: string
+  onBack: () => void
   user: SessionUser | null
   returnPath: string // caminho atual (com highlight_id se houver), usado no redirect de login/cadastro
   highlightId?: string
@@ -43,7 +47,7 @@ interface Props {
   initialCategoryId?: string | null
 }
 
-export function RecurringPledgeForm({ profileId, missionaryName, currency, paymentOptions, stripeAvailable, heroImageUrl = null, user, returnPath, highlightId, budgetCategories, initialCategoryId }: Props) {
+export function RecurringPledgeForm({ profileId, missionaryName, currency, paymentOptions, stripeAvailable, heroImageUrl = null, heroImagePosition, onBack, user, returnPath, highlightId, budgetCategories, initialCategoryId }: Props) {
   const t = useTranslations('RecurringPledge')
   const tPledge = useTranslations('PledgeForm')
   const [done, setDone] = useState(false)
@@ -67,32 +71,48 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
 
   if (!user) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t('needsAccountTitle')}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">{t('needsAccountDescription')}</p>
-          <Link href={`/cadastro?redirect=${redirectParam}`}>
-            <Button className="w-full">{t('createAccount')}</Button>
-          </Link>
-          <Link href={`/login?redirect=${redirectParam}`}>
-            <Button variant="outline" className="w-full">{t('alreadyHaveAccount')}</Button>
-          </Link>
-        </CardContent>
-      </Card>
+      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md space-y-3">
+          <div className="flex items-center justify-between">
+            <BackButton onClick={onBack} label="Voltar" />
+            <LanguageSwitcher compact />
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">{t('needsAccountTitle')}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">{t('needsAccountDescription')}</p>
+              <Link href={`/cadastro?redirect=${redirectParam}`}>
+                <Button className="w-full">{t('createAccount')}</Button>
+              </Link>
+              <Link href={`/login?redirect=${redirectParam}`}>
+                <Button variant="outline" className="w-full">{t('alreadyHaveAccount')}</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     )
   }
 
   if (done) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center space-y-3">
-          <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
-          <h2 className="text-xl font-semibold">{t('doneTitle')}</h2>
-          <p className="text-muted-foreground text-sm">{t('doneDescription', { name: missionaryName })}</p>
-        </CardContent>
-      </Card>
+      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md space-y-3">
+          <div className="flex items-center justify-between">
+            <BackButton onClick={onBack} label="Voltar" />
+            <LanguageSwitcher compact />
+          </div>
+          <Card>
+            <CardContent className="py-12 text-center space-y-3">
+              <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+              <h2 className="text-xl font-semibold">{t('doneTitle')}</h2>
+              <p className="text-muted-foreground text-sm">{t('doneDescription', { name: missionaryName })}</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     )
   }
 
@@ -161,12 +181,17 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{t('title', { name: missionaryName })}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <DonationHero imageUrl={heroImageUrl} alt={missionaryName} />
+    <div className="min-h-screen bg-background">
+      <header className="fixed inset-x-0 top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+        <div className="mx-auto flex h-14 max-w-md items-center gap-2 px-2">
+          <BackButton onClick={onBack} label="Voltar" />
+          <h1 className="flex-1 font-semibold text-base truncate">{t('title', { name: missionaryName })}</h1>
+          <LanguageSwitcher compact />
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-md px-4 pt-[72px] pb-28 space-y-4">
+        <DonationHero imageUrl={heroImageUrl} alt={missionaryName} objectPosition={heroImagePosition} />
 
         <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
           {t('linkingAs', { email: user.email ?? '', name: missionaryName })}
@@ -215,17 +240,8 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
           />
         )}
 
-        {stripeAvailable && !showManual && (
-          <div className="space-y-2">
-            <Button type="button" variant="support" className="w-full" onClick={handleStripeCheckout} disabled={startingCheckout}>
-              {startingCheckout && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('stripeCta')}
-            </Button>
-          </div>
-        )}
-
         {showManual && (
-          <form onSubmit={handleManualSubmit} className="space-y-4">
+          <form id="recurring-manual-form" onSubmit={handleManualSubmit} className="space-y-4">
             <p className="text-xs text-muted-foreground">{t('manualDescription')}</p>
             <div className="space-y-2">
               <Label>{t('methodLabel')}</Label>
@@ -252,13 +268,25 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
               <input type="checkbox" checked={reminderOptIn} onChange={(e) => setReminderOptIn(e.target.checked)} className="rounded border-input" />
               {t('reminderOptInLabel')}
             </label>
-            <Button type="submit" variant="support" className="w-full" disabled={savingManual}>
+          </form>
+        )}
+      </div>
+
+      <footer className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background">
+        <div className="mx-auto max-w-md p-4 pb-[calc(env(safe-area-inset-bottom)+16px)]">
+          {!showManual ? (
+            <Button type="button" variant="support" className="w-full" onClick={handleStripeCheckout} disabled={startingCheckout}>
+              {startingCheckout && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t('stripeCta')}
+            </Button>
+          ) : (
+            <Button type="submit" form="recurring-manual-form" variant="support" className="w-full" disabled={savingManual}>
               {savingManual && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t('manualSubmit')}
             </Button>
-          </form>
-        )}
-      </CardContent>
-    </Card>
+          )}
+        </div>
+      </footer>
+    </div>
   )
 }

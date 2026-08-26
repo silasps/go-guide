@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
+import { BackButton } from '@/components/ui/back-button'
+import { LanguageSwitcher } from '@/components/marketing/language-switcher'
 import { toast } from 'sonner'
 import { Loader2, CheckCircle, Upload } from 'lucide-react'
 import { PledgePaymentMethod } from '@/types/database'
@@ -35,12 +37,14 @@ interface Props {
   paymentOptions: PaymentOption[]
   stripeAvailable?: boolean
   heroImageUrl?: string | null
+  heroImagePosition?: string
   budgetCategories?: BudgetCategoryOption[]
   initialCategoryId?: string | null
+  onBack: () => void
   onBecomePartner?: () => void
 }
 
-export function PledgeForm({ profileId, missionaryName, highlightId, highlightTitle, isRecurring, defaultCurrency, paymentOptions, stripeAvailable = false, heroImageUrl = null, budgetCategories, initialCategoryId, onBecomePartner }: Props) {
+export function PledgeForm({ profileId, missionaryName, highlightId, highlightTitle, isRecurring, defaultCurrency, paymentOptions, stripeAvailable = false, heroImageUrl = null, heroImagePosition, budgetCategories, initialCategoryId, onBack, onBecomePartner }: Props) {
   const t = useTranslations('PledgeForm')
   const [done, setDone] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -147,41 +151,52 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
     setDone(true)
   }
 
+  const title = isRecurring ? t('titleRecurring') : t('title', { highlightTitle: highlightTitle ? ` — ${highlightTitle}` : '' })
+
   if (done) {
     return (
-      <div className="space-y-3">
-        <Card>
-          <CardContent className="py-12 text-center space-y-3">
-            <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
-            <h2 className="text-xl font-semibold">{t('doneTitle')}</h2>
-            <p className="text-muted-foreground text-sm">{t('doneDescription', { name: missionaryName })}</p>
-          </CardContent>
-        </Card>
-        {!isRecurring && onBecomePartner && (
-          <Card className="bg-primary/5 border-primary/20">
-            <CardContent className="py-6 text-center space-y-3">
-              <p className="text-sm">{t('becomePartnerPrompt', { name: missionaryName })}</p>
-              <Button type="button" variant="outline" className="w-full" onClick={onBecomePartner}>
-                {t('becomePartnerCta')}
-              </Button>
+      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md space-y-3">
+          <div className="flex items-center justify-between">
+            <BackButton onClick={onBack} label="Voltar" />
+            <LanguageSwitcher compact />
+          </div>
+          <Card>
+            <CardContent className="py-12 text-center space-y-3">
+              <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+              <h2 className="text-xl font-semibold">{t('doneTitle')}</h2>
+              <p className="text-muted-foreground text-sm">{t('doneDescription', { name: missionaryName })}</p>
             </CardContent>
           </Card>
-        )}
+          {!isRecurring && onBecomePartner && (
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="py-6 text-center space-y-3">
+                <p className="text-sm">{t('becomePartnerPrompt', { name: missionaryName })}</p>
+                <Button type="button" variant="outline" className="w-full" onClick={onBecomePartner}>
+                  {t('becomePartnerCta')}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">
-          {isRecurring ? t('titleRecurring') : t('title', { highlightTitle: highlightTitle ? ` — ${highlightTitle}` : '' })}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <DonationHero imageUrl={heroImageUrl} alt={highlightTitle ?? missionaryName} />
+    <div className="min-h-screen bg-background">
+      <header className="fixed inset-x-0 top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+        <div className="mx-auto flex h-14 max-w-md items-center gap-2 px-2">
+          <BackButton onClick={onBack} label="Voltar" />
+          <h1 className="flex-1 font-semibold text-base truncate">{title}</h1>
+          <LanguageSwitcher compact />
+        </div>
+      </header>
 
-        <p className="text-xs text-muted-foreground -mt-2">
+      <div className="mx-auto max-w-md px-4 pt-[72px] pb-28 space-y-4">
+        <DonationHero imageUrl={heroImageUrl} alt={highlightTitle ?? missionaryName} objectPosition={heroImagePosition} />
+
+        <p className="text-xs text-muted-foreground">
           {t('intro', { name: missionaryName })}
         </p>
 
@@ -251,17 +266,8 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
           />
         )}
 
-        {stripeAvailable && !showManual && (
-          <div className="space-y-2">
-            <Button type="button" variant="support" className="w-full" onClick={handleStripeCheckout} disabled={startingCheckout}>
-              {startingCheckout && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('stripeCta')}
-            </Button>
-          </div>
-        )}
-
         {showManual && (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form id="pledge-manual-form" onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label>{t('methodLabel')}</Label>
               <select
@@ -309,14 +315,25 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
                 </label>
               )}
             </div>
+          </form>
+        )}
+      </div>
 
-            <Button type="submit" variant="support" className="w-full" disabled={saving}>
+      <footer className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background">
+        <div className="mx-auto max-w-md p-4 pb-[calc(env(safe-area-inset-bottom)+16px)]">
+          {!showManual ? (
+            <Button type="button" variant="support" className="w-full" onClick={handleStripeCheckout} disabled={startingCheckout}>
+              {startingCheckout && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t('stripeCta')}
+            </Button>
+          ) : (
+            <Button type="submit" form="pledge-manual-form" variant="support" className="w-full" disabled={saving}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t('submit')}
             </Button>
-          </form>
-        )}
-      </CardContent>
-    </Card>
+          )}
+        </div>
+      </footer>
+    </div>
   )
 }
