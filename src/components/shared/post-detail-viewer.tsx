@@ -71,6 +71,7 @@ export function PostDetailViewer({ posts, initialIndex, visitorLocale, canEdit =
             visitorLocale={visitorLocale}
             canEdit={canEdit}
             autoOpenComments={initialCommentsOpen && index === initialIndex}
+            mediaMaxHeightClass="max-h-[50vh]"
           />
         </div>
 

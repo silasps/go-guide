@@ -3,7 +3,7 @@ import type { MediaAspectRatio } from '@/types/database'
 export const ASPECT_RATIOS: Partial<Record<MediaAspectRatio, number>> = {
   '1:1': 1,
   '4:5': 4 / 5,
-  '16:9': 16 / 9,
+  '1.91:1': 1.91,
   '21:9': 21 / 9,
 }
 

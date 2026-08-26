@@ -23,7 +23,7 @@ const ASPECT_CLASS: Record<string, string> = {
   original: '',
   '1:1': 'aspect-square',
   '4:5': 'aspect-[4/5]',
-  '16:9': 'aspect-video',
+  '1.91:1': 'aspect-[1.91/1]',
 }
 
 interface Props {
@@ -33,9 +33,15 @@ interface Props {
   /** Abre a folha de comentários já expandida ao montar — usado pelo link
    *  do sino de notificação de comentário. */
   autoOpenComments?: boolean
+  /** Limita a altura da mídia (ex. "max-h-[50vh]") — usado só pelo
+   *  PostDetailViewer, pra garantir que curtir/comentar/legenda sempre
+   *  caibam junto na tela sem precisar rolar em telas baixas (a proporção
+   *  4:5 sozinha pode consumir quase toda a altura do modal). No feed
+   *  normal fica sem limite, mantendo a proporção original do post. */
+  mediaMaxHeightClass?: string
 }
 
-export function PostCard({ post, visitorLocale, canEdit = false, autoOpenComments = false }: Props) {
+export function PostCard({ post, visitorLocale, canEdit = false, autoOpenComments = false, mediaMaxHeightClass }: Props) {
   const t = useTranslations('Feed')
   const composer = useOptionalComposer()
   const { text } = resolveLocalizedText(post.content, post.original_locale, post.translations, visitorLocale)
@@ -185,6 +191,7 @@ export function PostCard({ post, visitorLocale, canEdit = false, autoOpenComment
           activeSlide={activeSlide}
           showTags={showTags}
           onToggleTags={() => setShowTags((v) => !v)}
+          mediaMaxHeightClass={mediaMaxHeightClass}
         />
         {showLikeBurst && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -232,7 +239,7 @@ export function PostCard({ post, visitorLocale, canEdit = false, autoOpenComment
 }
 
 function PostMedia({
-  post, scrollRef, onScroll, activeSlide, showTags, onToggleTags,
+  post, scrollRef, onScroll, activeSlide, showTags, onToggleTags, mediaMaxHeightClass,
 }: {
   post: PostWithProfile
   scrollRef: React.RefObject<HTMLDivElement | null>
@@ -240,9 +247,10 @@ function PostMedia({
   activeSlide: number
   showTags: boolean
   onToggleTags: () => void
+  mediaMaxHeightClass?: string
 }) {
   const t = useTranslations('Feed')
-  const aspectClass = ASPECT_CLASS[post.media_aspect_ratio] || 'aspect-[4/5]'
+  const aspectClass = cn(ASPECT_CLASS[post.media_aspect_ratio] || 'aspect-[4/5]', mediaMaxHeightClass)
 
   // Vídeo processando na Bunny ainda não tem media_urls — mas o post
   // precisa renderizar o placeholder de "processando" mesmo assim.
