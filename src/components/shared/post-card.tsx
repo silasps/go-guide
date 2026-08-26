@@ -23,7 +23,7 @@ const ASPECT_CLASS: Record<string, string> = {
   original: '',
   '1:1': 'aspect-square',
   '4:5': 'aspect-[4/5]',
-  '16:9': 'aspect-video',
+  '1.91:1': 'aspect-[1.91/1]',
 }
 
 interface Props {

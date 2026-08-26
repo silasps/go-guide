@@ -53,7 +53,7 @@ export const ASPECT_RATIO_CLASS: Record<MediaAspectRatio, string> = {
   original: '',
   '1:1': 'aspect-square',
   '4:5': 'aspect-[4/5]',
-  '16:9': 'aspect-video',
+  '1.91:1': 'aspect-[1.91/1]',
   '21:9': 'aspect-[21/9]',
 }
 

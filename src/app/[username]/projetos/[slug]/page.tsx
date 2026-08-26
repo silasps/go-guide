@@ -236,8 +236,8 @@ export default async function ProjetoPublicoPage({ params }: Props) {
 
         <CoverTitleEditSection {...sectionProps}>
           <>
-            {/* Hero: capa 16:9 + avatar sobreposto */}
-            <div className="relative aspect-video rounded-2xl overflow-hidden">
+            {/* Hero: capa 1.91:1 (paisagem do Instagram) + avatar sobreposto */}
+            <div className="relative aspect-[1.91/1] rounded-2xl overflow-hidden">
               {project.cover_media_type === 'video' ? (
                 <InstagramVideoPlayer src={project.cover_url ?? ''} status={project.cover_status} className="absolute inset-0" showFullscreenButton />
               ) : project.cover_url ? (

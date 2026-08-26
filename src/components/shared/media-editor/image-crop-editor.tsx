@@ -13,8 +13,16 @@ import { ASPECT_RATIO_CLASS, resolveCssFilter, type MediaDraft } from './types'
 // Sem "original": igual ao Instagram, todo envio passa por um recorte
 // padronizado (quadrado, retrato ou paisagem) — nunca fica destravado numa
 // proporção arbitrária, o que evitava o visualizador se adaptar direito
-// (feedback direto do usuário).
-const ASPECT_OPTIONS: MediaAspectRatio[] = ['1:1', '4:5', '16:9']
+// (feedback direto do usuário). "1.91:1" (não 16:9) é a paisagem exata que
+// o Instagram usa — pedido explícito do usuário pra bater igual.
+const ASPECT_OPTIONS: MediaAspectRatio[] = ['1:1', '4:5', '1.91:1']
+
+/** Chave de tradução a partir do valor da proporção — precisa tirar tanto
+ *  ":" quanto "." (ex.: "1.91:1"), porque next-intl trata "." como
+ *  separador de aninhamento nas chaves de mensagem. */
+function aspectLabelKey(value: MediaAspectRatio) {
+  return `aspect_${value.replace(/[.:]/g, '_')}` as 'aspect_original'
+}
 
 interface Props {
   media: MediaDraft
@@ -281,12 +289,12 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
         <DropdownMenu>
           <DropdownMenuTrigger className="mx-auto flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground">
             <Crop className="h-3.5 w-3.5" />
-            {t(`aspect_${aspect.replace(':', '_')}` as 'aspect_original')}
+            {t(aspectLabelKey(aspect))}
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center">
             {ASPECT_OPTIONS.map((option) => (
               <DropdownMenuItem key={option} onClick={() => onAspectChange(option)}>
-                {t(`aspect_${option.replace(':', '_')}` as 'aspect_original')}
+                {t(aspectLabelKey(option))}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

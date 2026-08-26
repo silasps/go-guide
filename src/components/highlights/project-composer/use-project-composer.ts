@@ -70,7 +70,7 @@ export function useProjectComposer({ profileId, onSaved }: Options) {
   const [currency, setCurrency] = useState(CURRENCIES[0])
   const [goalAmount, setGoalAmount] = useState('')
   const [coverMedia, setCoverMedia] = useState<MediaDraft | null>(null)
-  const [coverAspect, setCoverAspect] = useState<MediaAspectRatio>('16:9')
+  const [coverAspect, setCoverAspect] = useState<MediaAspectRatio>('1.91:1')
   const [tripStartDate, setTripStartDate] = useState('')
   const [fundingDeadline, setFundingDeadline] = useState('')
   const [scripture, setScripture] = useState('')
