@@ -31,7 +31,7 @@ import { MilestonesEditSection } from '@/components/highlights/milestones-edit-s
 import { GalleryEditSection } from '@/components/highlights/gallery-edit-section'
 import { ProjectCoverFallback } from '@/components/highlights/project-cover-fallback'
 import { FloatingSupportCta } from '@/components/highlights/floating-support-cta'
-import { ScrollToSectionLink } from '@/components/highlights/scroll-to-section-link'
+import { ProjectStoryDialog } from '@/components/highlights/project-story-dialog'
 import { LetterEditSection } from '@/components/highlights/letter-edit-section'
 import { DatesStatusEditSection } from '@/components/highlights/dates-status-edit-section'
 import { StatusBadge } from '@/components/highlights/status-badge'
@@ -287,7 +287,23 @@ export default async function ProjetoPublicoPage({ params }: Props) {
         )}
 
         {(project.letter || canEdit) && (
-          <ScrollToSectionLink targetId="project-story" label="📖 Conheça a história por trás deste projeto" />
+          <ProjectStoryDialog
+            triggerLabel="Conheça a história por trás deste projeto"
+            title="A história por trás deste projeto"
+            closeLabel="Fechar"
+          >
+            <LetterEditSection {...sectionProps}>
+              {localizedLetter ? (
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                  {localizedLetter.split('\n').filter((l: string) => l.trim()).map((para: string, i: number) => (
+                    <p key={i} className="text-sm leading-relaxed text-foreground/80 mb-3">{para}</p>
+                  ))}
+                </div>
+              ) : (
+                canEdit ? <p className="text-sm text-muted-foreground italic">Adicionar história...</p> : null
+              )}
+            </LetterEditSection>
+          </ProjectStoryDialog>
         )}
 
         {canEdit && (
@@ -499,24 +515,6 @@ export default async function ProjetoPublicoPage({ params }: Props) {
                 canEdit ? <p className="text-sm text-muted-foreground italic">Nenhuma foto ainda.</p> : null
               )}
             </GalleryEditSection>
-          </div>
-        )}
-
-        {/* História por trás */}
-        {(project.letter || canEdit) && (
-          <div id="project-story" className="rounded-2xl border bg-card p-5 space-y-3">
-            <h2 className="font-semibold">A história por trás deste projeto</h2>
-            <LetterEditSection {...sectionProps}>
-              {localizedLetter ? (
-                <div className="prose prose-sm dark:prose-invert max-w-none">
-                  {localizedLetter.split('\n').filter((l: string) => l.trim()).map((para: string, i: number) => (
-                    <p key={i} className="text-sm leading-relaxed text-foreground/80 mb-3">{para}</p>
-                  ))}
-                </div>
-              ) : (
-                canEdit ? <p className="text-sm text-muted-foreground italic">Adicionar história...</p> : null
-              )}
-            </LetterEditSection>
           </div>
         )}
 
