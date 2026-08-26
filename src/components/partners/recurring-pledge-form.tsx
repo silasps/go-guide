@@ -13,8 +13,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Loader2, CheckCircle } from 'lucide-react'
 import { toMasked, fromMasked, CURRENCIES } from '@/lib/currency-mask'
+import { formatCurrency } from '@/lib/utils'
 import { PaymentMethodInstructions } from './payment-method-instructions'
 import { BudgetCategorySelect, type BudgetCategoryOption } from './budget-category-select'
+import { AmountChips } from './amount-chips'
+import { PaymentModeTabs } from './payment-mode-tabs'
+import { DonationSummary } from './donation-summary'
+import { DonationHero } from './donation-hero'
 
 type PaymentOption = { id: string; method: PledgePaymentMethod; label: string; value: string; details: string | null; currency: string }
 
@@ -30,6 +35,7 @@ interface Props {
   currency: string
   paymentOptions: PaymentOption[]
   stripeAvailable: boolean
+  heroImageUrl?: string | null
   user: SessionUser | null
   returnPath: string // caminho atual (com highlight_id se houver), usado no redirect de login/cadastro
   highlightId?: string
@@ -37,7 +43,7 @@ interface Props {
   initialCategoryId?: string | null
 }
 
-export function RecurringPledgeForm({ profileId, missionaryName, currency, paymentOptions, stripeAvailable, user, returnPath, highlightId, budgetCategories, initialCategoryId }: Props) {
+export function RecurringPledgeForm({ profileId, missionaryName, currency, paymentOptions, stripeAvailable, heroImageUrl = null, user, returnPath, highlightId, budgetCategories, initialCategoryId }: Props) {
   const t = useTranslations('RecurringPledge')
   const tPledge = useTranslations('PledgeForm')
   const [done, setDone] = useState(false)
@@ -54,6 +60,8 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
   const method = selectedOption?.method ?? 'other'
   const isManualConfigured = !!selectedOption?.value.trim()
   const activeCurrency = showManual ? (isManualConfigured ? selectedOption!.currency : freeCurrency) : currency
+  const parsedAmountPreview = parseFloat(fromMasked(amount, activeCurrency))
+  const amountFormatted = amount && !isNaN(parsedAmountPreview) ? formatCurrency(parsedAmountPreview, activeCurrency) : ''
 
   const redirectParam = encodeURIComponent(`${returnPath}${returnPath.includes('?') ? '&' : '?'}choice=financial_ongoing`)
 
@@ -158,9 +166,13 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
         <CardTitle className="text-base">{t('title', { name: missionaryName })}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <DonationHero imageUrl={heroImageUrl} alt={missionaryName} />
+
         <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
           {t('linkingAs', { email: user.email ?? '', name: missionaryName })}
         </p>
+
+        <DonationSummary amountFormatted={amountFormatted} label={t('summaryLabel', { name: missionaryName })} />
 
         {highlightId && budgetCategories && budgetCategories.length > 0 && (
           <BudgetCategorySelect
@@ -189,8 +201,19 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
               </select>
             )}
           </Label>
-          <Input inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, activeCurrency))} placeholder="0,00" required />
+          <AmountChips currency={activeCurrency} selectedMasked={amount} onSelect={setAmount} />
+          <Input inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, activeCurrency))} placeholder={tPledge('customAmountPlaceholder')} required />
         </div>
+
+        {stripeAvailable && (
+          <PaymentModeTabs
+            cardActive={!showManual}
+            onSelectCard={() => setShowManual(false)}
+            onSelectManual={() => setShowManual(true)}
+            cardLabel={t('cardTab')}
+            manualLabel={t('manualTab')}
+          />
+        )}
 
         {stripeAvailable && !showManual && (
           <div className="space-y-2">
@@ -198,15 +221,12 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
               {startingCheckout && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t('stripeCta')}
             </Button>
-            <button type="button" onClick={() => setShowManual(true)} className="w-full text-center text-xs text-muted-foreground hover:text-foreground">
-              {t('preferManual')}
-            </button>
           </div>
         )}
 
         {showManual && (
-          <form onSubmit={handleManualSubmit} className="space-y-4 pt-1 border-t">
-            <p className="text-xs text-muted-foreground pt-3">{t('manualDescription')}</p>
+          <form onSubmit={handleManualSubmit} className="space-y-4">
+            <p className="text-xs text-muted-foreground">{t('manualDescription')}</p>
             <div className="space-y-2">
               <Label>{t('methodLabel')}</Label>
               <select
@@ -236,11 +256,6 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
               {savingManual && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t('manualSubmit')}
             </Button>
-            {stripeAvailable && (
-              <button type="button" onClick={() => setShowManual(false)} className="w-full text-center text-xs text-muted-foreground hover:text-foreground">
-                {t('preferStripe')}
-              </button>
-            )}
           </form>
         )}
       </CardContent>

@@ -16,6 +16,11 @@ import { PledgePaymentMethod } from '@/types/database'
 import { toMasked, fromMasked, CURRENCIES } from '@/lib/currency-mask'
 import { PaymentMethodInstructions } from './payment-method-instructions'
 import { BudgetCategorySelect, type BudgetCategoryOption } from './budget-category-select'
+import { AmountChips } from './amount-chips'
+import { PaymentModeTabs } from './payment-mode-tabs'
+import { DonationSummary } from './donation-summary'
+import { DonationHero } from './donation-hero'
+import { formatCurrency } from '@/lib/utils'
 import Image from 'next/image'
 
 type PaymentOption = { id: string; method: PledgePaymentMethod; label: string; value: string; details: string | null; currency: string }
@@ -29,12 +34,13 @@ interface Props {
   defaultCurrency: string
   paymentOptions: PaymentOption[]
   stripeAvailable?: boolean
+  heroImageUrl?: string | null
   budgetCategories?: BudgetCategoryOption[]
   initialCategoryId?: string | null
   onBecomePartner?: () => void
 }
 
-export function PledgeForm({ profileId, missionaryName, highlightId, highlightTitle, isRecurring, defaultCurrency, paymentOptions, stripeAvailable = false, budgetCategories, initialCategoryId, onBecomePartner }: Props) {
+export function PledgeForm({ profileId, missionaryName, highlightId, highlightTitle, isRecurring, defaultCurrency, paymentOptions, stripeAvailable = false, heroImageUrl = null, budgetCategories, initialCategoryId, onBecomePartner }: Props) {
   const t = useTranslations('PledgeForm')
   const [done, setDone] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -60,6 +66,8 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
   // Na aba Stripe não há método manual selecionado, então a moeda é sempre livre.
   const activeCurrency = showManual ? currency : freeCurrency
   const showCurrencySelect = showManual ? !isConfigured : true
+  const parsedAmountPreview = parseFloat(fromMasked(amount, activeCurrency))
+  const amountFormatted = amount && !isNaN(parsedAmountPreview) ? formatCurrency(parsedAmountPreview, activeCurrency) : ''
 
   async function handleProofSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -171,9 +179,13 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <DonationHero imageUrl={heroImageUrl} alt={highlightTitle ?? missionaryName} />
+
         <p className="text-xs text-muted-foreground -mt-2">
           {t('intro', { name: missionaryName })}
         </p>
+
+        <DonationSummary amountFormatted={amountFormatted} label={t('summaryLabel', { name: missionaryName })} />
 
         {highlightId && budgetCategories && budgetCategories.length > 0 && (
           <BudgetCategorySelect
@@ -202,7 +214,8 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
               <span className="text-muted-foreground font-normal">({activeCurrency})</span>
             )}
           </Label>
-          <Input inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, activeCurrency))} placeholder="0,00" required />
+          <AmountChips currency={activeCurrency} selectedMasked={amount} onSelect={setAmount} />
+          <Input inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, activeCurrency))} placeholder={t('customAmountPlaceholder')} required />
         </div>
 
         <label className="flex items-center gap-2 text-sm">
@@ -228,21 +241,28 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
           <Textarea value={message} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setMessage(e.target.value)} placeholder={t('messagePlaceholder')} rows={2} />
         </div>
 
+        {stripeAvailable && (
+          <PaymentModeTabs
+            cardActive={!showManual}
+            onSelectCard={() => setShowManual(false)}
+            onSelectManual={() => setShowManual(true)}
+            cardLabel={t('cardTab')}
+            manualLabel={t('manualTab')}
+          />
+        )}
+
         {stripeAvailable && !showManual && (
-          <div className="space-y-2 pt-1 border-t">
-            <Button type="button" variant="support" className="w-full mt-3" onClick={handleStripeCheckout} disabled={startingCheckout}>
+          <div className="space-y-2">
+            <Button type="button" variant="support" className="w-full" onClick={handleStripeCheckout} disabled={startingCheckout}>
               {startingCheckout && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t('stripeCta')}
             </Button>
-            <button type="button" onClick={() => setShowManual(true)} className="w-full text-center text-xs text-muted-foreground hover:text-foreground">
-              {t('preferManual')}
-            </button>
           </div>
         )}
 
         {showManual && (
-          <form onSubmit={handleSubmit} className="space-y-4 pt-1 border-t">
-            <div className="space-y-2 pt-3">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
               <Label>{t('methodLabel')}</Label>
               <select
                 value={optionId}
@@ -294,11 +314,6 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t('submit')}
             </Button>
-            {stripeAvailable && (
-              <button type="button" onClick={() => setShowManual(false)} className="w-full text-center text-xs text-muted-foreground hover:text-foreground">
-                {t('preferStripe')}
-              </button>
-            )}
           </form>
         )}
       </CardContent>

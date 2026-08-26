@@ -29,10 +29,12 @@ interface Props {
   initialCategoryId?: string | null
   hasFinancialOptions: boolean
   stripeAvailable: boolean
+  profileAvatarUrl: string | null
+  highlightCoverUrl?: string | null
   user: SessionUser | null
 }
 
-export function PartnershipWizard({ profileId, username, initialChoice, missionaryName, missionStartYear, highlightId, highlightTitle, defaultCurrency, paymentOptions, budgetCategories, initialCategoryId, hasFinancialOptions, stripeAvailable, user }: Props) {
+export function PartnershipWizard({ profileId, username, initialChoice, missionaryName, missionStartYear, highlightId, highlightTitle, defaultCurrency, paymentOptions, budgetCategories, initialCategoryId, hasFinancialOptions, stripeAvailable, profileAvatarUrl, highlightCoverUrl, user }: Props) {
   const [choice, setChoice] = useState<Choice | null>(initialChoice ?? null)
 
   if (choice === 'financial_once' || choice === 'financial_once_general') {
@@ -47,6 +49,7 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
         defaultCurrency={defaultCurrency}
         paymentOptions={paymentOptions}
         stripeAvailable={stripeAvailable}
+        heroImageUrl={choice === 'financial_once' ? (highlightCoverUrl ?? profileAvatarUrl) : profileAvatarUrl}
         budgetCategories={choice === 'financial_once' ? budgetCategories : undefined}
         initialCategoryId={choice === 'financial_once' ? initialCategoryId : undefined}
         onBecomePartner={() => setChoice('financial_ongoing')}
@@ -63,6 +66,7 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
         currency={defaultCurrency}
         paymentOptions={paymentOptions}
         stripeAvailable={stripeAvailable}
+        heroImageUrl={highlightId ? (highlightCoverUrl ?? profileAvatarUrl) : profileAvatarUrl}
         user={user}
         returnPath={returnPath}
         highlightId={highlightId}

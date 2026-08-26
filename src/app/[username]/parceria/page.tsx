@@ -27,8 +27,8 @@ export default async function ParceriaPage({ params, searchParams }: Props) {
     supabase.from('payment_methods').select('*').eq('profile_id', profile.id).eq('is_active', true).order('sort_order'),
     supabase.auth.getUser(),
     highlight_id
-      ? supabase.from('highlights').select('id, title, currency').eq('id', highlight_id).eq('profile_id', profile.id).single()
-      : Promise.resolve({ data: null as { id: string; title: string; currency: string } | null }),
+      ? supabase.from('highlights').select('id, title, currency, cover_url').eq('id', highlight_id).eq('profile_id', profile.id).single()
+      : Promise.resolve({ data: null as { id: string; title: string; currency: string; cover_url: string | null } | null }),
     highlight_id
       ? supabase.from('project_budget_progress').select('*').eq('highlight_id', highlight_id).order('order_index')
       : Promise.resolve({ data: null }),
@@ -75,6 +75,8 @@ export default async function ParceriaPage({ params, searchParams }: Props) {
           initialCategoryId={initialCategoryId}
           hasFinancialOptions={true}
           stripeAvailable={stripeAvailable}
+          profileAvatarUrl={profile.avatar_url}
+          highlightCoverUrl={highlight?.cover_url ?? null}
           user={user ? { id: user.id, email: user.email ?? null, user_metadata: { full_name: user.user_metadata?.full_name } } : null}
         />
       </div>
