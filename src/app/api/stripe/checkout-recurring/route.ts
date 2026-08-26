@@ -78,8 +78,11 @@ export async function POST(req: NextRequest) {
       quantity: 1,
     }],
     metadata: { recurring_pledge_id: recurringPledge.id },
-    success_url: `${returnUrl}${highlightId ? '&' : '?'}stripe=success`,
-    cancel_url: `${returnUrl}${highlightId ? '&' : '?'}stripe=cancelled`,
+    // Igual ao checkout-once/route.ts: sem `choice=` no success/cancel_url,
+    // voltar do Stripe cai na lista inicial de /parceria em vez da tela de
+    // recorrência de onde saiu.
+    success_url: `${returnUrl}${highlightId ? '&' : '?'}choice=financial_ongoing&stripe=success`,
+    cancel_url: `${returnUrl}${highlightId ? '&' : '?'}choice=financial_ongoing&stripe=cancelled`,
   }, { stripeAccount: stripeMethod.value })
 
   return NextResponse.json({ url: session.url })
