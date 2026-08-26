@@ -36,8 +36,8 @@ export default async function AICopilotPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardContent className="pt-6 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-violet-50 dark:bg-violet-950/40 flex items-center justify-center shrink-0">
-              <Sparkles className="h-6 w-6 text-violet-500" />
+            <div className="h-12 w-12 rounded-full bg-primary/10 dark:bg-primary/15 flex items-center justify-center shrink-0">
+              <Sparkles className="h-6 w-6 text-primary" />
             </div>
             <div>
               <p className="text-3xl font-bold">{profile!.ai_credits}</p>
@@ -71,8 +71,8 @@ export default async function AICopilotPage() {
         <h2 className="text-sm font-medium text-muted-foreground">{t('featuresTitle')}</h2>
         <Card>
           <CardContent className="pt-6 flex items-start gap-4">
-            <div className="h-10 w-10 rounded-lg bg-violet-50 dark:bg-violet-950/40 flex items-center justify-center shrink-0">
-              <Languages className="h-5 w-5 text-violet-500" />
+            <div className="h-10 w-10 rounded-lg bg-primary/10 dark:bg-primary/15 flex items-center justify-center shrink-0">
+              <Languages className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0 space-y-2">
               <div>
