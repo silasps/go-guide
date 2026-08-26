@@ -53,31 +53,25 @@ export function PostDetailViewer({ posts, initialIndex, visitorLocale, canEdit =
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="fixed inset-0 translate-x-0 translate-y-0 z-50 flex flex-col w-full h-full max-h-full max-w-none rounded-none p-0 gap-0 overflow-y-hidden bg-black/95"
+        className="w-full max-w-md sm:max-w-lg max-h-[85vh] p-0 gap-0 overflow-y-auto overflow-x-hidden rounded-2xl bg-transparent ring-0"
       >
         <DialogTitle className="sr-only">Post</DialogTitle>
 
         <button
           type="button"
           onClick={() => onOpenChange(false)}
-          className="absolute top-3 right-3 z-10 text-white p-1.5 bg-black/50 rounded-full"
+          className="absolute top-2 right-2 z-10 h-7 w-7 flex items-center justify-center rounded-full bg-background/90 text-foreground ring-1 ring-border hover:bg-muted"
         >
-          <X className="h-5 w-5" />
+          <X className="h-4 w-4" />
         </button>
 
-        <div
-          className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex items-center justify-center py-8 sm:py-12 px-0 sm:px-4"
-          onTouchStart={onTouchStart}
-          onTouchEnd={onTouchEnd}
-        >
-          <div key={post.id} className="w-full sm:max-w-md">
-            <PostCard
-              post={post}
-              visitorLocale={visitorLocale}
-              canEdit={canEdit}
-              autoOpenComments={initialCommentsOpen && index === initialIndex}
-            />
-          </div>
+        <div key={post.id} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+          <PostCard
+            post={post}
+            visitorLocale={visitorLocale}
+            canEdit={canEdit}
+            autoOpenComments={initialCommentsOpen && index === initialIndex}
+          />
         </div>
 
         {index > 0 && (
@@ -85,9 +79,9 @@ export function PostDetailViewer({ posts, initialIndex, visitorLocale, canEdit =
             type="button"
             onClick={goPrev}
             aria-label="Previous"
-            className="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 h-9 w-9 items-center justify-center rounded-full bg-white/90 text-black hover:bg-white"
+            className="hidden sm:flex absolute left-2 top-1/2 -translate-y-1/2 z-10 h-8 w-8 items-center justify-center rounded-full bg-background/90 ring-1 ring-border text-foreground hover:bg-muted"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-4 w-4" />
           </button>
         )}
         {index < posts.length - 1 && (
@@ -95,9 +89,9 @@ export function PostDetailViewer({ posts, initialIndex, visitorLocale, canEdit =
             type="button"
             onClick={goNext}
             aria-label="Next"
-            className="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 h-9 w-9 items-center justify-center rounded-full bg-white/90 text-black hover:bg-white"
+            className="hidden sm:flex absolute right-2 top-1/2 -translate-y-1/2 z-10 h-8 w-8 items-center justify-center rounded-full bg-background/90 ring-1 ring-border text-foreground hover:bg-muted"
           >
-            <ChevronRight className="h-5 w-5" />
+            <ChevronRight className="h-4 w-4" />
           </button>
         )}
       </DialogContent>

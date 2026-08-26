@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import { HistoryView } from '@/components/profile/history-view'
-import { ProfileHeader } from '@/components/profile/profile-header'
 import { SkList } from '@/components/ui/skeleton'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -20,24 +19,16 @@ export default async function HistoriaPage({ params }: Props) {
 
   if (!profile || profile.privacy_mode === 'stealth') notFound()
 
-  const supabase = await createClient()
   const t = await getTranslations('PublicProfile')
-  const [{ count: postsCount }, { count: projectsCount }, { count: achievementsCount }, { canEdit }] = await Promise.all([
-    supabase.from('posts').select('id', { count: 'exact', head: true }).eq('profile_id', profile.id).eq('is_draft', false),
-    supabase.from('highlights').select('id', { count: 'exact', head: true }).eq('profile_id', profile.id).eq('status', 'active'),
-    supabase.from('highlights').select('id', { count: 'exact', head: true }).eq('profile_id', profile.id).eq('status', 'completed'),
-    getProfileViewerContext(username),
-  ])
+  const { canEdit } = await getProfileViewerContext(username)
 
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto px-4 py-8 pb-20 space-y-6">
-        <ProfileHeader
-          profile={profile}
-          postsCount={postsCount ?? 0}
-          projectsCount={projectsCount ?? 0}
-          achievementsCount={achievementsCount ?? 0}
-        />
+        <div>
+          <h1 className="text-2xl font-bold">História de {profile.display_name}</h1>
+          <p className="text-muted-foreground text-sm mt-1">A jornada por trás da missão.</p>
+        </div>
         {canEdit && (
           <Link href="/dashboard/configuracoes/historia" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-2')}>
             <Pencil className="h-3.5 w-3.5" />
