@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/media/compress'
@@ -59,6 +59,7 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
   const [message, setMessage] = useState('')
   const [proofFile, setProofFile] = useState<File | null>(null)
   const [proofPreview, setProofPreview] = useState('')
+  const amountInputRef = useRef<HTMLInputElement>(null)
 
   const [currency, setCurrency] = useState(defaultCurrency)
   // Cartão (Stripe) entra como mais uma opção no mesmo grid de mini-cards,
@@ -107,7 +108,7 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
 
   function handleStripeCheckout() {
     const parsedAmount = parseFloat(fromMasked(amount, currency))
-    if (!parsedAmount || parsedAmount <= 0) { toast.error(t('errorAmount')); return }
+    if (!parsedAmount || parsedAmount <= 0) { toast.error(t('errorAmount')); amountInputRef.current?.focus(); return }
     if (!isAnonymous && !name.trim()) { toast.error(t('errorName')); return }
     runCheckout(true, async () => {
       const res = await fetch('/api/stripe/checkout-once', {
@@ -134,7 +135,7 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const parsedAmount = parseFloat(fromMasked(amount, currency))
-    if (!parsedAmount || parsedAmount <= 0) { toast.error(t('errorAmount')); return }
+    if (!parsedAmount || parsedAmount <= 0) { toast.error(t('errorAmount')); amountInputRef.current?.focus(); return }
     if (!isAnonymous && !name.trim()) { toast.error(t('errorName')); return }
     setSaving(true)
 
@@ -241,7 +242,7 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
             </select>
           </Label>
           <AmountChips currency={currency} selectedMasked={amount} onSelect={setAmount} />
-          <Input inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, currency))} placeholder={t('customAmountPlaceholder')} required />
+          <Input ref={amountInputRef} inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, currency))} placeholder={t('customAmountPlaceholder')} required />
         </div>
 
         <div className="space-y-4 border-t border-border pt-4">

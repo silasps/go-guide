@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
@@ -54,6 +54,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
   const [categoryId, setCategoryId] = useState<string | null>(initialCategoryId ?? null)
   const [optionId, setOptionId] = useState(stripeAvailable ? 'stripe' : (paymentOptions[0]?.id ?? 'other'))
   const [reminderOptIn, setReminderOptIn] = useState(true)
+  const amountInputRef = useRef<HTMLInputElement>(null)
   const { isPending: startingCheckout, run: runCheckout } = usePendingAction()
   const { isPending: savingManual, run: runManual } = usePendingAction()
 
@@ -136,7 +137,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
 
   function handleStripeCheckout() {
     const parsedAmount = parseFloat(fromMasked(amount, projectCurrency))
-    if (!parsedAmount || parsedAmount <= 0) { toast.error(t('errorAmount')); return }
+    if (!parsedAmount || parsedAmount <= 0) { toast.error(t('errorAmount')); amountInputRef.current?.focus(); return }
     runCheckout(true, async () => {
       const res = await fetch('/api/stripe/checkout-recurring', {
         method: 'POST',
@@ -152,7 +153,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
   function handleManualSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const parsedAmount = parseFloat(fromMasked(amount, selectedCurrency))
-    if (!parsedAmount || parsedAmount <= 0) { toast.error(t('errorAmount')); return }
+    if (!parsedAmount || parsedAmount <= 0) { toast.error(t('errorAmount')); amountInputRef.current?.focus(); return }
     const currentUser = user
     if (!currentUser) return
 
@@ -235,7 +236,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
             </select>
           </Label>
           <AmountChips currency={selectedCurrency} selectedMasked={amount} onSelect={setAmount} />
-          <Input inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, selectedCurrency))} placeholder={tPledge('customAmountPlaceholder')} required />
+          <Input ref={amountInputRef} inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, selectedCurrency))} placeholder={tPledge('customAmountPlaceholder')} required />
         </div>
 
         <div className="space-y-3 border-t border-border pt-4">
