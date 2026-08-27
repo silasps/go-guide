@@ -46,7 +46,7 @@ interface Props {
   initialCategoryId?: string | null
 }
 
-export function RecurringPledgeForm({ profileId, missionaryName, currency, paymentOptions, stripeAvailable, heroImageUrl = null, heroImagePosition, backHref, user, returnPath, highlightId, budgetCategories, initialCategoryId }: Props) {
+export function RecurringPledgeForm({ profileId, missionaryName, currency: projectCurrency, paymentOptions, stripeAvailable, heroImageUrl = null, heroImagePosition, backHref, user, returnPath, highlightId, budgetCategories, initialCategoryId }: Props) {
   const t = useTranslations('RecurringPledge')
   const tPledge = useTranslations('PledgeForm')
   const [done, setDone] = useState(false)
@@ -57,20 +57,30 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
   const { isPending: startingCheckout, run: runCheckout } = usePendingAction()
   const { isPending: savingManual, run: runManual } = usePendingAction()
 
-  const [freeCurrency, setFreeCurrency] = useState(currency)
+  // Recorrência via Stripe é sempre na moeda do projeto (fixa, ver
+  // checkout-recurring/route.ts) — por isso o Cartão entra no grid já
+  // travado em `projectCurrency`, e não ganha exceção no filtro abaixo
+  // como no `PledgeForm` (avulso): se o doador escolhe outra moeda, Cartão
+  // desaparece do grid junto com os métodos manuais que não servem.
+  const [selectedCurrency, setSelectedCurrency] = useState(projectCurrency)
   const allOptions: PaymentOption[] = stripeAvailable
-    ? [{ id: 'stripe', method: 'stripe', label: t('cardTab'), value: '', details: null, currency }, ...paymentOptions]
+    ? [{ id: 'stripe', method: 'stripe', label: t('cardTab'), value: '', details: null, currency: projectCurrency }, ...paymentOptions]
     : paymentOptions
-  const selectedOption = allOptions.find(o => o.id === optionId)
+  const visibleOptions = allOptions.filter(o => o.currency === selectedCurrency)
+  const selectedOption = visibleOptions.find(o => o.id === optionId)
   const method = selectedOption?.method ?? 'other'
   const isStripe = method === 'stripe'
-  const isManualConfigured = !isStripe && !!selectedOption?.value.trim()
-  // Recorrência via Stripe é sempre na moeda do projeto (fixa, ver
-  // checkout-recurring/route.ts) — moeda livre só existe pro caminho
-  // manual sem um valor configurado.
-  const activeCurrency = isStripe ? currency : (isManualConfigured ? selectedOption!.currency : freeCurrency)
-  const parsedAmountPreview = parseFloat(fromMasked(amount, activeCurrency))
-  const amountFormatted = amount && !isNaN(parsedAmountPreview) ? formatCurrency(parsedAmountPreview, activeCurrency) : ''
+  const parsedAmountPreview = parseFloat(fromMasked(amount, selectedCurrency))
+  const amountFormatted = amount && !isNaN(parsedAmountPreview) ? formatCurrency(parsedAmountPreview, selectedCurrency) : ''
+
+  function handleCurrencyChange(next: string) {
+    setSelectedCurrency(next)
+    const stillValid = allOptions.some(o => o.id === optionId && o.currency === next)
+    if (!stillValid) {
+      const fallback = allOptions.find(o => o.currency === next)?.id
+      if (fallback) setOptionId(fallback)
+    }
+  }
 
   const redirectParam = encodeURIComponent(`${returnPath}${returnPath.includes('?') ? '&' : '?'}choice=financial_ongoing`)
 
@@ -116,13 +126,13 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
   }
 
   function handleStripeCheckout() {
-    const parsedAmount = parseFloat(fromMasked(amount, activeCurrency))
+    const parsedAmount = parseFloat(fromMasked(amount, projectCurrency))
     if (!parsedAmount || parsedAmount <= 0) { toast.error(t('errorAmount')); return }
     runCheckout(true, async () => {
       const res = await fetch('/api/stripe/checkout-recurring', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profileId, amount: parsedAmount, currency, highlightId, budgetCategoryId: categoryId }),
+        body: JSON.stringify({ profileId, amount: parsedAmount, currency: projectCurrency, highlightId, budgetCategoryId: categoryId }),
       })
       const data = await res.json()
       if (!res.ok || !data.url) { toast.error(t('errorCheckout')); return }
@@ -132,7 +142,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
 
   function handleManualSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    const parsedAmount = parseFloat(fromMasked(amount, activeCurrency))
+    const parsedAmount = parseFloat(fromMasked(amount, selectedCurrency))
     if (!parsedAmount || parsedAmount <= 0) { toast.error(t('errorAmount')); return }
     const currentUser = user
     if (!currentUser) return
@@ -165,7 +175,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
         partner_id: partnerId,
         reporter_user_id: currentUser.id,
         amount: parsedAmount,
-        currency: activeCurrency,
+        currency: selectedCurrency,
         payment_method: method,
         highlight_id: highlightId ?? null,
         budget_category_id: highlightId ? categoryId : null,
@@ -197,7 +207,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
             categories={budgetCategories}
             value={categoryId}
             onChange={setCategoryId}
-            currency={currency}
+            currency={projectCurrency}
             fieldLabel={tPledge('whereToInvestLabel')}
             generalLabel={tPledge('whereToInvestGeneral')}
             missingLabel={(amount) => tPledge('missingAmount', { amount })}
@@ -207,25 +217,25 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency, payme
         <div className="space-y-2">
           <Label className="flex items-center gap-1.5">
             {t('amountLabelPlain')} *
-            {(isStripe || isManualConfigured) ? (
-              <span className="text-muted-foreground font-normal">({activeCurrency})</span>
-            ) : (
-              <select
-                value={freeCurrency}
-                onChange={(e) => setFreeCurrency(e.target.value)}
-                className="h-5 rounded border border-input bg-transparent px-1 text-xs font-normal outline-none focus-visible:border-ring"
-              >
-                {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            )}
+            <select
+              value={selectedCurrency}
+              onChange={(e) => handleCurrencyChange(e.target.value)}
+              className="h-5 rounded border border-input bg-transparent px-1 text-xs font-normal outline-none focus-visible:border-ring"
+            >
+              {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
           </Label>
-          <AmountChips currency={activeCurrency} selectedMasked={amount} onSelect={setAmount} />
-          <Input inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, activeCurrency))} placeholder={tPledge('customAmountPlaceholder')} required />
+          <AmountChips currency={selectedCurrency} selectedMasked={amount} onSelect={setAmount} />
+          <Input inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, selectedCurrency))} placeholder={tPledge('customAmountPlaceholder')} required />
         </div>
 
         <div className="space-y-3 border-t border-border pt-4">
           <h2 className="text-sm font-semibold">{tPledge('sectionPaymentTitle')}</h2>
-          <PaymentMethodCards options={allOptions} value={optionId} onChange={(id) => { setOptionId(id); setAmount('') }} />
+          {visibleOptions.length > 0 ? (
+            <PaymentMethodCards options={visibleOptions} value={optionId} onChange={(id) => { setOptionId(id); setAmount('') }} />
+          ) : (
+            <p className="text-xs text-muted-foreground italic">{tPledge('noMethodsForCurrency', { currency: selectedCurrency })}</p>
+          )}
 
           {isStripe ? (
             <p className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">{tPledge('stripeInlineNote')}</p>

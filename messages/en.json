@@ -404,6 +404,7 @@
     "sectionYourDataTitle": "Your details",
     "sectionPaymentTitle": "Payment method",
     "stripeInlineNote": "Payment securely processed by Stripe — no card data is stored here.",
+    "noMethodsForCurrency": "No payment method set up in {currency}. Try another currency.",
     "whereToInvestLabel": "Where to invest",
     "whereToInvestGeneral": "General project",
     "missingAmount": "{amount} left",

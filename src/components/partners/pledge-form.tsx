@@ -60,7 +60,7 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
   const [proofFile, setProofFile] = useState<File | null>(null)
   const [proofPreview, setProofPreview] = useState('')
 
-  const [freeCurrency, setFreeCurrency] = useState(defaultCurrency)
+  const [currency, setCurrency] = useState(defaultCurrency)
   // Cartão (Stripe) entra como mais uma opção no mesmo grid de mini-cards,
   // não numa aba separada — mesma seleção pra todos os métodos, cada um
   // revela seu próprio jeito de continuar (Stripe: botão de checkout; Pix
@@ -68,13 +68,26 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
   const allOptions: PaymentOption[] = stripeAvailable
     ? [{ id: 'stripe', method: 'stripe', label: t('cardTab'), value: '', details: null, currency: defaultCurrency }, ...paymentOptions]
     : paymentOptions
-  const selectedOption = allOptions.find(o => o.id === optionId)
+  // A moeda escolhida decide quais métodos fazem sentido mostrar — uma
+  // chave Pix cadastrada em BRL não serve pra quem quer mandar USD, por
+  // exemplo. Cartão processa qualquer moeda (Stripe), sempre aparece.
+  const visibleOptions = allOptions.filter(o => o.method === 'stripe' || o.currency === currency)
+  const selectedOption = visibleOptions.find(o => o.id === optionId)
   const method = selectedOption?.method ?? 'other'
   const isStripe = method === 'stripe'
-  const isConfigured = !isStripe && !!selectedOption?.value.trim()
-  const currency = isConfigured ? selectedOption!.currency : freeCurrency
   const parsedAmountPreview = parseFloat(fromMasked(amount, currency))
   const amountFormatted = amount && !isNaN(parsedAmountPreview) ? formatCurrency(parsedAmountPreview, currency) : ''
+
+  function handleCurrencyChange(next: string) {
+    setCurrency(next)
+    // Se o método selecionado não serve mais pra essa moeda, troca pro
+    // primeiro que servir (Cartão em primeiro lugar, se disponível).
+    const stillValid = allOptions.some(o => o.id === optionId && (o.method === 'stripe' || o.currency === next))
+    if (!stillValid) {
+      const fallback = stripeAvailable ? 'stripe' : allOptions.find(o => o.currency === next)?.id
+      if (fallback) setOptionId(fallback)
+    }
+  }
 
   async function handleProofSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -211,17 +224,13 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
         <div className="space-y-2">
           <Label className="flex items-center gap-1.5">
             {t('amountLabelPlain')} *
-            {!isConfigured ? (
-              <select
-                value={freeCurrency}
-                onChange={(e) => setFreeCurrency(e.target.value)}
-                className="h-5 rounded border border-input bg-transparent px-1 text-xs font-normal outline-none focus-visible:border-ring"
-              >
-                {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            ) : (
-              <span className="text-muted-foreground font-normal">({currency})</span>
-            )}
+            <select
+              value={currency}
+              onChange={(e) => handleCurrencyChange(e.target.value)}
+              className="h-5 rounded border border-input bg-transparent px-1 text-xs font-normal outline-none focus-visible:border-ring"
+            >
+              {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
           </Label>
           <AmountChips currency={currency} selectedMasked={amount} onSelect={setAmount} />
           <Input inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, currency))} placeholder={t('customAmountPlaceholder')} required />
@@ -256,7 +265,11 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
 
         <div className="space-y-3 border-t border-border pt-4">
           <h2 className="text-sm font-semibold">{t('sectionPaymentTitle')}</h2>
-          <PaymentMethodCards options={allOptions} value={optionId} onChange={(id) => { setOptionId(id); setAmount('') }} />
+          {visibleOptions.length > 0 ? (
+            <PaymentMethodCards options={visibleOptions} value={optionId} onChange={(id) => { setOptionId(id); setAmount('') }} />
+          ) : (
+            <p className="text-xs text-muted-foreground italic">{t('noMethodsForCurrency', { currency })}</p>
+          )}
 
           {isStripe ? (
             <p className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">{t('stripeInlineNote')}</p>
