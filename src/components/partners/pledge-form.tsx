@@ -274,7 +274,7 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
         <div className="space-y-3 border-t border-border pt-4">
           <h2 className="text-sm font-semibold">{t('sectionPaymentTitle')}</h2>
           {visibleOptions.length > 0 ? (
-            <PaymentMethodCards options={visibleOptions} value={optionId} onChange={(id) => { setOptionId(id); setAmount('') }} />
+            <PaymentMethodCards options={visibleOptions} value={optionId} onChange={setOptionId} />
           ) : (
             <p className="text-xs text-muted-foreground italic">{t('noMethodsForCurrency', { currency })}</p>
           )}

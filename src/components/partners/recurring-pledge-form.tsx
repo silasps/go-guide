@@ -241,7 +241,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
         <div className="space-y-3 border-t border-border pt-4">
           <h2 className="text-sm font-semibold">{tPledge('sectionPaymentTitle')}</h2>
           {visibleOptions.length > 0 ? (
-            <PaymentMethodCards options={visibleOptions} value={optionId} onChange={(id) => { setOptionId(id); setAmount('') }} />
+            <PaymentMethodCards options={visibleOptions} value={optionId} onChange={setOptionId} />
           ) : (
             <p className="text-xs text-muted-foreground italic">{tPledge('noMethodsForCurrency', { currency: selectedCurrency })}</p>
           )}
