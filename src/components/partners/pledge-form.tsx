@@ -72,6 +72,14 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
   // chave Pix cadastrada em BRL não serve pra quem quer mandar USD, por
   // exemplo. Cartão processa qualquer moeda (Stripe), sempre aparece.
   const visibleOptions = allOptions.filter(o => o.method === 'stripe' || o.currency === currency)
+  // Dropdown de moeda reflete o que foi cadastrado em Configurações >
+  // Pagamentos — se só existe recebimento em BRL, só BRL aparece pra
+  // escolher (em vez da lista fixa de moedas suportadas). Cartão aceita
+  // qualquer uma das moedas suportadas (price_data dinâmico no Stripe),
+  // então com Stripe conectado a lista completa fica disponível.
+  const dropdownCurrencies = stripeAvailable
+    ? CURRENCIES
+    : (paymentOptions.length > 0 ? Array.from(new Set(paymentOptions.map(o => o.currency))) : CURRENCIES)
   const selectedOption = visibleOptions.find(o => o.id === optionId)
   const method = selectedOption?.method ?? 'other'
   const isStripe = method === 'stripe'
@@ -229,7 +237,7 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
               onChange={(e) => handleCurrencyChange(e.target.value)}
               className="h-5 rounded border border-input bg-transparent px-1 text-xs font-normal outline-none focus-visible:border-ring"
             >
-              {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+              {dropdownCurrencies.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </Label>
           <AmountChips currency={currency} selectedMasked={amount} onSelect={setAmount} />

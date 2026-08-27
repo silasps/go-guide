@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CheckoutHeader } from './checkout-header'
 import { toast } from 'sonner'
 import { Loader2, CheckCircle } from 'lucide-react'
-import { toMasked, fromMasked, CURRENCIES } from '@/lib/currency-mask'
+import { toMasked, fromMasked } from '@/lib/currency-mask'
 import { formatCurrency } from '@/lib/utils'
 import { PaymentMethodInstructions } from './payment-method-instructions'
 import { BudgetCategorySelect, type BudgetCategoryOption } from './budget-category-select'
@@ -67,6 +67,15 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
     ? [{ id: 'stripe', method: 'stripe', label: t('cardTab'), value: '', details: null, currency: projectCurrency }, ...paymentOptions]
     : paymentOptions
   const visibleOptions = allOptions.filter(o => o.currency === selectedCurrency)
+  // Mesma ideia do PledgeForm: dropdown reflete o que foi cadastrado em
+  // Configurações > Pagamentos, não uma lista fixa. Aqui o Cartão entra
+  // travado em `projectCurrency` (não em qualquer moeda), então some da
+  // lista se essa moeda não tiver nenhum método configurado.
+  const dropdownCurrenciesRaw = Array.from(new Set([
+    ...paymentOptions.map(o => o.currency),
+    ...(stripeAvailable ? [projectCurrency] : []),
+  ]))
+  const dropdownCurrencies = dropdownCurrenciesRaw.length > 0 ? dropdownCurrenciesRaw : [projectCurrency]
   const selectedOption = visibleOptions.find(o => o.id === optionId)
   const method = selectedOption?.method ?? 'other'
   const isStripe = method === 'stripe'
@@ -222,7 +231,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
               onChange={(e) => handleCurrencyChange(e.target.value)}
               className="h-5 rounded border border-input bg-transparent px-1 text-xs font-normal outline-none focus-visible:border-ring"
             >
-              {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+              {dropdownCurrencies.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </Label>
           <AmountChips currency={selectedCurrency} selectedMasked={amount} onSelect={setAmount} />
