@@ -394,7 +394,7 @@
     "bankRouting": "Routing",
     "bankAddress": "País/endereço",
     "otherDescriptionLabel": "Descreva a forma usada",
-    "otherDescriptionPlaceholder": "Ex: paguei via Zelle direto pro contato dele",
+    "otherDescriptionPlaceholder": "Ex: paguei via Zelle direto pro seu contato",
     "copied": "Copiado!"
   },
   "PledgeForm": {
