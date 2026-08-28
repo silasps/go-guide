@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/media/compress'
@@ -39,13 +39,14 @@ interface Props {
   heroImagePosition?: string
   budgetCategories?: BudgetCategoryOption[]
   initialCategoryId?: string | null
-  onBack: () => void
+  backHref: string
   onBecomePartner?: () => void
 }
 
-export function PledgeForm({ profileId, missionaryName, highlightId, highlightTitle, isRecurring, defaultCurrency, paymentOptions, stripeAvailable = false, heroImageUrl = null, heroImagePosition, budgetCategories, initialCategoryId, onBack, onBecomePartner }: Props) {
+export function PledgeForm({ profileId, missionaryName, highlightId, highlightTitle, isRecurring, defaultCurrency, paymentOptions, stripeAvailable = false, heroImageUrl = null, heroImagePosition, budgetCategories, initialCategoryId, backHref, onBecomePartner }: Props) {
   const t = useTranslations('PledgeForm')
   const [done, setDone] = useState(false)
+  const [doneAsLoggedIn, setDoneAsLoggedIn] = useState(false)
   const [saving, setSaving] = useState(false)
   const { isPending: startingCheckout, run: runCheckout } = usePendingAction()
   const [amount, setAmount] = useState('')
@@ -59,8 +60,9 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
   const [message, setMessage] = useState('')
   const [proofFile, setProofFile] = useState<File | null>(null)
   const [proofPreview, setProofPreview] = useState('')
+  const amountInputRef = useRef<HTMLInputElement>(null)
 
-  const [freeCurrency, setFreeCurrency] = useState(defaultCurrency)
+  const [currency, setCurrency] = useState(defaultCurrency)
   // Cartão (Stripe) entra como mais uma opção no mesmo grid de mini-cards,
   // não numa aba separada — mesma seleção pra todos os métodos, cada um
   // revela seu próprio jeito de continuar (Stripe: botão de checkout; Pix
@@ -68,13 +70,34 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
   const allOptions: PaymentOption[] = stripeAvailable
     ? [{ id: 'stripe', method: 'stripe', label: t('cardTab'), value: '', details: null, currency: defaultCurrency }, ...paymentOptions]
     : paymentOptions
-  const selectedOption = allOptions.find(o => o.id === optionId)
+  // A moeda escolhida decide quais métodos fazem sentido mostrar — uma
+  // chave Pix cadastrada em BRL não serve pra quem quer mandar USD, por
+  // exemplo. Cartão processa qualquer moeda (Stripe), sempre aparece.
+  const visibleOptions = allOptions.filter(o => o.method === 'stripe' || o.currency === currency)
+  // Dropdown de moeda reflete o que foi cadastrado em Configurações >
+  // Pagamentos — se só existe recebimento em BRL, só BRL aparece pra
+  // escolher (em vez da lista fixa de moedas suportadas). Cartão aceita
+  // qualquer uma das moedas suportadas (price_data dinâmico no Stripe),
+  // então com Stripe conectado a lista completa fica disponível.
+  const dropdownCurrencies = stripeAvailable
+    ? CURRENCIES
+    : (paymentOptions.length > 0 ? Array.from(new Set(paymentOptions.map(o => o.currency))) : CURRENCIES)
+  const selectedOption = visibleOptions.find(o => o.id === optionId)
   const method = selectedOption?.method ?? 'other'
   const isStripe = method === 'stripe'
-  const isConfigured = !isStripe && !!selectedOption?.value.trim()
-  const currency = isConfigured ? selectedOption!.currency : freeCurrency
   const parsedAmountPreview = parseFloat(fromMasked(amount, currency))
   const amountFormatted = amount && !isNaN(parsedAmountPreview) ? formatCurrency(parsedAmountPreview, currency) : ''
+
+  function handleCurrencyChange(next: string) {
+    setCurrency(next)
+    // Se o método selecionado não serve mais pra essa moeda, troca pro
+    // primeiro que servir (Cartão em primeiro lugar, se disponível).
+    const stillValid = allOptions.some(o => o.id === optionId && (o.method === 'stripe' || o.currency === next))
+    if (!stillValid) {
+      const fallback = stripeAvailable ? 'stripe' : allOptions.find(o => o.currency === next)?.id
+      if (fallback) setOptionId(fallback)
+    }
+  }
 
   async function handleProofSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -86,7 +109,7 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
 
   function handleStripeCheckout() {
     const parsedAmount = parseFloat(fromMasked(amount, currency))
-    if (!parsedAmount || parsedAmount <= 0) { toast.error(t('errorAmount')); return }
+    if (!parsedAmount || parsedAmount <= 0) { toast.error(t('errorAmount')); amountInputRef.current?.focus(); return }
     if (!isAnonymous && !name.trim()) { toast.error(t('errorName')); return }
     runCheckout(true, async () => {
       const res = await fetch('/api/stripe/checkout-once', {
@@ -113,7 +136,7 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const parsedAmount = parseFloat(fromMasked(amount, currency))
-    if (!parsedAmount || parsedAmount <= 0) { toast.error(t('errorAmount')); return }
+    if (!parsedAmount || parsedAmount <= 0) { toast.error(t('errorAmount')); amountInputRef.current?.focus(); return }
     if (!isAnonymous && !name.trim()) { toast.error(t('errorName')); return }
     setSaving(true)
 
@@ -150,7 +173,8 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
     })
 
     setSaving(false)
-    if (error) { toast.error(t('errorSave')); return }
+    if (error) { console.error('pledges insert failed:', error); toast.error(t('errorSave')); return }
+    setDoneAsLoggedIn(!!user)
     setDone(true)
   }
 
@@ -159,13 +183,15 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
   if (done) {
     return (
       <div className="min-h-screen bg-background">
-        <CheckoutHeader onBack={onBack} />
+        <CheckoutHeader backHref={backHref} />
         <div className="mx-auto flex min-h-[calc(100vh-56px)] max-w-md flex-col justify-center px-4 pb-8 space-y-3">
           <Card>
             <CardContent className="py-12 text-center space-y-3">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
               <h2 className="text-xl font-semibold">{t('doneTitle')}</h2>
-              <p className="text-muted-foreground text-sm">{t('doneDescription', { name: missionaryName })}</p>
+              <p className="text-muted-foreground text-sm">
+                {t(doneAsLoggedIn ? 'doneDescriptionNotified' : isAnonymous ? 'doneDescriptionAnonymous' : 'doneDescriptionGuestNamed', { name: missionaryName })}
+              </p>
             </CardContent>
           </Card>
           {!isRecurring && onBecomePartner && (
@@ -185,7 +211,7 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
 
   return (
     <div className="min-h-screen bg-background">
-      <CheckoutHeader onBack={onBack} title={title} />
+      <CheckoutHeader backHref={backHref} title={title} />
 
       <div className="mx-auto max-w-md px-4 pt-[72px] pb-28 space-y-4">
         <DonationHero imageUrl={heroImageUrl} alt={highlightTitle ?? missionaryName} objectPosition={heroImagePosition} />
@@ -211,20 +237,16 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
         <div className="space-y-2">
           <Label className="flex items-center gap-1.5">
             {t('amountLabelPlain')} *
-            {!isConfigured ? (
-              <select
-                value={freeCurrency}
-                onChange={(e) => setFreeCurrency(e.target.value)}
-                className="h-5 rounded border border-input bg-transparent px-1 text-xs font-normal outline-none focus-visible:border-ring"
-              >
-                {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            ) : (
-              <span className="text-muted-foreground font-normal">({currency})</span>
-            )}
+            <select
+              value={currency}
+              onChange={(e) => handleCurrencyChange(e.target.value)}
+              className="h-5 rounded border border-input bg-transparent px-1 text-xs font-normal outline-none focus-visible:border-ring"
+            >
+              {dropdownCurrencies.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
           </Label>
           <AmountChips currency={currency} selectedMasked={amount} onSelect={setAmount} />
-          <Input inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, currency))} placeholder={t('customAmountPlaceholder')} required />
+          <Input ref={amountInputRef} inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, currency))} placeholder={t('customAmountPlaceholder')} required />
         </div>
 
         <div className="space-y-4 border-t border-border pt-4">
@@ -256,7 +278,11 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
 
         <div className="space-y-3 border-t border-border pt-4">
           <h2 className="text-sm font-semibold">{t('sectionPaymentTitle')}</h2>
-          <PaymentMethodCards options={allOptions} value={optionId} onChange={(id) => { setOptionId(id); setAmount('') }} />
+          {visibleOptions.length > 0 ? (
+            <PaymentMethodCards options={visibleOptions} value={optionId} onChange={setOptionId} />
+          ) : (
+            <p className="text-xs text-muted-foreground italic">{t('noMethodsForCurrency', { currency })}</p>
+          )}
 
           {isStripe ? (
             <p className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">{t('stripeInlineNote')}</p>

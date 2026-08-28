@@ -353,7 +353,7 @@
     "type_mercadopago": "Mercado Pago",
     "type_paypal": "PayPal",
     "type_wise": "Wise",
-    "type_bank_transfer": "Transferencia bancaria",
+    "type_bank_transfer": "Transf. bancaria",
     "type_revolut": "Revolut",
     "type_zelle": "Zelle",
     "type_venmo": "Venmo",
@@ -394,7 +394,7 @@
     "bankRouting": "Routing",
     "bankAddress": "País/dirección",
     "otherDescriptionLabel": "Describe la forma usada",
-    "otherDescriptionPlaceholder": "Ej: pagué por Zelle directo a su contacto",
+    "otherDescriptionPlaceholder": "Ej: pagué por Zelle directo a tu contacto",
     "copied": "¡Copiado!"
   },
   "PledgeForm": {
@@ -404,6 +404,7 @@
     "sectionYourDataTitle": "Tus datos",
     "sectionPaymentTitle": "Forma de pago",
     "stripeInlineNote": "Pago procesado de forma segura por Stripe — ningún dato de la tarjeta se guarda aquí.",
+    "noMethodsForCurrency": "Ninguna forma de pago configurada en {currency}. Prueba con otra moneda.",
     "whereToInvestLabel": "Dónde invertir",
     "whereToInvestGeneral": "Proyecto general",
     "missingAmount": "faltan {amount}",
@@ -431,7 +432,9 @@
     "errorSave": "Error al registrar la ofrenda. Intenta de nuevo.",
     "errorCheckout": "Error al iniciar el pago. Intenta de nuevo.",
     "doneTitle": "¡Recibimos tu registro!",
-    "doneDescription": "{name} confirmará la recepción pronto. Serás notificado en cuanto se confirme.",
+    "doneDescriptionNotified": "{name} confirmará la recepción pronto. Te avisaremos aquí en cuanto se confirme.",
+    "doneDescriptionGuestNamed": "{name} confirmará la recepción pronto. Como contribuiste sin iniciar sesión, no podremos avisarte directamente — pero puedes volver cuando quieras para revisar.",
+    "doneDescriptionAnonymous": "Tu contribución fue registrada con éxito. ¡{name} lo agradece de corazón!",
     "becomePartnerPrompt": "¿Te gustaría saber más y participar aún más en el camino de {name}?",
     "becomePartnerCta": "Quiero ser socio fijo"
   },

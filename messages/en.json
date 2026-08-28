@@ -394,7 +394,7 @@
     "bankRouting": "Routing",
     "bankAddress": "Country/address",
     "otherDescriptionLabel": "Describe how you sent it",
-    "otherDescriptionPlaceholder": "E.g. I paid via Zelle directly to their contact",
+    "otherDescriptionPlaceholder": "E.g. I paid via Zelle directly to your contact",
     "copied": "Copied!"
   },
   "PledgeForm": {
@@ -404,6 +404,7 @@
     "sectionYourDataTitle": "Your details",
     "sectionPaymentTitle": "Payment method",
     "stripeInlineNote": "Payment securely processed by Stripe — no card data is stored here.",
+    "noMethodsForCurrency": "No payment method set up in {currency}. Try another currency.",
     "whereToInvestLabel": "Where to invest",
     "whereToInvestGeneral": "General project",
     "missingAmount": "{amount} left",
@@ -431,7 +432,9 @@
     "errorSave": "Error registering offering. Please try again.",
     "errorCheckout": "Error starting the payment. Please try again.",
     "doneTitle": "We received your record!",
-    "doneDescription": "{name} will confirm receipt soon. You'll be notified once confirmed.",
+    "doneDescriptionNotified": "{name} will confirm receipt soon. You'll be notified here once confirmed.",
+    "doneDescriptionGuestNamed": "{name} will confirm receipt soon. Since you contributed without being logged in, we won't be able to notify you directly — but feel free to check back anytime.",
+    "doneDescriptionAnonymous": "Your contribution was recorded successfully. {name} is truly grateful!",
     "becomePartnerPrompt": "Want to know more and be even more part of {name}'s journey?",
     "becomePartnerCta": "I want to become a regular partner"
   },

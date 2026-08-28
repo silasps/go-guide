@@ -353,7 +353,7 @@
     "type_mercadopago": "Mercado Pago",
     "type_paypal": "PayPal",
     "type_wise": "Wise",
-    "type_bank_transfer": "Transferência bancária",
+    "type_bank_transfer": "Transf. bancária",
     "type_revolut": "Revolut",
     "type_zelle": "Zelle",
     "type_venmo": "Venmo",
@@ -394,7 +394,7 @@
     "bankRouting": "Routing",
     "bankAddress": "País/endereço",
     "otherDescriptionLabel": "Descreva a forma usada",
-    "otherDescriptionPlaceholder": "Ex: paguei via Zelle direto pro contato dele",
+    "otherDescriptionPlaceholder": "Ex: paguei via Zelle direto pro seu contato",
     "copied": "Copiado!"
   },
   "PledgeForm": {
@@ -404,6 +404,7 @@
     "sectionYourDataTitle": "Seus dados",
     "sectionPaymentTitle": "Forma de pagamento",
     "stripeInlineNote": "Pagamento processado com segurança pela Stripe — nenhum dado do cartão fica salvo aqui.",
+    "noMethodsForCurrency": "Nenhuma forma de pagamento configurada em {currency}. Tente outra moeda.",
     "whereToInvestLabel": "Onde investir",
     "whereToInvestGeneral": "Projeto geral",
     "missingAmount": "faltam {amount}",
@@ -431,7 +432,9 @@
     "errorSave": "Erro ao registrar oferta. Tente novamente.",
     "errorCheckout": "Erro ao iniciar o pagamento. Tente novamente.",
     "doneTitle": "Recebemos seu registro!",
-    "doneDescription": "{name} vai confirmar o recebimento em breve. Assim que confirmado, você será notificado(a).",
+    "doneDescriptionNotified": "{name} vai confirmar o recebimento em breve. Você será avisado(a) por aqui assim que confirmar.",
+    "doneDescriptionGuestNamed": "{name} vai confirmar o recebimento em breve. Como você contribuiu sem estar logado(a), não vamos conseguir te avisar diretamente — mas pode voltar aqui quando quiser conferir.",
+    "doneDescriptionAnonymous": "Sua contribuição foi registrada com sucesso. {name} agradece de coração! 🙏",
     "becomePartnerPrompt": "Gostaria de saber mais e participar ainda mais da caminhada de {name}?",
     "becomePartnerCta": "Quero ser parceiro fixo"
   },

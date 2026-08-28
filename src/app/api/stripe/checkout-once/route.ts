@@ -37,6 +37,11 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? req.nextUrl.origin
+  // Mesma regra do PartnershipWizard pra decidir o passo (partnership-wizard.tsx):
+  // highlightId só existe quando o passo é financial_once (doação vinculada a
+  // um projeto) — sem isso, `choice` nunca vai no success/cancel_url e voltar
+  // do Stripe cai na lista inicial em vez da tela de doação de onde saiu.
+  const choice = highlightId ? 'financial_once' : 'financial_once_general'
   const returnUrl = `${appUrl}/${profile.username}/parceria${highlightId ? `?highlight_id=${highlightId}` : ''}`
 
   const session = await stripe.checkout.sessions.create({
@@ -60,8 +65,8 @@ export async function POST(req: NextRequest) {
       pledge_email: isAnonymous ? '' : (email || '').slice(0, 480),
       pledge_message: (message || '').slice(0, 480),
     },
-    success_url: `${returnUrl}${highlightId ? '&' : '?'}stripe=success`,
-    cancel_url: `${returnUrl}${highlightId ? '&' : '?'}stripe=cancelled`,
+    success_url: `${returnUrl}${highlightId ? '&' : '?'}choice=${choice}&stripe=success`,
+    cancel_url: `${returnUrl}${highlightId ? '&' : '?'}choice=${choice}&stripe=cancelled`,
   }, { stripeAccount: stripeMethod.value })
 
   return NextResponse.json({ url: session.url })

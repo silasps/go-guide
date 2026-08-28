@@ -28,9 +28,17 @@ export function PaymentMethodCards({ options, value, onChange }: Props) {
         const { icon: Icon } = getPaymentMethodEntry(opt.method)
         const active = opt.id === value
         // No card, mostra o nome genérico do tipo (ex. "Pix"), não o rótulo
-        // customizado que o missionário deu (ex. o próprio nome na chave) —
-        // esse fica só no painel de detalhes abaixo, senão não cabe no card.
-        const cardLabel = opt.method === 'stripe' ? opt.label : t(`type_${opt.method}`)
+        // customizado inteiro (ex. o nome completo na chave) — não cabe no
+        // card. Mas se o missionário tem mais de uma chave do mesmo tipo
+        // (ex. duas chaves Pix, uma por pessoa da família), "Pix"/"Pix" fica
+        // ambíguo — complementa com o primeiro nome do rótulo customizado
+        // ("Pix Silas") só quando esse rótulo existir e for diferente do
+        // nome genérico (senão vira "Pix Pix" pro caso comum de só uma
+        // chave sem rótulo próprio).
+        const genericLabel = t(`type_${opt.method}`)
+        const customLabel = opt.label.trim()
+        const firstName = customLabel && customLabel !== genericLabel ? customLabel.split(/\s+/)[0] : null
+        const cardLabel = opt.method === 'stripe' ? opt.label : (firstName ? `${genericLabel} ${firstName}` : genericLabel)
         return (
           <button
             key={opt.id}
