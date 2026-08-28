@@ -172,7 +172,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
           email: currentUser.email,
           type: 'financial',
         }).select('id').single()
-        if (partnerError || !createdPartner) { toast.error(t('errorSave')); return }
+        if (partnerError || !createdPartner) { console.error('partners insert failed:', partnerError); toast.error(t('errorSave')); return }
         partnerId = createdPartner.id
       }
 
@@ -194,7 +194,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
         status: 'active',
       })
 
-      if (error) { toast.error(t('errorSave')); return }
+      if (error) { console.error('recurring_pledges insert failed:', error); toast.error(t('errorSave')); return }
       setDone(true)
     })
   }

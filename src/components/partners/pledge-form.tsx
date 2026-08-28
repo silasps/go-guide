@@ -172,7 +172,7 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
     })
 
     setSaving(false)
-    if (error) { toast.error(t('errorSave')); return }
+    if (error) { console.error('pledges insert failed:', error); toast.error(t('errorSave')); return }
     setDone(true)
   }
 
