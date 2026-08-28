@@ -320,6 +320,7 @@ export interface Pledge {
   reporter_user_id: string | null
   reporter_name: string | null
   reporter_email: string | null
+  reporter_phone: string | null
   is_anonymous: boolean
   message: string | null
   reported_amount: number

@@ -57,6 +57,7 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
   const [isAnonymous, setIsAnonymous] = useState(false)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [message, setMessage] = useState('')
   const [proofFile, setProofFile] = useState<File | null>(null)
   const [proofPreview, setProofPreview] = useState('')
@@ -155,13 +156,21 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
       message.trim() || null,
     ].filter(Boolean).join('\n\n') || null
 
+    // Id gerado no cliente (em vez de várias-select().single() depois do
+    // insert) porque a policy de SELECT de pledges só libera pro dono do
+    // perfil ou pro próprio reporter logado — um guest anônimo/identificado
+    // sem conta nunca conseguiria ler a linha de volta via RETURNING, o que
+    // faria o insert (bem-sucedido) aparentar erro no cliente.
+    const pledgeId = crypto.randomUUID()
     const { error } = await supabase.from('pledges').insert({
+      id: pledgeId,
       highlight_id: isRecurring ? null : (highlightId ?? null),
       budget_category_id: isRecurring ? null : (highlightId ? categoryId : null),
       profile_id: profileId,
       reporter_user_id: user?.id ?? null,
       reporter_name: isAnonymous ? null : name.trim(),
       reporter_email: isAnonymous ? null : (email.trim() || user?.email || null),
+      reporter_phone: isAnonymous ? null : (phone.trim() || null),
       is_anonymous: isAnonymous,
       message: fullMessage,
       reported_amount: parsedAmount,
@@ -176,6 +185,12 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
     if (error) { console.error('pledges insert failed:', error); toast.error(t('errorSave')); return }
     setDoneAsLoggedIn(!!user)
     setDone(true)
+
+    // Quem se identificou mas não tem conta não recebe notificação in-app —
+    // manda um e-mail de confirmação pro endereço que a pessoa preencheu.
+    if (!user && !isAnonymous && email.trim()) {
+      fetch(`/api/pledges/${pledgeId}/notify-guest`, { method: 'POST' }).catch(() => {})
+    }
   }
 
   const title = isRecurring ? t('titleRecurring') : t('title', { highlightTitle: highlightTitle ? ` — ${highlightTitle}` : '' })
@@ -189,7 +204,12 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
             <CardContent className="py-12 text-center space-y-3">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
               <h2 className="text-xl font-semibold">{t('doneTitle')}</h2>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-sm text-muted-foreground">
+                <span className="text-foreground font-medium">
+                  {highlightTitle
+                    ? t('doneContributionProject', { project: highlightTitle, name: missionaryName })
+                    : t('doneContributionGeneral', { name: missionaryName })}
+                </span>{' '}
                 {t(doneAsLoggedIn ? 'doneDescriptionNotified' : isAnonymous ? 'doneDescriptionAnonymous' : 'doneDescriptionGuestNamed', { name: missionaryName })}
               </p>
             </CardContent>
@@ -266,6 +286,10 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
               <div className="space-y-2">
                 <Label>{t('emailLabel')}</Label>
                 <Input type="email" value={email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} placeholder={t('emailPlaceholder')} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('phoneLabel')}</Label>
+                <Input type="tel" value={phone} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)} placeholder={t('phonePlaceholder')} />
               </div>
             </>
           )}
