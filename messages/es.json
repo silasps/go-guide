@@ -432,7 +432,9 @@
     "errorSave": "Error al registrar la ofrenda. Intenta de nuevo.",
     "errorCheckout": "Error al iniciar el pago. Intenta de nuevo.",
     "doneTitle": "¡Recibimos tu registro!",
-    "doneDescription": "{name} confirmará la recepción pronto. Serás notificado en cuanto se confirme.",
+    "doneDescriptionNotified": "{name} confirmará la recepción pronto. Te avisaremos aquí en cuanto se confirme.",
+    "doneDescriptionGuestNamed": "{name} confirmará la recepción pronto. Como contribuiste sin iniciar sesión, no podremos avisarte directamente — pero puedes volver cuando quieras para revisar.",
+    "doneDescriptionAnonymous": "Tu contribución fue registrada con éxito. ¡{name} lo agradece de corazón!",
     "becomePartnerPrompt": "¿Te gustaría saber más y participar aún más en el camino de {name}?",
     "becomePartnerCta": "Quiero ser socio fijo"
   },

@@ -432,7 +432,9 @@
     "errorSave": "Error registering offering. Please try again.",
     "errorCheckout": "Error starting the payment. Please try again.",
     "doneTitle": "We received your record!",
-    "doneDescription": "{name} will confirm receipt soon. You'll be notified once confirmed.",
+    "doneDescriptionNotified": "{name} will confirm receipt soon. You'll be notified here once confirmed.",
+    "doneDescriptionGuestNamed": "{name} will confirm receipt soon. Since you contributed without being logged in, we won't be able to notify you directly — but feel free to check back anytime.",
+    "doneDescriptionAnonymous": "Your contribution was recorded successfully. {name} is truly grateful!",
     "becomePartnerPrompt": "Want to know more and be even more part of {name}'s journey?",
     "becomePartnerCta": "I want to become a regular partner"
   },

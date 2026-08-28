@@ -46,6 +46,7 @@ interface Props {
 export function PledgeForm({ profileId, missionaryName, highlightId, highlightTitle, isRecurring, defaultCurrency, paymentOptions, stripeAvailable = false, heroImageUrl = null, heroImagePosition, budgetCategories, initialCategoryId, backHref, onBecomePartner }: Props) {
   const t = useTranslations('PledgeForm')
   const [done, setDone] = useState(false)
+  const [doneAsLoggedIn, setDoneAsLoggedIn] = useState(false)
   const [saving, setSaving] = useState(false)
   const { isPending: startingCheckout, run: runCheckout } = usePendingAction()
   const [amount, setAmount] = useState('')
@@ -173,6 +174,7 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
 
     setSaving(false)
     if (error) { console.error('pledges insert failed:', error); toast.error(t('errorSave')); return }
+    setDoneAsLoggedIn(!!user)
     setDone(true)
   }
 
@@ -187,7 +189,9 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
             <CardContent className="py-12 text-center space-y-3">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
               <h2 className="text-xl font-semibold">{t('doneTitle')}</h2>
-              <p className="text-muted-foreground text-sm">{t('doneDescription', { name: missionaryName })}</p>
+              <p className="text-muted-foreground text-sm">
+                {t(doneAsLoggedIn ? 'doneDescriptionNotified' : isAnonymous ? 'doneDescriptionAnonymous' : 'doneDescriptionGuestNamed', { name: missionaryName })}
+              </p>
             </CardContent>
           </Card>
           {!isRecurring && onBecomePartner && (
