@@ -19,6 +19,20 @@ import { InstagramVideoPlayer } from '@/components/shared/instagram-video-player
 import { toggleLike, recordShare } from '@/app/dashboard/publicacoes/social-actions'
 import { useOptionalComposer } from '@/components/dashboard/post-composer-provider'
 
+// Comprimento de legenda a partir do qual mostramos "...mais" — mesmo
+// limiar usado pra decidir SE trunca e pra onde cortar o texto truncado
+// (ver `truncateCaption`).
+const CAPTION_CLAMP_LENGTH = 140
+
+/** Corta o texto no limite, recuando até o último espaço — evita partir
+ *  uma palavra no meio bem em cima do "...mais". */
+function truncateCaption(text: string, max: number): string {
+  if (text.length <= max) return text
+  const sliced = text.slice(0, max)
+  const lastSpace = sliced.lastIndexOf(' ')
+  return (lastSpace > 0 ? sliced.slice(0, lastSpace) : sliced).trimEnd()
+}
+
 const ASPECT_CLASS: Record<string, string> = {
   original: '',
   '1:1': 'aspect-square',
@@ -33,15 +47,17 @@ interface Props {
   /** Abre a folha de comentários já expandida ao montar — usado pelo link
    *  do sino de notificação de comentário. */
   autoOpenComments?: boolean
-  /** Limita a altura da mídia (ex. "max-h-[50vh]") — usado só pelo
-   *  PostDetailViewer, pra garantir que curtir/comentar/legenda sempre
-   *  caibam junto na tela sem precisar rolar em telas baixas (a proporção
-   *  4:5 sozinha pode consumir quase toda a altura do modal). No feed
-   *  normal fica sem limite, mantendo a proporção original do post. */
-  mediaMaxHeightClass?: string
+  /** `true` só quando renderizado dentro do `PostDetailViewer` (modal em
+   *  destaque) — suprime a borda esquerda de "post ligado a projeto"
+   *  (`post.highlight`), que faz sentido discreta entre outros cards do
+   *  feed mas vira uma faixa isolada/estranha num modal centralizado, sem
+   *  nada equivalente do outro lado (reportado pelo usuário com
+   *  screenshot). O indicador em si continua existindo — só não aparece
+   *  nessa apresentação específica. */
+  inDetailModal?: boolean
 }
 
-export function PostCard({ post, visitorLocale, canEdit = false, autoOpenComments = false, mediaMaxHeightClass }: Props) {
+export function PostCard({ post, visitorLocale, canEdit = false, autoOpenComments = false, inDetailModal = false }: Props) {
   const t = useTranslations('Feed')
   const composer = useOptionalComposer()
   const { text } = resolveLocalizedText(post.content, post.original_locale, post.translations, visitorLocale)
@@ -134,25 +150,50 @@ export function PostCard({ post, visitorLocale, canEdit = false, autoOpenComment
 
   if (removed) return null
 
-  const needsClamp = (text?.length ?? 0) > 140
+  const needsClamp = (text?.length ?? 0) > CAPTION_CLAMP_LENGTH
 
   return (
-    <div className={cn('rounded-2xl border bg-card overflow-hidden', post.highlight && 'border-l-[3px] border-l-support')}>
+    <div
+      className={cn(
+        'bg-card overflow-hidden',
+        inDetailModal ? 'rounded-none border-0 sm:rounded-2xl sm:border' : 'rounded-2xl border',
+        post.highlight && !inDetailModal && 'border-l-[3px] border-l-support',
+      )}
+    >
       <div className="p-4 pb-2 flex items-start gap-2.5">
-        <Link href={`/${post.profile.username}`} className="flex items-center gap-2.5 min-w-0 flex-1">
-          <Avatar className="h-8 w-8 shrink-0">
+        <Link href={`/${post.profile.username}`} className="shrink-0">
+          <Avatar className="h-8 w-8">
             <AvatarImage src={post.profile.avatar_url ?? ''} alt={post.profile.display_name} />
             <AvatarFallback className="text-xs">{getInitials(post.profile.display_name)}</AvatarFallback>
           </Avatar>
+        </Link>
+        <div className="flex items-start gap-2.5 min-w-0 flex-1">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium truncate">{post.profile.display_name}</p>
+            <Link href={`/${post.profile.username}`} className="block text-sm font-medium truncate hover:underline">
+              {post.profile.display_name}
+            </Link>
             <p className="text-xs text-muted-foreground truncate">
-              @{post.profile.username}
-              {post.location ? ` · ${post.location}` : ''}
+              <Link href={`/${post.profile.username}`} className="hover:underline">
+                @{post.profile.username}
+              </Link>
+              {post.location && (
+                <>
+                  {' · '}
+                  {/* Abre o mapa igual o Instagram — só temos o endereço em texto livre (sem lat/lng salvo), então buscamos no Google Maps pelo texto. */}
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(post.location)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline hover:text-foreground"
+                  >
+                    {post.location}
+                  </a>
+                </>
+              )}
             </p>
           </div>
           {post.published_at && <p className="text-xs text-muted-foreground shrink-0">{formatRelativeTime(post.published_at)}</p>}
-        </Link>
+        </div>
 
         {canEdit && (
           <DropdownMenu>
@@ -191,7 +232,6 @@ export function PostCard({ post, visitorLocale, canEdit = false, autoOpenComment
           activeSlide={activeSlide}
           showTags={showTags}
           onToggleTags={() => setShowTags((v) => !v)}
-          mediaMaxHeightClass={mediaMaxHeightClass}
         />
         {showLikeBurst && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -217,14 +257,14 @@ export function PostCard({ post, visitorLocale, canEdit = false, autoOpenComment
         </div>
 
         {text && (
-          <div>
-            <p className={cn('text-sm whitespace-pre-wrap', !expanded && needsClamp && 'line-clamp-2')}>{text}</p>
+          <p className="text-sm whitespace-pre-wrap">
+            {!expanded && needsClamp ? truncateCaption(text, CAPTION_CLAMP_LENGTH) : text}
             {needsClamp && (
-              <button type="button" onClick={() => setExpanded((v) => !v)} className="text-xs text-muted-foreground font-medium mt-0.5">
-                {expanded ? t('seeLess') : t('seeMore')}
+              <button type="button" onClick={() => setExpanded((v) => !v)} className="text-muted-foreground font-medium">
+                {expanded ? ` ${t('seeLess')}` : t('seeMore')}
               </button>
             )}
-          </div>
+          </p>
         )}
       </div>
 
@@ -239,7 +279,7 @@ export function PostCard({ post, visitorLocale, canEdit = false, autoOpenComment
 }
 
 function PostMedia({
-  post, scrollRef, onScroll, activeSlide, showTags, onToggleTags, mediaMaxHeightClass,
+  post, scrollRef, onScroll, activeSlide, showTags, onToggleTags,
 }: {
   post: PostWithProfile
   scrollRef: React.RefObject<HTMLDivElement | null>
@@ -247,16 +287,15 @@ function PostMedia({
   activeSlide: number
   showTags: boolean
   onToggleTags: () => void
-  mediaMaxHeightClass?: string
 }) {
   const t = useTranslations('Feed')
-  const aspectClass = cn(ASPECT_CLASS[post.media_aspect_ratio] || 'aspect-[4/5]', mediaMaxHeightClass)
+  const aspectClass = ASPECT_CLASS[post.media_aspect_ratio] || 'aspect-[4/5]'
 
   // Vídeo processando na Bunny ainda não tem media_urls — mas o post
   // precisa renderizar o placeholder de "processando" mesmo assim.
   if (post.type === 'video') {
     return (
-      <div className={cn('relative bg-muted', aspectClass)}>
+      <MediaFrame aspectClass={aspectClass}>
         <InstagramVideoPlayer
           src={post.media_urls[0] ?? ''}
           status={post.media_status}
@@ -266,7 +305,7 @@ function PostMedia({
           unmuteLabel={t('unmute')}
         />
         <RoleBadge role={post.profile.user_role} />
-      </div>
+      </MediaFrame>
     )
   }
 
@@ -277,9 +316,11 @@ function PostMedia({
       <div className="relative">
         <div ref={scrollRef} onScroll={onScroll} className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide">
           {post.media_urls.map((url, i) => (
-            <div key={url + i} className={cn('relative w-full shrink-0 snap-start bg-muted', aspectClass)}>
-              <Image src={url} alt="" fill className="object-cover" sizes="100vw" />
-              {showTags && <TagPins tags={post.tags.filter((tag) => tag.media_index === i)} />}
+            <div key={url + i} className="shrink-0 snap-start w-full">
+              <MediaFrame aspectClass={aspectClass}>
+                <Image src={url} alt="" fill className="object-cover" sizes="100vw" />
+                {showTags && <TagPins tags={post.tags.filter((tag) => tag.media_index === i)} />}
+              </MediaFrame>
             </div>
           ))}
         </div>
@@ -295,13 +336,20 @@ function PostMedia({
   }
 
   return (
-    <div className={cn('relative bg-muted', aspectClass)}>
+    <MediaFrame aspectClass={aspectClass}>
       <Image src={post.media_urls[0]} alt="" fill className="object-cover" />
       {showTags && <TagPins tags={post.tags.filter((tag) => tag.media_index === 0)} />}
       <RoleBadge role={post.profile.user_role} />
       {post.tags.length > 0 && <TagToggleButton onClick={onToggleTags} />}
-    </div>
+    </MediaFrame>
   )
+}
+
+/** Caixa que envolve a mídia (imagem/vídeo/slide) na proporção escolhida no
+ *  upload — bloco full-bleed de largura 100%, altura vem só da proporção
+ *  (`aspect-*`). */
+function MediaFrame({ aspectClass, children }: { aspectClass: string; children: React.ReactNode }) {
+  return <div className={cn('relative bg-muted', aspectClass)}>{children}</div>
 }
 
 function RoleBadge({ role }: { role: 'missionary' | 'partner' }) {

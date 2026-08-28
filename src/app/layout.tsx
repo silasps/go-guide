@@ -8,6 +8,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { NavigationProgress } from '@/components/navigation-progress'
 import { NavigationTracker } from '@/components/navigation-tracker'
 import { SplashScreen } from '@/components/splash-screen'
+import { PullToRefresh } from '@/components/pull-to-refresh'
 
 const inter = Inter({
   variable: '--font-sans',
@@ -70,6 +71,7 @@ export default async function RootLayout({
         <link rel="preload" as="image" href="/splash/walk-4.webp" />
         <link rel="preload" as="image" href="/splash/walk-5.webp" />
         <SplashScreen />
+        <PullToRefresh />
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <NavigationProgress />
