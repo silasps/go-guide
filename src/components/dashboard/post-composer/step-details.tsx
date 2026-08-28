@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LocaleContentTabs } from '@/components/dashboard/locale-content-tabs'
 import { PostEditorProjectPicker } from '@/components/dashboard/post-editor-project-picker'
-import { getLocationSuggestions } from '@/app/dashboard/publicacoes/actions'
+import { getLocationSuggestions, getNearbyLocations, searchLocations } from '@/app/dashboard/publicacoes/actions'
 import type { usePostComposer } from './use-post-composer'
 import { TagPeoplePicker } from './tag-people-picker'
 
@@ -35,6 +35,40 @@ export function StepDetails({ composer, profileId }: Props) {
   useEffect(() => {
     getLocationSuggestions(profileId).then(setLocationSuggestions).catch(() => {})
   }, [profileId])
+
+  // Sugestões perto de onde o usuário está agora, estilo Instagram (o
+  // picker de localização já abre com lugares próximos). Pede geolocalização
+  // do browser assim que o passo monta; se o usuário negar ou o browser não
+  // suportar, some em silêncio e as sugestões caem pro histórico acima.
+  const [nearbyLocations, setNearbyLocations] = useState<string[]>([])
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        getNearbyLocations(pos.coords.latitude, pos.coords.longitude).then(setNearbyLocations).catch(() => {})
+      },
+      () => {},
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 5 * 60 * 1000 },
+    )
+  }, [])
+  const suggestedLocations = [...nearbyLocations, ...locationSuggestions]
+    .filter((s, i, arr) => s !== location && arr.indexOf(s) === i)
+
+  // Autocomplete de localização mundo afora (estilo Instagram) — busca só
+  // dispara enquanto o usuário está digitando (`showWorldSearch`), não
+  // quando `location` muda por outro motivo (ex.: clicar numa sugestão).
+  const [worldResults, setWorldResults] = useState<string[]>([])
+  const [showWorldSearch, setShowWorldSearch] = useState(false)
+  useEffect(() => {
+    const trimmed = location.trim()
+    if (!showWorldSearch || trimmed.length < 2) { setWorldResults([]); return }
+    let cancelled = false
+    const id = setTimeout(() => {
+      searchLocations(trimmed).then((results) => { if (!cancelled) setWorldResults(results) }).catch(() => {})
+    }, 300)
+    return () => { cancelled = true; clearTimeout(id) }
+  }, [location, showWorldSearch])
+  const showWorldResults = showWorldSearch && location.trim().length >= 2 && worldResults.length > 0
 
   return (
     <div className="space-y-5 max-w-xl mx-auto">
@@ -102,24 +136,46 @@ export function StepDetails({ composer, profileId }: Props) {
           <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
           <Input
             value={location}
-            onChange={(e) => setLocation(e.target.value)}
+            onChange={(e) => { setLocation(e.target.value); setShowWorldSearch(true) }}
             placeholder={t('locationPlaceholder')}
             className="border-0 px-0 shadow-none focus-visible:ring-0"
           />
         </div>
-        {locationSuggestions.filter((s) => s !== location).length > 0 && (
-          <div className="flex flex-wrap gap-1.5 pl-6">
-            {locationSuggestions.filter((s) => s !== location).map((suggestion) => (
+
+        {showWorldResults ? (
+          <div className="rounded-lg border divide-y overflow-hidden ml-6">
+            {worldResults.map((result) => (
               <button
-                key={suggestion}
+                key={result}
                 type="button"
-                onClick={() => setLocation(suggestion)}
-                className="text-xs px-2 py-1 rounded-full border text-muted-foreground hover:border-foreground hover:text-foreground transition-colors"
+                onClick={() => { setLocation(result); setShowWorldSearch(false) }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-left hover:bg-muted/50 transition-colors"
               >
-                {suggestion}
+                <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <span className="truncate">{result}</span>
               </button>
             ))}
           </div>
+        ) : (
+          suggestedLocations.length > 0 && (
+            <div className="space-y-1 pl-6">
+              {nearbyLocations.length > 0 && (
+                <p className="text-[11px] text-muted-foreground">{t('nearbyLocations')}</p>
+              )}
+              <div className="flex flex-wrap gap-1.5">
+                {suggestedLocations.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => setLocation(suggestion)}
+                    className="text-xs px-2 py-1 rounded-full border text-muted-foreground hover:border-foreground hover:text-foreground transition-colors"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )
         )}
       </div>
 

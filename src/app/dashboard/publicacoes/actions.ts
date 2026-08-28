@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import type { HighlightStatus, Locale, MediaAspectRatio, PostType } from '@/types/database'
+import { getNearbyLocationsCascade, searchLocationsCascade } from '@/lib/geocoding/cascade'
 
 function serviceClient() {
   return createSupabaseClient(
@@ -190,4 +191,22 @@ export async function getLocationSuggestions(profileId: string): Promise<string[
     if (suggestions.length >= 5) break
   }
   return suggestions
+}
+
+/** Autocomplete de localização mundo afora, estilo Instagram — cascata
+ *  Mapbox -> Photon (ver `src/lib/geocoding/cascade.ts` pra lógica de
+ *  fallback e `system.architecture.md` Changelog pro histórico da
+ *  decisão). */
+export async function searchLocations(query: string): Promise<string[]> {
+  return searchLocationsCascade(query)
+}
+
+/** Sugestões de localização perto de onde o usuário está agora, estilo
+ *  Instagram (o picker de localização já abre com lugares próximos — igreja,
+ *  mercado, empresa etc. — antes de digitar nada) a partir de lat/lon lidos
+ *  no browser (`navigator.geolocation`, client-side em `StepDetails`) —
+ *  cascata Google Places -> Mapbox -> Photon (ver `src/lib/geocoding/
+ *  cascade.ts`). */
+export async function getNearbyLocations(lat: number, lon: number): Promise<string[]> {
+  return getNearbyLocationsCascade(lat, lon)
 }

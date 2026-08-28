@@ -659,6 +659,7 @@
     "removeTag": "Remove tag",
     "cancel": "Cancel",
     "locationPlaceholder": "Add location",
+    "nearbyLocations": "Near you",
     "scheduleToggle": "Schedule post",
     "schedule": "Schedule"
   },

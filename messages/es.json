@@ -659,6 +659,7 @@
     "removeTag": "Quitar etiqueta",
     "cancel": "Cancelar",
     "locationPlaceholder": "Agregar ubicación",
+    "nearbyLocations": "Cerca de ti",
     "scheduleToggle": "Programar publicación",
     "schedule": "Programar"
   },
