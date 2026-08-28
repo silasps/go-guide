@@ -7,6 +7,7 @@ import { getProfileViewerContext } from '@/lib/profile/viewer-context'
 
 interface Props {
   children: React.ReactNode
+  modal: React.ReactNode
   params: Promise<{ username: string }>
 }
 
@@ -54,7 +55,7 @@ async function ProfileTabsAsync({ username }: { username: string }) {
   )
 }
 
-export default async function UsernameLayout({ children, params }: Props) {
+export default async function UsernameLayout({ children, modal, params }: Props) {
   const { username } = await params
 
   return (
@@ -63,6 +64,7 @@ export default async function UsernameLayout({ children, params }: Props) {
         <ProfileTabsAsync username={username} />
       </Suspense>
       {children}
+      {modal}
     </>
   )
 }

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { PartnershipWizard } from '@/components/partners/partnership-wizard'
+import { PartnershipModal } from '@/components/partners/partnership-modal'
 import { getPartnershipData } from '@/lib/partners/get-partnership-data'
 
 interface Props {
@@ -7,10 +7,10 @@ interface Props {
   searchParams: Promise<{ highlight_id?: string; choice?: string; category?: string }>
 }
 
-export default async function ParceriaPage({ params, searchParams }: Props) {
+export default async function ParceriaModalPage({ params, searchParams }: Props) {
   const { username } = await params
   const data = await getPartnershipData(username, await searchParams)
   if (!data) notFound()
 
-  return <PartnershipWizard {...data} />
+  return <PartnershipModal {...data} />
 }

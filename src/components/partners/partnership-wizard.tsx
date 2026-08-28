@@ -16,7 +16,7 @@ interface SessionUser {
   user_metadata?: { full_name?: string }
 }
 
-interface Props {
+export interface PartnershipWizardProps {
   profileId: string
   username: string
   initialChoice?: Choice
@@ -36,7 +36,7 @@ interface Props {
   user: SessionUser | null
 }
 
-export function PartnershipWizard({ profileId, username, initialChoice, missionaryName, missionStartYear, highlightId, highlightTitle, defaultCurrency, paymentOptions, budgetCategories, initialCategoryId, hasFinancialOptions, stripeAvailable, profileAvatarUrl, highlightCoverUrl, highlightCoverPosition, user }: Props) {
+export function PartnershipWizard({ profileId, username, initialChoice, missionaryName, missionStartYear, highlightId, highlightTitle, defaultCurrency, paymentOptions, budgetCategories, initialCategoryId, hasFinancialOptions, stripeAvailable, profileAvatarUrl, highlightCoverUrl, highlightCoverPosition, user }: PartnershipWizardProps) {
   const [choice, setChoice] = useState<Choice | null>(initialChoice ?? null)
 
   if (choice === 'financial_once' || choice === 'financial_once_general') {
