@@ -7,6 +7,7 @@ import { Plus, X, Video as VideoIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { getMediaType, validateVideo, validateVideoDuration } from '@/lib/media/compress'
+import { averageColorFromUrl } from '@/lib/media/bake-image'
 import type { MediaAspectRatio } from '@/types/database'
 import { createMediaDraft, type MediaDraft } from '@/components/shared/media-editor/types'
 import { ImageCropEditor } from '@/components/shared/media-editor/image-crop-editor'
@@ -15,7 +16,7 @@ const MAX_MEDIA = 10
 
 interface Props {
   mediaFiles: MediaDraft[]
-  onMediaChange: (files: MediaDraft[]) => void
+  onMediaChange: (files: MediaDraft[] | ((prev: MediaDraft[]) => MediaDraft[])) => void
   activeIndex: number
   onActiveIndexChange: (index: number) => void
   aspect: MediaAspectRatio
@@ -44,21 +45,40 @@ export function StepMediaSelect({
       }
       next.push(createMediaDraft(file, mediaType))
     }
-    const merged = [...mediaFiles, ...next].slice(0, MAX_MEDIA)
-    onMediaChange(merged)
-    if (mediaFiles.length === 0 && merged.length > 0) onActiveIndexChange(0)
+    const wasEmpty = mediaFiles.length === 0
+    onMediaChange((prev) => [...prev, ...next].slice(0, MAX_MEDIA))
+    if (wasEmpty && next.length > 0) onActiveIndexChange(0)
+
+    // Cor média calculada uma vez aqui (não em cada preview via onLoad, que
+    // não dispara de forma confiável pra uma blob URL já em cache — ver
+    // MediaDraft.bgColor) e propagada pelo id assim que resolve.
+    for (const draft of next) {
+      if (draft.type !== 'image') continue
+      averageColorFromUrl(draft.previewUrl).then((bgColor) => {
+        onMediaChange((prev) => prev.map((m) => (m.id === draft.id ? { ...m, bgColor } : m)))
+      }).catch(() => {})
+    }
   }
 
   function removeMedia(index: number) {
     const removed = mediaFiles[index]
     URL.revokeObjectURL(removed.previewUrl)
     const next = mediaFiles.filter((_, i) => i !== index)
-    onMediaChange(next)
+    onMediaChange((prev) => prev.filter((_, i) => i !== index))
     if (activeIndex >= next.length) onActiveIndexChange(Math.max(0, next.length - 1))
   }
 
+  // Forma funcional (prev => ...) em vez de mediaFiles.map(...) direto: o
+  // ImageCropEditor chama onZoomChange e onPositionChange em sequência
+  // síncrona a cada mudança de zoom (setZoom reenquadra a posição junto).
+  // Com a forma antiga, as duas chamadas partiam do mesmo `mediaFiles` da
+  // closure (ainda não atualizado pela primeira) — a segunda sempre
+  // sobrescrevia o zoom da primeira de volta pro valor antigo, e o zoom
+  // nunca avançava visualmente (bug real, não só passo pequeno; feedback
+  // direto do usuário, reproduzido com sessão real + upload real via
+  // Playwright). A forma funcional sempre parte do estado mais recente.
   function updateActive(patch: Partial<MediaDraft>) {
-    onMediaChange(mediaFiles.map((m, i) => (i === activeIndex ? { ...m, ...patch } : m)))
+    onMediaChange((prev) => prev.map((m, i) => (i === activeIndex ? { ...m, ...patch } : m)))
   }
 
   if (!active) {
@@ -74,7 +94,7 @@ export function StepMediaSelect({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 max-w-md mx-auto">
       <input ref={inputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
 
       {active.type === 'video' ? (

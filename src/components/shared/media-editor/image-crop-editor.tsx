@@ -70,9 +70,6 @@ function clampPosition(
   }
 }
 
-const ZOOM_STEP = 0.1
-const WHEEL_STEP = 0.08
-
 export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChange, onZoomChange, showAspectPicker = true, round = false }: Props) {
   const t = useTranslations('MediaEditor')
   const [isDragging, setIsDragging] = useState(false)
@@ -93,6 +90,14 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
   // fórmula, pra o resultado salvo bater com o preview em qualquer zoom).
   const scaleRatio = imgInfo && targetRatio ? Math.max(imgInfo.ratio / targetRatio, targetRatio / imgInfo.ratio) : 1
   const maxZoom = scaleRatio * 3
+  // Passo do zoom proporcional a scaleRatio — numa foto bem estreita/alta
+  // (ex.: um flyer), o zoom precisa de scaleRatio inteiro só pra cobrir o
+  // quadro (sumir com a sobra nas laterais); com um passo fixo de 10% isso
+  // exigia dezenas de cliques e dava a impressão de "zoom não funciona"
+  // (feedback direto do usuário). Continua pequeno (0.1/0.08) pra fotos
+  // comuns, perto de já bater com o quadro.
+  const zoomStep = Math.max(0.1, scaleRatio * 0.15)
+  const wheelStep = Math.max(0.08, scaleRatio * 0.1)
   // Eixo "apertado" (sem sobra desde zoom=1, ex.: largura de uma foto
   // paisagem numa capa ainda mais larga) vs. eixo "com folga" (só passa a
   // crescer/estourar o quadro a partir de scaleRatio). O alcance do
@@ -173,12 +178,12 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
     if (!el) return
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
-      const delta = e.deltaY > 0 ? -WHEEL_STEP : WHEEL_STEP
+      const delta = e.deltaY > 0 ? -wheelStep : wheelStep
       setZoom(media.zoom + delta)
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [media.zoom, setZoom])
+  }, [media.zoom, setZoom, wheelStep])
 
   function startDrag(clientX: number, clientY: number) {
     dragging.current = true
@@ -190,7 +195,7 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
     <>
       <button
         type="button"
-        onClick={(e) => { e.stopPropagation(); setZoom(media.zoom + ZOOM_STEP) }}
+        onClick={(e) => { e.stopPropagation(); setZoom(media.zoom + zoomStep) }}
         disabled={media.zoom >= maxZoom}
         className="h-8 w-8 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-sm disabled:opacity-40"
         aria-label={t('zoomIn')}
@@ -199,7 +204,7 @@ export function ImageCropEditor({ media, aspect, onAspectChange, onPositionChang
       </button>
       <button
         type="button"
-        onClick={(e) => { e.stopPropagation(); setZoom(media.zoom - ZOOM_STEP) }}
+        onClick={(e) => { e.stopPropagation(); setZoom(media.zoom - zoomStep) }}
         disabled={media.zoom <= 1}
         className="h-8 w-8 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-sm disabled:opacity-40"
         aria-label={t('zoomOut')}

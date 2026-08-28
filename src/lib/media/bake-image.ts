@@ -16,6 +16,18 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   })
 }
 
+/** Calcula a cor média a partir de uma URL (em vez de um <img> já carregado)
+ *  — usada pra computar `MediaDraft.bgColor` uma única vez, no momento em
+ *  que a imagem é selecionada, e guardar no estado. Evitar recalcular via
+ *  `onLoad` de cada preview (crop, ajustar, marcar pessoas) importa porque
+ *  esse evento não dispara de forma confiável quando o navegador já tem a
+ *  mesma blob URL em cache (comum aqui: a mesma imagem é montada de novo em
+ *  cada etapa do composer) — o fundo ficava preso no fallback preto. */
+export async function averageColorFromUrl(url: string): Promise<string> {
+  const img = await loadImage(url)
+  return averageColor(img)
+}
+
 /** Cor média da imagem (canvas reduzido a 10x10 e média dos pixels) — usada
  *  pra preencher a sobra quando a imagem inteira cabe sem cortar, em vez de
  *  uma cor de fundo desconexa da paleta da foto. Exportada porque o editor de

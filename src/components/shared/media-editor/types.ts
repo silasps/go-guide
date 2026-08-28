@@ -38,6 +38,13 @@ export interface MediaDraft {
   zoom: number
   filterPreset: FilterPresetId
   adjustments: MediaAdjustments
+  /** Cor média da imagem, calculada uma vez (ver `averageColorFromUrl` em
+   *  `bake-image.ts`) e reaproveitada como fundo em toda etapa do composer
+   *  que mostra este preview (ajustar, marcar pessoas) — evita recalcular
+   *  via `onLoad` de cada `<Image>`, que não dispara de forma confiável
+   *  quando a blob URL já está em cache do navegador. `'#000'` até a conta
+   *  assíncrona terminar (mesmo fallback do `ImageCropEditor`). */
+  bgColor: string
 }
 
 /** Combina preset + sliders numa única string de filter CSS, usada tanto na
@@ -67,5 +74,6 @@ export function createMediaDraft(file: File, type: 'image' | 'video'): MediaDraf
     zoom: 1,
     filterPreset: 'none',
     adjustments: { ...DEFAULT_ADJUSTMENTS },
+    bgColor: '#000',
   }
 }

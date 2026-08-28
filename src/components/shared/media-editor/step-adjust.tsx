@@ -33,7 +33,10 @@ export function StepAdjust({ mediaFiles, activeIndex, onActiveIndexChange, aspec
   return (
     <div className="flex flex-col md:flex-row gap-4 md:h-[60vh]">
       <div className="shrink-0 md:w-1/2 md:h-full flex items-center justify-center bg-muted/30 rounded-lg">
-        <div className={cn('relative w-full max-h-[45vh] md:max-h-full overflow-hidden rounded-lg', ASPECT_RATIO_CLASS[aspect] || 'aspect-[4/5]')}>
+        <div
+          className={cn('relative w-full max-h-[45vh] md:max-h-full overflow-hidden rounded-lg', ASPECT_RATIO_CLASS[aspect] || 'aspect-[4/5]')}
+          style={{ backgroundColor: active.bgColor }}
+        >
           {active.type === 'video' ? (
             <video src={active.previewUrl} className="w-full h-full object-cover" />
           ) : (
@@ -41,10 +44,20 @@ export function StepAdjust({ mediaFiles, activeIndex, onActiveIndexChange, aspec
               src={active.previewUrl}
               alt=""
               fill
-              className="object-cover"
+              className="object-contain"
               style={{
-                objectPosition: `${active.position.x}% ${active.position.y}%`,
-                transform: `scale(${active.zoom})`,
+                // Mesma técnica do ImageCropEditor (object-contain +
+                // object-position fixo + translate depois de scale) — com
+                // object-cover + objectPosition (versão anterior), o mesmo
+                // position/zoom produzia um enquadramento diferente do que
+                // o usuário viu e ajustou na etapa de corte. `bgColor` vem
+                // de `MediaDraft` (calculado uma vez ao selecionar a
+                // imagem, ver StepMediaSelect) em vez de `onLoad` aqui —
+                // esse evento não dispara de forma confiável pra uma blob
+                // URL que o navegador já tem em cache (a mesma imagem já
+                // foi montada na etapa de corte).
+                objectPosition: '50% 50%',
+                transform: `translate(${active.position.x - 50}%, ${active.position.y - 50}%) scale(${active.zoom})`,
                 filter: resolveCssFilter(active) || undefined,
               }}
             />

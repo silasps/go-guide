@@ -65,16 +65,25 @@ export function TagPeoplePicker({ profileId, media, mediaIndex, aspect, tags, on
       <div
         ref={frameRef}
         onClick={handleFrameClick}
-        className={`relative w-full overflow-hidden rounded-lg bg-black cursor-crosshair ${ASPECT_RATIO_CLASS[aspect] || 'aspect-[4/5]'}`}
+        className={`relative w-full overflow-hidden rounded-lg cursor-crosshair ${ASPECT_RATIO_CLASS[aspect] || 'aspect-[4/5]'}`}
+        style={{ backgroundColor: media.bgColor }}
       >
         <Image
           src={media.previewUrl}
           alt=""
           fill
-          className="object-cover pointer-events-none"
+          className="object-contain pointer-events-none"
           style={{
-            objectPosition: `${media.position.x}% ${media.position.y}%`,
-            transform: `scale(${media.zoom})`,
+            // Mesma técnica do ImageCropEditor/StepAdjust (object-contain +
+            // object-position fixo + translate depois de scale) — sem isso,
+            // a prévia da etapa "Detalhes" (e o clique pra marcar pessoas,
+            // que usa esse mesmo quadro como referência) mostrava um
+            // enquadramento diferente do que o usuário ajustou no corte.
+            // `bgColor` vem de `MediaDraft` (ver StepMediaSelect), não de
+            // `onLoad` aqui — não dispara de forma confiável pra uma blob
+            // URL já em cache do navegador.
+            objectPosition: '50% 50%',
+            transform: `translate(${media.position.x - 50}%, ${media.position.y - 50}%) scale(${media.zoom})`,
             filter: resolveCssFilter(media) || undefined,
           }}
         />
