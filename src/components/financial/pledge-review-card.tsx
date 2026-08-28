@@ -9,7 +9,7 @@ import { Pledge, FinancialAccount } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { Loader2, Check, X, ExternalLink } from 'lucide-react'
+import { Loader2, Check, X, ExternalLink, MessageCircle } from 'lucide-react'
 
 const METHOD_LABEL: Record<string, string> = { pix: 'Pix', paypal: 'PayPal', wise: 'Wise', bank_transfer: 'Transferência', other: 'Outro' }
 const ANONYMOUS_LABEL = 'Apoiador anônimo'
@@ -125,11 +125,18 @@ export function PledgeReviewCard({ pledge, accounts, profileId, budgetCategories
         <p className="text-xs bg-muted rounded-lg px-2.5 py-1.5 whitespace-pre-wrap">{pledge.message}</p>
       )}
 
-      {pledge.proof_url && (
-        <a href={pledge.proof_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
-          Ver comprovante <ExternalLink className="h-3 w-3" />
-        </a>
-      )}
+      <div className="flex flex-wrap items-center gap-3">
+        {pledge.proof_url && (
+          <a href={pledge.proof_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+            Ver comprovante <ExternalLink className="h-3 w-3" />
+          </a>
+        )}
+        {pledge.reporter_phone && (
+          <a href={`https://wa.me/${pledge.reporter_phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+            <MessageCircle className="h-3 w-3" /> {pledge.reporter_phone}
+          </a>
+        )}
+      </div>
 
       <div className="grid grid-cols-2 gap-2">
         <Input inputMode="decimal" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(e.target.value)} className="h-8 text-sm" />
