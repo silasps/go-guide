@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { usePendingAction } from '@/hooks/use-pending-action'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 import { LOCALE_COOKIE, LOCALES, type Locale } from '@/i18n/config'
 import {
   DropdownMenu,
@@ -12,6 +13,7 @@ import {
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu'
 import { ChevronDown } from 'lucide-react'
+import { toast } from 'sonner'
 
 const LOCALE_FLAGS: Record<Locale, string> = {
   pt: '🇧🇷',
@@ -32,17 +34,27 @@ interface Props {
 export function LanguageSwitcher({ className, compact = false }: Props) {
   const locale = useLocale() as Locale
   const t = useTranslations('Nav')
+  const tAccount = useTranslations('AccountForm')
   const router = useRouter()
   const { isPending: switching, run } = usePendingAction()
 
   function handleSwitch(next: Locale) {
     if (next === locale || switching) return
-    run(true, () => {
-      // Só afeta a navegação deste visitante nas páginas públicas (cookie).
-      // Não grava em profiles.locale — mesmo se o visitante for o próprio
-      // dono do perfil logado, isso não deve mudar o idioma da conta/dashboard
-      // (essa preferência só é trocada em Configurações → Conta).
+    run(true, async () => {
+      // Cookie cobre o visitante anônimo (ver src/i18n/request.ts). Se
+      // houver usuário logado, profiles.locale sempre manda por cima do
+      // cookie — então também precisa ser atualizado aqui, senão o troca
+      // some no próximo refresh (a conta segue o dono em qualquer lugar do
+      // site, não só nesta página pública).
       document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000`
+
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { error } = await supabase.from('profiles').update({ locale: next }).eq('user_id', user.id)
+        if (error) toast.error(tAccount('errorSaveLocale'))
+      }
+
       router.refresh()
     })
   }
