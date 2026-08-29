@@ -19,6 +19,10 @@ interface PartnershipSearchParams {
 export async function getPartnershipData(username: string, { highlight_id, choice, category }: PartnershipSearchParams): Promise<PartnershipWizardProps | null> {
   const initialChoice = VALID_CHOICES.find(c => c === choice)
 
+  // Perfil inexistente é navegação normal (username errado, bot, ou uma rota
+  // estática tipo /login sem sub-rota própria caindo neste catch-all) — o
+  // caller já trata null como 404 via notFound(), não é um erro de aplicação
+  // que mereça log.
   const profile = await getProfile(username)
   if (!profile || profile.privacy_mode === 'stealth') return null
 

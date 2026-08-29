@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Profile, UserRole } from '@/types/database'
+import { isReservedUsername } from '@/lib/username'
 import { AccountTypeSelector, useAccountTypeCopy } from '@/components/profile/account-type-selector'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -83,6 +84,10 @@ export function OnboardingWizard({ profile, hasPaymentMethod }: Props) {
 
     if (!/^[a-z][a-z0-9_-]{2,29}$/.test(value)) {
       setUsernameStatus('invalid')
+      return
+    }
+    if (isReservedUsername(value)) {
+      setUsernameStatus('taken')
       return
     }
 

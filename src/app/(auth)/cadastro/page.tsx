@@ -55,7 +55,9 @@ function CadastroForm() {
     }
 
     toast.success(t('signupSuccess'))
-    router.push(redirect)
+    // Load completo, não router.push — mesmo motivo do /login: destino pode
+    // estar fora da árvore de rotas já carregada no cliente.
+    window.location.href = redirect
   }
 
   async function handleGoogle() {

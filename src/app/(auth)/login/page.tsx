@@ -40,8 +40,13 @@ function LoginForm() {
         await keyManager.setupOrUnlockWithPassword(data.user.id, password).catch(() => {})
       }
 
-      router.push(redirect)
-      router.refresh()
+      // Navegação de página inteira (não router.push) — logo após o login, o
+      // destino pode estar fora da árvore de rotas já carregada no cliente
+      // (ex: vindo de /login para /[username]/parceria), e uma transição
+      // client-side às vezes resolve a árvore antes da sessão nova estar
+      // totalmente refletida, caindo em notFound(). Um load completo sempre
+      // busca do zero com a sessão já pronta.
+      window.location.href = redirect
     })
   }
 
