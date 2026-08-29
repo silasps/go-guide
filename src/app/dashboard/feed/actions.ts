@@ -16,11 +16,13 @@ export async function getFeedPage(cursor: string | null): Promise<{
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { posts: [], nextCursor: null }
 
-  const [{ data: follows }, { data: partners }, { data: pledges }, { data: recurring }] = await Promise.all([
+  const [{ data: follows }, { data: partners }, { data: pledges }, { data: recurring }, { data: ownProfiles }, { data: managedProfiles }] = await Promise.all([
     supabase.from('follows').select('profile_id').eq('follower_user_id', user.id),
     supabase.from('partners').select('profile_id').eq('user_id', user.id),
     supabase.from('pledges').select('profile_id, highlight:highlights(category)').eq('reporter_user_id', user.id).eq('status', 'confirmed'),
     supabase.from('recurring_pledges').select('profile_id').eq('reporter_user_id', user.id).eq('status', 'active'),
+    supabase.from('profiles').select('id').eq('user_id', user.id),
+    supabase.from('profile_managers').select('profile_id').eq('user_id', user.id),
   ])
 
   const followedProfileIds = new Set((follows ?? []).map((f) => f.profile_id))
@@ -30,9 +32,13 @@ export async function getFeedPage(cursor: string | null): Promise<{
     (pledges ?? []).flatMap((p) => (p.highlight as { category?: string[] } | null)?.category ?? [])
   ) as AffinitySignals['affinityCategories']
 
+  // Perfil próprio (e os que você gerencia) entram no feed também — senão
+  // você nunca vê a própria publicação aparecer na timeline, só no seu perfil.
   const profileIds = new Set<string>([
     ...followedProfileIds,
     ...(partners ?? []).map((p) => p.profile_id),
+    ...(ownProfiles ?? []).map((p) => p.id),
+    ...(managedProfiles ?? []).map((p) => p.profile_id),
   ])
 
   if (profileIds.size === 0) {
