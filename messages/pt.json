@@ -796,11 +796,11 @@
     "ourStory": "Nossa história",
     "trajectory": "Trajetória",
     "missionaryFallbackName": "Missionário",
-    "statsPosts": "posts",
+    "statsPosts": "{count, plural, one {post} other {posts}}",
     "postsHeading": "Publicações",
     "projectsHeading": "Projetos",
-    "statsProjects": "projetos",
-    "statsAchievements": "conquistas",
+    "statsProjects": "{count, plural, one {projeto} other {projetos}}",
+    "statsAchievements": "{count, plural, one {conquista} other {conquistas}}",
     "pixAvailable": "Pix disponível — solicite a chave ao missionário",
     "privateProfileMessage": "Este perfil é privado. Entre em contato com o missionário para solicitar acesso.",
     "notFoundTitle": "Perfil não encontrado",
@@ -825,7 +825,7 @@
     "editHistory": "Editar história",
     "createProject": "Criar projeto",
     "tabFollowers": "Seguidores",
-    "statsFollowers": "seguidores",
+    "statsFollowers": "{count, plural, one {seguidor} other {seguidores}}",
     "statsFollowing": "seguindo"
   },
   "PublicProject": {

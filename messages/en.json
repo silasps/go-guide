@@ -796,11 +796,11 @@
     "ourStory": "Our story",
     "trajectory": "Journey",
     "missionaryFallbackName": "Missionary",
-    "statsPosts": "posts",
+    "statsPosts": "{count, plural, one {post} other {posts}}",
     "postsHeading": "Posts",
     "projectsHeading": "Projects",
-    "statsProjects": "projects",
-    "statsAchievements": "achievements",
+    "statsProjects": "{count, plural, one {project} other {projects}}",
+    "statsAchievements": "{count, plural, one {achievement} other {achievements}}",
     "pixAvailable": "Pix available — ask the missionary for the key",
     "privateProfileMessage": "This profile is private. Contact the missionary to request access.",
     "notFoundTitle": "Profile not found",
@@ -825,7 +825,7 @@
     "editHistory": "Edit story",
     "createProject": "Create project",
     "tabFollowers": "Followers",
-    "statsFollowers": "followers",
+    "statsFollowers": "{count, plural, one {follower} other {followers}}",
     "statsFollowing": "following"
   },
   "PublicProject": {
