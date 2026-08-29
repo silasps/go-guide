@@ -3,6 +3,7 @@
     "description": "The missionary communication and management platform"
   },
   "Nav": {
+    "explorar": "Explore",
     "modulos": "Modules",
     "planos": "Pricing",
     "entrar": "Log in",
@@ -90,6 +91,7 @@
     "heroSubtitle": "Publish updates, manage partners, track finances in multiple currencies, and keep in touch securely — all in one place.",
     "ctaComecar": "Start for free",
     "ctaVerPlanos": "View pricing",
+    "ctaExplorar": "Or explore real profiles and projects",
     "heroBadgeTitle": "Finances, partners, and communication — sorted.",
     "heroBadgeSubtitle": "You just focus on spreading the Word.",
     "heroImageAlt": "Smiling missionary in the field, free to dedicate himself to the work",
@@ -802,6 +804,12 @@
     "pixAvailable": "Pix available — ask the missionary for the key",
     "privateProfileMessage": "This profile is private. Contact the missionary to request access.",
     "notFoundTitle": "Profile not found",
+    "partnershipTitle": "Become a partner of {name}",
+    "partnershipHighlightTitle": "Support \"{title}\" — {name}",
+    "historiaTitle": "{name}'s story",
+    "historiaDescription": "The journey behind {name}'s mission.",
+    "oracaoTitle": "Pray for {name}",
+    "oracaoDescription": "Send a word of prayer and encouragement for {name}.",
     "tabProfile": "Profile",
     "tabHistory": "Story",
     "tabProjects": "Projects",

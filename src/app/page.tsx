@@ -10,7 +10,7 @@ import { APP_MODULES, MODULE_COLOR_CLASSES } from '@/lib/modules'
 import { SiteNav } from '@/components/marketing/site-nav'
 import { SiteFooter } from '@/components/marketing/site-footer'
 import {
-  Check, UserPlus, Settings2, Wallet, FolderPlus, ShieldCheck, Landmark, Globe2,
+  Check, UserPlus, Settings2, Wallet, FolderPlus, ShieldCheck, Landmark, Globe2, ArrowRight,
 } from 'lucide-react'
 
 const stepIcons = [UserPlus, Settings2, Wallet, FolderPlus]
@@ -77,6 +77,14 @@ export default async function HomePage() {
                 {t('ctaVerPlanos')}
               </Link>
             </div>
+
+            <Link
+              href="/explorar"
+              className="inline-flex items-center gap-1.5 mx-auto lg:mx-0 px-4 py-2 rounded-full text-sm font-semibold bg-muted hover:bg-muted/70 transition-colors"
+            >
+              {t('ctaExplorar')}
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
 
             <div className="flex flex-wrap justify-center lg:justify-start gap-2 text-sm">
               {APP_MODULES.map(({ id, icon: Icon, color }) => (

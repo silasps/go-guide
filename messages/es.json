@@ -3,6 +3,7 @@
     "description": "La plataforma de comunicación y gestión misionera"
   },
   "Nav": {
+    "explorar": "Explorar",
     "modulos": "Módulos",
     "planos": "Planes",
     "entrar": "Entrar",
@@ -90,6 +91,7 @@
     "heroSubtitle": "Publica actualizaciones, gestiona socios, controla las finanzas en múltiples monedas y mantén el contacto de forma segura — todo en un solo lugar.",
     "ctaComecar": "Empezar gratis",
     "ctaVerPlanos": "Ver planes",
+    "ctaExplorar": "O explora perfiles y proyectos reales",
     "heroBadgeTitle": "Finanzas, socios y comunicación — resueltos.",
     "heroBadgeSubtitle": "Tú solo te enfocas en llevar la Palabra.",
     "heroImageAlt": "Misionero sonriente en el campo, libre para dedicarse a la obra",
@@ -802,6 +804,12 @@
     "pixAvailable": "Pix disponible — solicita la clave al misionero",
     "privateProfileMessage": "Este perfil es privado. Contacta al misionero para solicitar acceso.",
     "notFoundTitle": "Perfil no encontrado",
+    "partnershipTitle": "Sé socio de {name}",
+    "partnershipHighlightTitle": "Apoya \"{title}\" — {name}",
+    "historiaTitle": "Historia de {name}",
+    "historiaDescription": "El camino detrás de la misión de {name}.",
+    "oracaoTitle": "Ora por {name}",
+    "oracaoDescription": "Envía una palabra de oración y aliento para {name}.",
     "tabProfile": "Perfil",
     "tabHistory": "Historia",
     "tabProjects": "Proyectos",

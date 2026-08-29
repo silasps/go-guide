@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import { HistoryView } from '@/components/profile/history-view'
@@ -12,6 +13,24 @@ import { getProfileViewerContext } from '@/lib/profile/viewer-context'
 import { Pencil } from 'lucide-react'
 
 interface Props { params: Promise<{ username: string }> }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { username } = await params
+  const profile = await getProfile(username)
+  if (!profile || profile.privacy_mode === 'stealth') return {}
+
+  const t = await getTranslations('PublicProfile')
+  const isIndexable = profile.privacy_mode === 'public'
+  const title = t('historiaTitle', { name: profile.display_name })
+  const description = t('historiaDescription', { name: profile.display_name })
+
+  return {
+    title,
+    description,
+    openGraph: isIndexable ? { title, description, images: profile.avatar_url ? [profile.avatar_url] : [] } : undefined,
+    robots: isIndexable ? undefined : { index: false, follow: false },
+  }
+}
 
 export default async function HistoriaPage({ params }: Props) {
   const { username } = await params
