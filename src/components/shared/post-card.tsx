@@ -156,7 +156,7 @@ export function PostCard({ post, visitorLocale, canEdit = false, autoOpenComment
     <div
       className={cn(
         'bg-card overflow-hidden',
-        inDetailModal ? 'rounded-none border-0 sm:rounded-2xl sm:border' : 'rounded-2xl border',
+        inDetailModal ? 'rounded-none border-0' : 'rounded-2xl border',
         post.highlight && !inDetailModal && 'border-l-[3px] border-l-support',
       )}
     >
