@@ -11,8 +11,8 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'not_authenticated' }, { status: 401 })
 
   const body = await req.json()
-  const { profileId, amount, currency, highlightId } = body as {
-    profileId: string; amount: number; currency: string; highlightId?: string
+  const { profileId, amount, currency, highlightId, budgetCategoryId } = body as {
+    profileId: string; amount: number; currency: string; highlightId?: string; budgetCategoryId?: string
   }
   if (!profileId || !amount || amount <= 0 || !currency) {
     return NextResponse.json({ error: 'invalid_body' }, { status: 400 })
@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
     currency,
     payment_method: 'stripe',
     highlight_id: highlightId || null,
+    budget_category_id: highlightId ? (budgetCategoryId || null) : null,
     reminder_opt_in: false,
     next_reminder_at: null,
     status: 'pending',

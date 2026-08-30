@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CheckoutHeader } from './checkout-header'
 import { toast } from 'sonner'
 import { Loader2, CheckCircle } from 'lucide-react'
-import { toMasked, fromMasked } from '@/lib/currency-mask'
+import { toMasked, fromMasked, CURRENCIES } from '@/lib/currency-mask'
 import { formatCurrency } from '@/lib/utils'
 import { PaymentMethodInstructions } from './payment-method-instructions'
 import { BudgetCategorySelect, type BudgetCategoryOption } from './budget-category-select'
@@ -58,25 +58,19 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
   const { isPending: startingCheckout, run: runCheckout } = usePendingAction()
   const { isPending: savingManual, run: runManual } = usePendingAction()
 
-  // Recorrência via Stripe é sempre na moeda do projeto (fixa, ver
-  // checkout-recurring/route.ts) — por isso o Cartão entra no grid já
-  // travado em `projectCurrency`, e não ganha exceção no filtro abaixo
-  // como no `PledgeForm` (avulso): se o doador escolhe outra moeda, Cartão
-  // desaparece do grid junto com os métodos manuais que não servem.
+  // Igual ao PledgeForm (avulso): checkout-recurring/route.ts já monta a
+  // subscription com price_data dinâmico, então Cartão aceita qualquer
+  // moeda — não fica preso à moeda padrão do projeto. Fica isento do
+  // filtro por moeda (como no avulso), e o dropdown mostra a lista
+  // completa quando Stripe está conectado.
   const [selectedCurrency, setSelectedCurrency] = useState(projectCurrency)
   const allOptions: PaymentOption[] = stripeAvailable
     ? [{ id: 'stripe', method: 'stripe', label: t('cardTab'), value: '', details: null, currency: projectCurrency }, ...paymentOptions]
     : paymentOptions
-  const visibleOptions = allOptions.filter(o => o.currency === selectedCurrency)
-  // Mesma ideia do PledgeForm: dropdown reflete o que foi cadastrado em
-  // Configurações > Pagamentos, não uma lista fixa. Aqui o Cartão entra
-  // travado em `projectCurrency` (não em qualquer moeda), então some da
-  // lista se essa moeda não tiver nenhum método configurado.
-  const dropdownCurrenciesRaw = Array.from(new Set([
-    ...paymentOptions.map(o => o.currency),
-    ...(stripeAvailable ? [projectCurrency] : []),
-  ]))
-  const dropdownCurrencies = dropdownCurrenciesRaw.length > 0 ? dropdownCurrenciesRaw : [projectCurrency]
+  const visibleOptions = allOptions.filter(o => o.method === 'stripe' || o.currency === selectedCurrency)
+  const dropdownCurrencies = stripeAvailable
+    ? CURRENCIES
+    : (paymentOptions.length > 0 ? Array.from(new Set(paymentOptions.map(o => o.currency))) : [projectCurrency])
   const selectedOption = visibleOptions.find(o => o.id === optionId)
   const method = selectedOption?.method ?? 'other'
   const isStripe = method === 'stripe'
@@ -85,9 +79,9 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
 
   function handleCurrencyChange(next: string) {
     setSelectedCurrency(next)
-    const stillValid = allOptions.some(o => o.id === optionId && o.currency === next)
+    const stillValid = allOptions.some(o => o.id === optionId && (o.method === 'stripe' || o.currency === next))
     if (!stillValid) {
-      const fallback = allOptions.find(o => o.currency === next)?.id
+      const fallback = stripeAvailable ? 'stripe' : allOptions.find(o => o.currency === next)?.id
       if (fallback) setOptionId(fallback)
     }
   }
@@ -136,13 +130,13 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
   }
 
   function handleStripeCheckout() {
-    const parsedAmount = parseFloat(fromMasked(amount, projectCurrency))
+    const parsedAmount = parseFloat(fromMasked(amount, selectedCurrency))
     if (!parsedAmount || parsedAmount <= 0) { toast.error(t('errorAmount')); amountInputRef.current?.focus(); return }
     runCheckout(true, async () => {
       const res = await fetch('/api/stripe/checkout-recurring', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profileId, amount: parsedAmount, currency: projectCurrency, highlightId, budgetCategoryId: categoryId }),
+        body: JSON.stringify({ profileId, amount: parsedAmount, currency: selectedCurrency, highlightId, budgetCategoryId: categoryId }),
       })
       const data = await res.json()
       if (!res.ok || !data.url) { toast.error(t('errorCheckout')); return }
