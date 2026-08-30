@@ -19,6 +19,7 @@ import { PaymentMethodInstructions } from './payment-method-instructions'
 import { BudgetCategorySelect, type BudgetCategoryOption } from './budget-category-select'
 import { AmountChips } from './amount-chips'
 import { PaymentMethodCards } from './payment-method-cards'
+import { CurrencySelect } from './currency-select'
 import { DonationSummary } from './donation-summary'
 import { DonationHero } from './donation-hero'
 
@@ -28,6 +29,8 @@ interface SessionUser {
   id: string
   email: string | null
   user_metadata?: { full_name?: string }
+  phone?: string | null
+  whatsappOptIn?: boolean
 }
 
 interface Props {
@@ -54,24 +57,28 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
   const [categoryId, setCategoryId] = useState<string | null>(initialCategoryId ?? null)
   const [optionId, setOptionId] = useState(stripeAvailable ? 'stripe' : (paymentOptions[0]?.id ?? 'other'))
   const [reminderOptIn, setReminderOptIn] = useState(true)
+  const [contactPhone, setContactPhone] = useState(user?.phone ?? '')
+  const [whatsappOptIn, setWhatsappOptIn] = useState(user?.whatsappOptIn ?? false)
   const amountInputRef = useRef<HTMLInputElement>(null)
   const { isPending: startingCheckout, run: runCheckout } = usePendingAction()
   const { isPending: savingManual, run: runManual } = usePendingAction()
 
   // Igual ao PledgeForm (avulso): checkout-recurring/route.ts já monta a
   // subscription com price_data dinâmico, então Cartão aceita qualquer
-  // moeda — não fica preso à moeda padrão do projeto. Fica isento do
-  // filtro por moeda (como no avulso), e o dropdown mostra a lista
-  // completa quando Stripe está conectado.
+  // moeda — não fica preso à moeda padrão do projeto. O grid mostra todos
+  // os métodos juntos (não só os da moeda selecionada) — a moeda funciona
+  // nos dois sentidos: dropdown troca o método se ele não servir mais
+  // (handleCurrencyChange), e escolher um método atualiza a moeda
+  // (handleOptionSelect). Dropdown mostra a lista completa quando Stripe
+  // está conectado.
   const [selectedCurrency, setSelectedCurrency] = useState(projectCurrency)
   const allOptions: PaymentOption[] = stripeAvailable
     ? [{ id: 'stripe', method: 'stripe', label: t('cardTab'), value: '', details: null, currency: projectCurrency }, ...paymentOptions]
     : paymentOptions
-  const visibleOptions = allOptions.filter(o => o.method === 'stripe' || o.currency === selectedCurrency)
   const dropdownCurrencies = stripeAvailable
     ? CURRENCIES
     : (paymentOptions.length > 0 ? Array.from(new Set(paymentOptions.map(o => o.currency))) : [projectCurrency])
-  const selectedOption = visibleOptions.find(o => o.id === optionId)
+  const selectedOption = allOptions.find(o => o.id === optionId)
   const method = selectedOption?.method ?? 'other'
   const isStripe = method === 'stripe'
   const parsedAmountPreview = parseFloat(fromMasked(amount, selectedCurrency))
@@ -83,6 +90,17 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
     if (!stillValid) {
       const fallback = stripeAvailable ? 'stripe' : allOptions.find(o => o.currency === next)?.id
       if (fallback) setOptionId(fallback)
+    }
+  }
+
+  // Sentido inverso: escolher um método manual de outra moeda troca a
+  // moeda selecionada pra dele. Cartão não força troca (aceita a moeda
+  // já selecionada).
+  function handleOptionSelect(id: string) {
+    setOptionId(id)
+    const option = allOptions.find(o => o.id === id)
+    if (option && option.method !== 'stripe' && option.currency !== selectedCurrency) {
+      setSelectedCurrency(option.currency)
     }
   }
 
@@ -154,20 +172,33 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
     runManual(true, async () => {
       const supabase = createClient()
 
+      // Telefone só chega ao missionário com autorização explícita (checkbox)
+      // — sem ela, a parceria segue sem esse dado, mesmo que a pessoa já
+      // tenha digitado algo no campo.
+      const authorizedPhone = whatsappOptIn && contactPhone.trim() ? contactPhone.trim() : null
+
       let partnerId: string
       const { data: existingPartner } = await supabase.from('partners').select('id').eq('profile_id', profileId).eq('user_id', currentUser.id).maybeSingle()
       if (existingPartner) {
         partnerId = existingPartner.id
+        if (authorizedPhone) await supabase.from('partners').update({ phone: authorizedPhone }).eq('id', partnerId)
       } else {
         const { data: createdPartner, error: partnerError } = await supabase.from('partners').insert({
           profile_id: profileId,
           user_id: currentUser.id,
           name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Parceiro',
           email: currentUser.email,
+          phone: authorizedPhone,
           type: 'financial',
         }).select('id').single()
         if (partnerError || !createdPartner) { console.error('partners insert failed:', partnerError); toast.error(t('errorSave')); return }
         partnerId = createdPartner.id
+      }
+
+      // Guarda na própria conta também, pra não pedir de novo numa próxima
+      // parceria com outro missionário.
+      if (authorizedPhone) {
+        await supabase.from('profiles').update({ phone: authorizedPhone, whatsapp_contact_opt_in: true }).eq('user_id', currentUser.id)
       }
 
       const nextReminderAt = reminderOptIn
@@ -219,26 +250,20 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
         )}
 
         <div className="space-y-2">
-          <Label className="flex items-center gap-1.5">
-            {t('amountLabelPlain')} *
-            <select
-              value={selectedCurrency}
-              onChange={(e) => handleCurrencyChange(e.target.value)}
-              className="h-5 rounded border border-input bg-transparent px-1 text-xs font-normal outline-none focus-visible:border-ring"
-            >
-              {dropdownCurrencies.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </Label>
+          <div className="flex items-center gap-1.5">
+            <Label>{t('amountLabelPlain')} *</Label>
+            <CurrencySelect currencies={dropdownCurrencies} value={selectedCurrency} onChange={handleCurrencyChange} searchPlaceholder={tPledge('currencySearchPlaceholder')} />
+          </div>
           <AmountChips currency={selectedCurrency} selectedMasked={amount} onSelect={setAmount} />
           <Input ref={amountInputRef} inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, selectedCurrency))} placeholder={tPledge('customAmountPlaceholder')} required />
         </div>
 
         <div className="space-y-3 border-t border-border pt-4">
           <h2 className="text-sm font-semibold">{tPledge('sectionPaymentTitle')}</h2>
-          {visibleOptions.length > 0 ? (
-            <PaymentMethodCards options={visibleOptions} value={optionId} onChange={setOptionId} />
+          {allOptions.length > 0 ? (
+            <PaymentMethodCards options={allOptions} value={optionId} onChange={handleOptionSelect} />
           ) : (
-            <p className="text-xs text-muted-foreground italic">{tPledge('noMethodsForCurrency', { currency: selectedCurrency })}</p>
+            <p className="text-xs text-muted-foreground italic">{tPledge('noMethodsAvailable')}</p>
           )}
 
           {isStripe ? (
@@ -260,6 +285,30 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
                 <input type="checkbox" checked={reminderOptIn} onChange={(e) => setReminderOptIn(e.target.checked)} className="rounded border-input" />
                 {t('reminderOptInLabel')}
               </label>
+
+              <div className="space-y-2 pt-2 border-t">
+                {!user?.phone && (
+                  <Input
+                    type="tel"
+                    placeholder={t('phonePlaceholder')}
+                    value={contactPhone}
+                    onChange={(e) => setContactPhone(e.target.value)}
+                    className="h-9 text-sm"
+                  />
+                )}
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={whatsappOptIn}
+                    onChange={(e) => setWhatsappOptIn(e.target.checked)}
+                    disabled={!user?.phone && !contactPhone.trim()}
+                    className="rounded border-input"
+                  />
+                  {user?.phone
+                    ? t('whatsappOptInLabelWithPhone', { name: missionaryName, phone: user.phone })
+                    : t('whatsappOptInLabel', { name: missionaryName })}
+                </label>
+              </div>
             </form>
           )}
         </div>

@@ -19,6 +19,7 @@ import { PaymentMethodInstructions } from './payment-method-instructions'
 import { BudgetCategorySelect, type BudgetCategoryOption } from './budget-category-select'
 import { AmountChips } from './amount-chips'
 import { PaymentMethodCards } from './payment-method-cards'
+import { CurrencySelect } from './currency-select'
 import { DonationSummary } from './donation-summary'
 import { DonationHero } from './donation-hero'
 import { formatCurrency } from '@/lib/utils'
@@ -71,10 +72,12 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
   const allOptions: PaymentOption[] = stripeAvailable
     ? [{ id: 'stripe', method: 'stripe', label: t('cardTab'), value: '', details: null, currency: defaultCurrency }, ...paymentOptions]
     : paymentOptions
-  // A moeda escolhida decide quais métodos fazem sentido mostrar — uma
-  // chave Pix cadastrada em BRL não serve pra quem quer mandar USD, por
-  // exemplo. Cartão processa qualquer moeda (Stripe), sempre aparece.
-  const visibleOptions = allOptions.filter(o => o.method === 'stripe' || o.currency === currency)
+  // O grid mostra todos os métodos juntos, não só os da moeda selecionada
+  // — assim dá pra clicar direto num método de outra moeda (ver
+  // handleOptionSelect) em vez de precisar trocar a moeda primeiro. A
+  // moeda funciona nos dois sentidos: escolher no dropdown ainda troca o
+  // método selecionado se ele não servir mais pra essa moeda
+  // (handleCurrencyChange), e escolher um método atualiza a moeda.
   // Dropdown de moeda reflete o que foi cadastrado em Configurações >
   // Pagamentos — se só existe recebimento em BRL, só BRL aparece pra
   // escolher (em vez da lista fixa de moedas suportadas). Cartão aceita
@@ -83,7 +86,7 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
   const dropdownCurrencies = stripeAvailable
     ? CURRENCIES
     : (paymentOptions.length > 0 ? Array.from(new Set(paymentOptions.map(o => o.currency))) : CURRENCIES)
-  const selectedOption = visibleOptions.find(o => o.id === optionId)
+  const selectedOption = allOptions.find(o => o.id === optionId)
   const method = selectedOption?.method ?? 'other'
   const isStripe = method === 'stripe'
   const parsedAmountPreview = parseFloat(fromMasked(amount, currency))
@@ -97,6 +100,18 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
     if (!stillValid) {
       const fallback = stripeAvailable ? 'stripe' : allOptions.find(o => o.currency === next)?.id
       if (fallback) setOptionId(fallback)
+    }
+  }
+
+  // Sentido inverso do handleCurrencyChange: escolher um método manual
+  // (Pix, transferência etc.) de outra moeda troca a moeda selecionada
+  // pra dele — sincronização nos dois sentidos. Cartão (Stripe) não força
+  // troca, já que aceita a moeda que já estiver selecionada.
+  function handleOptionSelect(id: string) {
+    setOptionId(id)
+    const option = allOptions.find(o => o.id === id)
+    if (option && option.method !== 'stripe' && option.currency !== currency) {
+      setCurrency(option.currency)
     }
   }
 
@@ -255,16 +270,10 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
         )}
 
         <div className="space-y-2">
-          <Label className="flex items-center gap-1.5">
-            {t('amountLabelPlain')} *
-            <select
-              value={currency}
-              onChange={(e) => handleCurrencyChange(e.target.value)}
-              className="h-5 rounded border border-input bg-transparent px-1 text-xs font-normal outline-none focus-visible:border-ring"
-            >
-              {dropdownCurrencies.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </Label>
+          <div className="flex items-center gap-1.5">
+            <Label>{t('amountLabelPlain')} *</Label>
+            <CurrencySelect currencies={dropdownCurrencies} value={currency} onChange={handleCurrencyChange} searchPlaceholder={t('currencySearchPlaceholder')} />
+          </div>
           <AmountChips currency={currency} selectedMasked={amount} onSelect={setAmount} />
           <Input ref={amountInputRef} inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, currency))} placeholder={t('customAmountPlaceholder')} required />
         </div>
@@ -302,10 +311,10 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
 
         <div className="space-y-3 border-t border-border pt-4">
           <h2 className="text-sm font-semibold">{t('sectionPaymentTitle')}</h2>
-          {visibleOptions.length > 0 ? (
-            <PaymentMethodCards options={visibleOptions} value={optionId} onChange={setOptionId} />
+          {allOptions.length > 0 ? (
+            <PaymentMethodCards options={allOptions} value={optionId} onChange={handleOptionSelect} />
           ) : (
-            <p className="text-xs text-muted-foreground italic">{t('noMethodsForCurrency', { currency })}</p>
+            <p className="text-xs text-muted-foreground italic">{t('noMethodsAvailable')}</p>
           )}
 
           {isStripe ? (

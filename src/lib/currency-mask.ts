@@ -1,5 +1,9 @@
 export const CURRENCIES = ['BRL', 'USD', 'EUR', 'GBP', 'CHF', 'CAD', 'AUD']
 
+export const CURRENCY_FLAGS: Record<string, string> = {
+  BRL: '🇧🇷', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', CHF: '🇨🇭', CAD: '🇨🇦', AUD: '🇦🇺',
+}
+
 export const CURRENCY_SEPARATORS: Record<string, { decimal: string; thousands: string }> = {
   BRL: { decimal: ',', thousands: '.' },
   EUR: { decimal: ',', thousands: '.' },

@@ -3,11 +3,13 @@
 import { useTranslations } from 'next-intl'
 import { getPaymentMethodEntry } from '@/lib/payment-methods/catalog'
 import { PledgePaymentMethod } from '@/types/database'
+import { CURRENCY_FLAGS } from '@/lib/currency-mask'
 
 interface Option {
   id: string
   method: PledgePaymentMethod
   label: string
+  currency: string
 }
 
 interface Props {
@@ -21,6 +23,11 @@ interface Props {
 // pelo ícone na hora, em vez de abrir um <select> e procurar o nome.
 export function PaymentMethodCards({ options, value, onChange }: Props) {
   const t = useTranslations('PaymentMethods')
+  // Grid mistura métodos de moedas diferentes (Cartão aceita qualquer uma;
+  // dá pra ter Pix em BRL e Wise em USD juntos) — só mostra a bandeirinha
+  // da moeda quando isso realmente acontece, senão é ruído no caso comum
+  // de só uma moeda configurada.
+  const multiCurrency = new Set(options.filter(o => o.method !== 'stripe').map(o => o.currency)).size > 1
 
   return (
     <div className="grid grid-cols-3 gap-2">
@@ -50,6 +57,9 @@ export function PaymentMethodCards({ options, value, onChange }: Props) {
           >
             <Icon className={`h-6 w-6 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
             <span className="w-full truncate text-xs font-medium">{cardLabel}</span>
+            {multiCurrency && opt.method !== 'stripe' && (
+              <span className="text-[10px] text-muted-foreground">{CURRENCY_FLAGS[opt.currency] ?? ''} {opt.currency}</span>
+            )}
           </button>
         )
       })}
