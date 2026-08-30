@@ -14,6 +14,8 @@ interface SessionUser {
   id: string
   email: string | null
   user_metadata?: { full_name?: string }
+  phone?: string | null
+  whatsappOptIn?: boolean
 }
 
 export interface PartnershipWizardProps {

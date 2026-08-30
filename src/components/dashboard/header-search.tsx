@@ -8,14 +8,16 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Search as SearchIcon } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { getInitials } from '@/lib/utils'
+import { cn, getInitials } from '@/lib/utils'
 import { useDirectorySearch } from '@/hooks/use-directory-search'
 
 // Barra de busca fixa no header do dashboard desktop, estilo Instagram web
 // (dropdown de resultados ao vivo sobre a página, sem navegar). No mobile
 // o header continua só com o ícone -> /dashboard/buscar em tela cheia,
 // que é como o app do Instagram faz (aba dedicada, não barra persistente).
-export function HeaderSearch() {
+// `className` deixa quem usa fora do dashboard (ex: /explorar, pública)
+// mostrar em qualquer tamanho de tela em vez do padrão "só desktop".
+export function HeaderSearch({ className = 'hidden md:block' }: { className?: string }) {
   const t = useTranslations('Search')
   const router = useRouter()
   const [query, setQuery] = useState('')
@@ -48,7 +50,7 @@ export function HeaderSearch() {
   }
 
   return (
-    <div ref={containerRef} className="relative hidden md:block w-full max-w-xs">
+    <div ref={containerRef} className={cn('relative w-full max-w-xs', className)}>
       <SearchIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
       <input
         value={query}

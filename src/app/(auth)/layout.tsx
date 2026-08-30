@@ -1,14 +1,19 @@
-import Link from 'next/link'
-import Image from 'next/image'
+import { CheckoutHeader } from '@/components/partners/checkout-header'
 
+// Mesmo padrão de "top app bar" fixo já usado em toda a jornada de
+// /parceria (CheckoutHeader + BackButton) — antes cada tela de auth tinha
+// seu próprio back button solto (texto + seta, sem alinhamento fixo) e o
+// logo ficava acima do card, então o cabeçalho "pulava de lugar" entre uma
+// tela e outra (reportado pelo usuário com screenshots). `backHref="/"` é
+// só a rede de segurança do BackButton — o clique normal volta pra tela
+// anterior de verdade quando há histórico dentro do app.
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-muted/30 px-4 gap-6">
-      <Link href="/" className="shrink-0">
-        <Image src="/logo.png" alt="Go guide" width={130} height={61} className="h-9 w-auto dark:hidden" priority />
-        <Image src="/logo-white.png" alt="Go guide" width={130} height={61} className="h-9 w-auto hidden dark:block" priority />
-      </Link>
-      <div className="w-full max-w-md">{children}</div>
+    <div className="min-h-screen bg-muted/30">
+      <CheckoutHeader backHref="/" />
+      <div className="mx-auto flex min-h-[calc(100vh-56px)] max-w-md flex-col justify-center px-4 py-8">
+        {children}
+      </div>
     </div>
   )
 }

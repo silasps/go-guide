@@ -44,7 +44,7 @@ export function BudgetBreakdown({ categories, currency, contributeBaseHref, cont
                 {contributeBaseHref && (
                   <Link
                     href={`${contributeBaseHref}&category=${c.id}`}
-                    className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'h-7 text-xs px-2.5 shrink-0')}
+                    className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'h-7 text-xs px-2.5 shrink-0 border-support text-support hover:bg-support/10 hover:text-support')}
                   >
                     {contributeLabel ?? 'Contribuir'}
                   </Link>
