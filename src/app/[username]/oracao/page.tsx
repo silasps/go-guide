@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 import { PrayerRequestForm } from '@/components/prayer/prayer-request-form'
-import { getProfile } from '@/lib/profile/get-profile'
+import { getProfile, getProfileOrRedirect } from '@/lib/profile/get-profile'
 
 interface Props { params: Promise<{ username: string }> }
 
@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function OracaoPage({ params }: Props) {
   const { username } = await params
-  const profile = await getProfile(username)
+  const profile = await getProfileOrRedirect(username, '/oracao')
 
   if (!profile || profile.privacy_mode === 'stealth') notFound()
 

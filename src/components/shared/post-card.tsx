@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { Heart, Globe, MessageCircle, Share2, Tag as TagIcon, MoreHorizontal, Pencil, Archive, Trash2 } from 'lucide-react'
+import { Heart, Globe, MessageCircle, Share2, Tag as TagIcon, MoreHorizontal, Pencil, Archive, Trash2, Flag, Eye } from 'lucide-react'
 import { PostTagWithProfile, PostWithProfile } from '@/types/database'
 import type { Locale } from '@/i18n/config'
 import { resolveLocalizedText } from '@/lib/i18n/resolve-content-locale'
@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { PostProjectLink } from '@/components/shared/post-project-link'
 import { PostCommentsSheet } from '@/components/shared/post-comments-sheet'
+import { ReportDialog } from '@/components/shared/report-dialog'
 import { InstagramVideoPlayer } from '@/components/shared/instagram-video-player'
 import { toggleLike, recordShare } from '@/app/dashboard/publicacoes/social-actions'
 import { useOptionalComposer } from '@/components/dashboard/post-composer-provider'
@@ -69,6 +70,7 @@ export function PostCard({ post, visitorLocale, canEdit = false, autoOpenComment
   const [activeSlide, setActiveSlide] = useState(0)
   const [showLikeBurst, setShowLikeBurst] = useState(false)
   const [removed, setRemoved] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   async function like() {
@@ -191,28 +193,43 @@ export function PostCard({ post, visitorLocale, canEdit = false, autoOpenComment
           {post.published_at && <p className="text-xs text-muted-foreground shrink-0">{formatRelativeTime(post.published_at)}</p>}
         </div>
 
-        {canEdit && (
-          <DropdownMenu>
-            <DropdownMenuTrigger aria-label={t('postActions')} className="text-muted-foreground hover:text-foreground p-1 -mr-1 -mt-1">
-              <MoreHorizontal className="h-4 w-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => composer?.openComposer(post)} className="gap-2">
-                <Pencil className="h-3.5 w-3.5" />
-                {t('editPost')}
+        <DropdownMenu>
+          <DropdownMenuTrigger aria-label={t('postActions')} className="text-muted-foreground hover:text-foreground p-1 -mr-1 -mt-1">
+            <MoreHorizontal className="h-4 w-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {canEdit ? (
+              <>
+                <DropdownMenuItem onClick={() => composer?.openComposer(post)} className="gap-2">
+                  <Pencil className="h-3.5 w-3.5" />
+                  {t('editPost')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleArchive} className="gap-2">
+                  <Archive className="h-3.5 w-3.5" />
+                  {t('archivePost')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDelete} className="gap-2 text-destructive">
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {t('deletePost')}
+                </DropdownMenuItem>
+              </>
+            ) : (
+              <DropdownMenuItem onClick={() => setReportOpen(true)} className="gap-2">
+                <Flag className="h-3.5 w-3.5" />
+                {t('reportPost')}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleArchive} className="gap-2">
-                <Archive className="h-3.5 w-3.5" />
-                {t('archivePost')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleDelete} className="gap-2 text-destructive">
-                <Trash2 className="h-3.5 w-3.5" />
-                {t('deletePost')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <ReportDialog open={reportOpen} onOpenChange={setReportOpen} targetType="post" targetId={post.id} />
       </div>
+
+      {canEdit && post.moderation_status !== 'visible' && (
+        <div className="mx-4 mb-2 flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+          <Eye className="h-3.5 w-3.5 shrink-0" />
+          {post.moderation_status === 'removed' ? t('postRemovedNotice') : t('postUnderReviewNotice')}
+        </div>
+      )}
 
       {post.highlight && (
         <div className="px-4 pb-2">

@@ -9,6 +9,7 @@ import { NavigationProgress } from '@/components/navigation-progress'
 import { NavigationTracker } from '@/components/navigation-tracker'
 import { SplashScreen } from '@/components/splash-screen'
 import { PullToRefresh } from '@/components/pull-to-refresh'
+import { AdminLinkBadge } from '@/components/superadmin/admin-link-badge'
 
 const inter = Inter({
   variable: '--font-sans',
@@ -77,6 +78,7 @@ export default async function RootLayout({
             <NavigationProgress />
             <NavigationTracker />
             {children}
+            <AdminLinkBadge />
             <Toaster richColors position="top-right" />
           </ThemeProvider>
         </NextIntlClientProvider>

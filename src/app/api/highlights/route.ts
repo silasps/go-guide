@@ -111,7 +111,6 @@ export async function POST(req: NextRequest) {
     scripture: scripture || null,
     letter: letter || null,
     status,
-    slug: slugify(title),
     original_locale: originalLocale ?? 'pt',
     title_translations: titleTranslations ?? {},
     description_translations: descriptionTranslations ?? {},
@@ -135,7 +134,10 @@ export async function POST(req: NextRequest) {
       })
       const lastData = await lastRes.json()
       const nextOrder = (lastData[0]?.order_index ?? -1) + 1
-      const created = await dbPost('highlights', { ...payload, order_index: nextOrder })
+      // slug só é gerado na criação — editar o título depois NÃO muda o
+      // slug (ver migration 058), senão todo link de projeto já
+      // compartilhado quebra silenciosamente a cada troca de nome.
+      const created = await dbPost('highlights', { ...payload, slug: slugify(title), order_index: nextOrder })
       hId = created[0]?.id
     }
 

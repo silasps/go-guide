@@ -50,6 +50,7 @@ export async function getFeedPage(cursor: string | null): Promise<{
     .select('*, profile:profiles(id, username, display_name, avatar_url, accent_color, user_role), highlight:highlights(title, slug, category, cover_url)')
     .in('profile_id', Array.from(profileIds))
     .eq('is_draft', false)
+    .neq('moderation_status', 'removed')
     .order('published_at', { ascending: false })
     .limit(PAGE_SIZE)
 
@@ -107,6 +108,8 @@ export async function getDiscoverMissionaries() {
     .select('id, username, display_name, avatar_url, cover_url, accent_color, bio, location, show_location')
     .eq('privacy_mode', 'public')
     .eq('user_role', 'missionary')
+    .eq('verification_status', 'approved')
+    .eq('account_status', 'active')
     .order('created_at', { ascending: false })
     .limit(20)
 
@@ -152,6 +155,7 @@ export async function getFollowedProjectStories(): Promise<ProjectStory[]> {
       .select('id, project_id, content, media_urls, type, published_at, original_locale, translations')
       .in('project_id', highlightIds)
       .eq('is_draft', false)
+      .neq('moderation_status', 'removed')
       .order('published_at', { ascending: false })
       .limit(300),
     supabase.from('project_story_views').select('highlight_id, last_viewed_at').eq('user_id', user.id),

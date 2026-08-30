@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { buttonVariants } from '@/components/ui/button'
 import { cn, formatCurrency } from '@/lib/utils'
-import { getProfile } from '@/lib/profile/get-profile'
+import { getProfileOrRedirect } from '@/lib/profile/get-profile'
 import { getProfileViewerContext } from '@/lib/profile/viewer-context'
 import { resolveLocalizedText } from '@/lib/i18n/resolve-content-locale'
 import type { Locale } from '@/i18n/config'
@@ -24,7 +24,7 @@ const TYPE_LABEL: Record<string, string> = {
 
 export default async function ProjetosPublicosPage({ params }: Props) {
   const { username } = await params
-  const profile = await getProfile(username)
+  const profile = await getProfileOrRedirect(username, '/projetos')
 
   if (!profile || profile.privacy_mode === 'stealth') notFound()
 

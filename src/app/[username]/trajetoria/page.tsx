@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getLocale } from 'next-intl/server'
 import { TrajectoryTimeline } from '@/components/profile/trajectory-timeline'
-import { getProfile } from '@/lib/profile/get-profile'
+import { getProfileOrRedirect } from '@/lib/profile/get-profile'
 import type { Locale } from '@/i18n/config'
 import type { Metadata } from 'next'
 
@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function TrajetoriaPage({ params }: Props) {
   const { username } = await params
-  const profile = await getProfile(username)
+  const profile = await getProfileOrRedirect(username, '/trajetoria')
 
   if (!profile || profile.privacy_mode === 'stealth') notFound()
 

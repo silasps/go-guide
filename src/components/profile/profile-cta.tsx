@@ -3,8 +3,9 @@ import { getTranslations } from 'next-intl/server'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { HandHeart, Heart, MessageCircle } from 'lucide-react'
+import { ReportProfileButton } from './report-profile-button'
 
-export async function ProfileCTA({ username, hasTrajectory = false }: { username: string; hasTrajectory?: boolean }) {
+export async function ProfileCTA({ username, profileId, hasTrajectory = false }: { username: string; profileId: string; hasTrajectory?: boolean }) {
   const t = await getTranslations('PublicProfile')
 
   return (
@@ -39,6 +40,10 @@ export async function ProfileCTA({ username, hasTrajectory = false }: { username
             {t('trajectory')}
           </Link>
         )}
+      </div>
+
+      <div className="flex justify-center pt-1">
+        <ReportProfileButton profileId={profileId} />
       </div>
     </div>
   )

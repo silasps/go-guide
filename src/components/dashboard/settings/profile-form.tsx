@@ -10,7 +10,7 @@ import { bakeImage } from '@/lib/media/bake-image'
 import { createMediaDraft, type MediaDraft } from '@/components/shared/media-editor/types'
 import { ImageCropEditor } from '@/components/shared/media-editor/image-crop-editor'
 import { Profile } from '@/types/database'
-import { isReservedUsername } from '@/lib/username'
+import { isReservedUsername, checkUsernameAvailability } from '@/lib/username'
 import { AccountTypeSelector, useAccountTypeCopy } from '@/components/profile/account-type-selector'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -154,13 +154,7 @@ export function ProfileForm({ profile, onSaved }: Props) {
 
   async function checkUsername(value: string) {
     const supabase = createClient()
-    const { data } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('username', value)
-      .neq('id', profile.id)
-      .maybeSingle()
-    setUsernameStatus(data ? 'taken' : 'available')
+    setUsernameStatus(await checkUsernameAvailability(supabase, value, profile.id))
   }
 
   function handleSave() {

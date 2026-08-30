@@ -13,6 +13,13 @@ export type AccountMemberRole = 'owner' | 'viewer'
 export type HighlightStatus = 'active' | 'hidden' | 'completed'
 export type GoalType = 'financial' | 'prayer' | 'ambassador' | 'volunteer' | 'ongoing'
 export type UserRole = 'partner' | 'missionary'
+export type VerificationStatus = 'pending' | 'approved' | 'rejected'
+export type AccountStatus = 'active' | 'hidden_pending_review' | 'suspended'
+export type ModerationStatus = 'visible' | 'hidden_pending_review' | 'removed'
+export type ReportTargetType = 'post' | 'comment' | 'profile'
+export type ReportReason = 'nudity' | 'hate_speech' | 'spam' | 'harassment' | 'impersonation' | 'other'
+export type ReportStatus = 'open' | 'dismissed' | 'actioned'
+export type Gender = 'male' | 'female' | 'unspecified'
 export type ProjectCategory =
   | 'children' | 'health' | 'education' | 'evangelism'
   | 'community_development' | 'disaster_relief' | 'other'
@@ -46,6 +53,11 @@ export interface Profile {
   show_location: boolean
   account_type: ProfileAccountType
   user_role: UserRole
+  gender: Gender
+  verification_status: VerificationStatus
+  verification_requested_at: string | null
+  account_status: AccountStatus
+  account_status_changed_at: string
   avatar_url: string | null
   cover_url: string | null
   privacy_mode: PrivacyMode
@@ -83,6 +95,7 @@ export interface Post {
   media_status: 'ready' | 'processing' | 'failed'
   media_bunny_video_id: string | null
   location: string | null
+  moderation_status: ModerationStatus
   published_at: string | null
   scheduled_at: string | null
   is_draft: boolean
@@ -115,9 +128,22 @@ export interface PostComment {
   profile_id: string
   parent_comment_id: string | null
   content: string
+  moderation_status: ModerationStatus
   created_at: string
   updated_at: string
   deleted_at: string | null
+}
+
+export interface Report {
+  id: string
+  reporter_user_id: string | null
+  target_type: ReportTargetType
+  target_id: string
+  target_profile_id: string
+  reason: ReportReason
+  details: string | null
+  status: ReportStatus
+  created_at: string
 }
 
 export interface PostCommentWithProfile extends PostComment {

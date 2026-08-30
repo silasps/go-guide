@@ -2,12 +2,24 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { checkTextModeration } from '@/lib/ai/moderate-text'
 
 async function currentProfileId(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Não autenticado')
   const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', user.id).single()
   if (!profile) throw new Error('Perfil não encontrado')
+  return profile.id
+}
+
+/** Mesmo perfil de currentProfileId(), mas também bloqueia quem está com
+ *  a conta em análise/suspensa por denúncia (ver migration 056). */
+async function currentActiveProfileId(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Não autenticado')
+  const { data: profile } = await supabase.from('profiles').select('id, account_status').eq('user_id', user.id).single()
+  if (!profile) throw new Error('Perfil não encontrado')
+  if (profile.account_status !== 'active') throw new Error(`account_${profile.account_status}`)
   return profile.id
 }
 
@@ -51,12 +63,15 @@ export async function addComment(postId: string, content: string, parentCommentI
   if (!trimmed) throw new Error('Comentário vazio')
 
   const supabase = await createClient()
-  const profileId = await currentProfileId(supabase)
+  const profileId = await currentActiveProfileId(supabase)
+
+  const moderation = await checkTextModeration(trimmed)
+  if (moderation.flagged) throw new Error('content_flagged')
 
   const { data, error } = await supabase
     .from('post_comments')
     .insert({ post_id: postId, profile_id: profileId, content: trimmed, parent_comment_id: parentCommentId ?? null })
-    .select('id, post_id, profile_id, parent_comment_id, content, created_at, updated_at, deleted_at, profile:profiles(id, username, display_name, avatar_url)')
+    .select('id, post_id, profile_id, parent_comment_id, content, moderation_status, created_at, updated_at, deleted_at, profile:profiles(id, username, display_name, avatar_url)')
     .single()
   if (error) throw new Error(error.message)
 
@@ -116,7 +131,7 @@ export async function getComments(postId: string) {
 
   const { data, error } = await supabase
     .from('post_comments')
-    .select('id, post_id, profile_id, parent_comment_id, content, created_at, updated_at, deleted_at, profile:profiles(id, username, display_name, avatar_url)')
+    .select('id, post_id, profile_id, parent_comment_id, content, moderation_status, created_at, updated_at, deleted_at, profile:profiles(id, username, display_name, avatar_url)')
     .eq('post_id', postId)
     .is('deleted_at', null)
     .order('created_at', { ascending: true })

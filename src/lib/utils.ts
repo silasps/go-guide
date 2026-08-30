@@ -36,6 +36,14 @@ export function formatRelativeTime(date: string | Date) {
   return formatDate(date)
 }
 
+/** Dias corridos desde `date` até agora, sempre >= 0 — usado onde "quantos
+ *  dias" precisa continuar explícito mesmo depois de uma semana (diferente
+ *  de formatRelativeTime, que vira data formatada e perde a contagem). */
+export function daysSince(date: string | Date) {
+  const diff = Date.now() - new Date(date).getTime()
+  return Math.max(0, Math.floor(diff / 86400000))
+}
+
 export function slugify(text: string) {
   return text
     .toLowerCase()

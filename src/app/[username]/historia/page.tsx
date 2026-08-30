@@ -8,7 +8,7 @@ import { HistoryView } from '@/components/profile/history-view'
 import { SkList } from '@/components/ui/skeleton'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { getProfile } from '@/lib/profile/get-profile'
+import { getProfile, getProfileOrRedirect } from '@/lib/profile/get-profile'
 import { getProfileViewerContext } from '@/lib/profile/viewer-context'
 import { Pencil } from 'lucide-react'
 
@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function HistoriaPage({ params }: Props) {
   const { username } = await params
-  const profile = await getProfile(username)
+  const profile = await getProfileOrRedirect(username, '/historia')
 
   if (!profile || profile.privacy_mode === 'stealth') notFound()
 

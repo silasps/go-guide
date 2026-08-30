@@ -43,13 +43,15 @@ export async function searchDirectory(query: string): Promise<{ missionaries: Se
     .select('id, username, display_name, avatar_url, accent_color, bio, location, show_location')
     .eq('privacy_mode', 'public')
     .eq('user_role', 'missionary')
+    .eq('verification_status', 'approved')
+    .eq('account_status', 'active')
     .or(`display_name.ilike.%${q}%,username.ilike.%${q}%,bio.ilike.%${q}%`)
     .limit(RESULTS_LIMIT)
   if (user) missionaryQuery = missionaryQuery.neq('user_id', user.id)
 
   const projectsQuery = supabase
     .from('highlights')
-    .select('id, slug, title, cover_url, cover_position, profile:profiles(username, display_name, accent_color, privacy_mode, user_role)')
+    .select('id, slug, title, cover_url, cover_position, profile:profiles(username, display_name, accent_color, privacy_mode, user_role, verification_status, account_status)')
     .neq('status', 'hidden')
     .or(`title.ilike.%${q}%,description.ilike.%${q}%`)
     .limit(RESULTS_LIMIT * 2)
@@ -58,8 +60,9 @@ export async function searchDirectory(query: string): Promise<{ missionaries: Se
 
   const visibleProjects = (projects ?? [])
     .filter((p) => {
-      const profile = p.profile as unknown as { privacy_mode: string; user_role: string } | null
+      const profile = p.profile as unknown as { privacy_mode: string; user_role: string; verification_status: string; account_status: string } | null
       return profile?.privacy_mode === 'public' && profile?.user_role === 'missionary'
+        && profile?.verification_status === 'approved' && profile?.account_status === 'active'
     })
     .slice(0, RESULTS_LIMIT)
     .map((p) => ({

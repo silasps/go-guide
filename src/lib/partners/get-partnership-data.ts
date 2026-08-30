@@ -1,6 +1,6 @@
 import { getTranslations } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
-import { getProfile } from '@/lib/profile/get-profile'
+import { getProfileOrRedirect } from '@/lib/profile/get-profile'
 import { PledgePaymentMethod } from '@/types/database'
 import { resolveBudgetCategoryLabel } from '@/lib/highlights/budget-category-labels'
 import type { PartnershipWizardProps } from '@/components/partners/partnership-wizard'
@@ -23,7 +23,13 @@ export async function getPartnershipData(username: string, { highlight_id, choic
   // estática tipo /login sem sub-rota própria caindo neste catch-all) — o
   // caller já trata null como 404 via notFound(), não é um erro de aplicação
   // que mereça log.
-  const profile = await getProfile(username)
+  const qs = new URLSearchParams()
+  if (highlight_id) qs.set('highlight_id', highlight_id)
+  if (choice) qs.set('choice', choice)
+  if (category) qs.set('category', category)
+  const suffix = `/parceria${qs.toString() ? `?${qs}` : ''}`
+
+  const profile = await getProfileOrRedirect(username, suffix)
   if (!profile || profile.privacy_mode === 'stealth') return null
 
   const supabase = await createClient()
@@ -63,6 +69,12 @@ export async function getPartnershipData(username: string, { highlight_id, choic
 
   const missionStartYear = profile.mission_start_date ? new Date(profile.mission_start_date).getFullYear() : null
 
+  // Telefone/WhatsApp já salvo na conta do visitante (não do missionário) —
+  // pra não pedir de novo se ele já informou numa parceria anterior.
+  const viewerContact = user
+    ? (await supabase.from('profiles').select('phone, whatsapp_contact_opt_in').eq('user_id', user.id).maybeSingle()).data
+    : null
+
   return {
     profileId: profile.id,
     username,
@@ -80,6 +92,12 @@ export async function getPartnershipData(username: string, { highlight_id, choic
     profileAvatarUrl: profile.avatar_url,
     highlightCoverUrl: highlight?.cover_url ?? null,
     highlightCoverPosition: highlight?.cover_position ?? null,
-    user: user ? { id: user.id, email: user.email ?? null, user_metadata: { full_name: user.user_metadata?.full_name } } : null,
+    user: user ? {
+      id: user.id,
+      email: user.email ?? null,
+      user_metadata: { full_name: user.user_metadata?.full_name },
+      phone: viewerContact?.phone ?? null,
+      whatsappOptIn: viewerContact?.whatsapp_contact_opt_in ?? false,
+    } : null,
   }
 }

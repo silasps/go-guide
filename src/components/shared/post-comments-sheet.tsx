@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { getComments, addComment, toggleCommentLike, updateComment, deleteComment } from '@/app/dashboard/publicacoes/social-actions'
 import { getInitials, formatRelativeTime, cn } from '@/lib/utils'
+import { ReportDialog } from '@/components/shared/report-dialog'
+import type { ModerationStatus } from '@/types/database'
 
 interface CommentProfile {
   id: string
@@ -23,6 +25,7 @@ interface CommentRow {
   id: string
   profile_id: string
   content: string
+  moderation_status: ModerationStatus
   created_at: string
   updated_at: string
   parent_comment_id: string | null
@@ -47,6 +50,7 @@ export function PostCommentsSheet({ open, onOpenChange, postId, onCommentAdded }
   const [replyTo, setReplyTo] = useState<{ rootId: string; name: string } | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
+  const [reportCommentId, setReportCommentId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -76,8 +80,12 @@ export function PostCommentsSheet({ open, onOpenChange, postId, onCommentAdded }
       setValue('')
       setReplyTo(null)
       onCommentAdded()
-    } catch {
-      toast.error(t('commentError'))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : ''
+      if (message === 'content_flagged') toast.error(t('commentFlagged'))
+      else if (message === 'account_hidden_pending_review') toast.error(t('accountHiddenPendingReview'))
+      else if (message === 'account_suspended') toast.error(t('accountSuspended'))
+      else toast.error(t('commentError'))
     } finally {
       setSending(false)
     }
@@ -155,6 +163,9 @@ export function PostCommentsSheet({ open, onOpenChange, postId, onCommentAdded }
         </Avatar>
         <div className="min-w-0 flex-1">
           <p className="text-sm"><span className="font-medium">{profile?.display_name}</span> {comment.content}</p>
+          {isOwn && comment.moderation_status !== 'visible' && (
+            <p className="text-xs text-muted-foreground italic mt-0.5">{t('commentUnderReviewNotice')}</p>
+          )}
           <div className="flex items-center gap-3 mt-0.5">
             <p className="text-xs text-muted-foreground">{formatRelativeTime(comment.created_at)}</p>
             <button
@@ -165,7 +176,7 @@ export function PostCommentsSheet({ open, onOpenChange, postId, onCommentAdded }
               {t('reply')}
             </button>
             {comment.like_count > 0 && <span className="text-xs text-muted-foreground">{comment.like_count}</span>}
-            {isOwn && (
+            {isOwn ? (
               <>
                 <button type="button" onClick={() => { setEditingId(comment.id); setEditValue(comment.content) }} className="text-xs text-muted-foreground font-medium hover:text-foreground">
                   {t('editComment')}
@@ -174,6 +185,10 @@ export function PostCommentsSheet({ open, onOpenChange, postId, onCommentAdded }
                   {t('deleteComment')}
                 </button>
               </>
+            ) : (
+              <button type="button" onClick={() => setReportCommentId(comment.id)} className="text-xs text-muted-foreground font-medium hover:text-foreground">
+                {t('reportComment')}
+              </button>
             )}
           </div>
         </div>
@@ -244,6 +259,12 @@ export function PostCommentsSheet({ open, onOpenChange, postId, onCommentAdded }
           </div>
         )}
       </DialogContent>
+      <ReportDialog
+        open={reportCommentId !== null}
+        onOpenChange={(o) => { if (!o) setReportCommentId(null) }}
+        targetType="comment"
+        targetId={reportCommentId ?? ''}
+      />
     </Dialog>
   )
 }

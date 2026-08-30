@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getLocale } from 'next-intl/server'
 import type { Metadata } from 'next'
@@ -36,7 +36,7 @@ import { LetterEditSection } from '@/components/highlights/letter-edit-section'
 import { DatesStatusEditSection } from '@/components/highlights/dates-status-edit-section'
 import { StatusBadge } from '@/components/highlights/status-badge'
 import type { HighlightSnapshot } from '@/components/highlights/section-types'
-import { getProfile } from '@/lib/profile/get-profile'
+import { getProfile, getProfileOrRedirect } from '@/lib/profile/get-profile'
 import { ShareButton } from '@/components/shared/share-button'
 
 // Mesmo padrão de src/app/layout.tsx — necessário aqui pra montar uma URL
@@ -117,7 +117,7 @@ const SUPPORT_TYPES = [
 
 export default async function ProjetoPublicoPage({ params }: Props) {
   const { username, slug } = await params
-  const profile = await getProfile(username)
+  const profile = await getProfileOrRedirect(username, `/projetos/${slug}`)
 
   if (!profile) notFound()
   if (profile.privacy_mode === 'stealth') notFound()
@@ -145,7 +145,23 @@ export default async function ProjetoPublicoPage({ params }: Props) {
     : projectQuery.eq('slug', slug)
   ).single()
 
-  if (!project) notFound()
+  if (!project) {
+    // Slug pode ter mudado (ver migration 058, trigger
+    // track_highlight_slug_change) — antes de 404, tenta achar pelo slug
+    // antigo e redirect() pro atual, mesmo espírito do getProfileOrRedirect
+    // acima pro username.
+    const { data: historicalSlug } = await supabase
+      .from('highlight_slug_history')
+      .select('highlight_id')
+      .eq('profile_id', profile.id)
+      .eq('old_slug', slug)
+      .maybeSingle()
+    if (historicalSlug) {
+      const { data: currentProject } = await supabase.from('highlights').select('slug').eq('id', historicalSlug.highlight_id).maybeSingle()
+      if (currentProject?.slug) redirect(`/${profile.username}/projetos/${currentProject.slug}`)
+    }
+    notFound()
+  }
 
   const visitorLocale = (await getLocale()) as Locale
   const localizedTitle = resolveLocalizedText(project.title, project.original_locale, project.title_translations, visitorLocale).text ?? project.title
@@ -156,7 +172,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
   const [{ data: milestones }, { data: updates }, { data: budgetCategories }, { data: galleryImages }, { data: pastProjects }, { count: supporterCount }] = await Promise.all([
     supabase.from('milestones').select('*').eq('highlight_id', project.id).order('order_index'),
     supabase.from('posts').select('*')
-      .eq('profile_id', profile.id).eq('project_id', project.id).eq('is_draft', false)
+      .eq('profile_id', profile.id).eq('project_id', project.id).eq('is_draft', false).neq('moderation_status', 'removed')
       .order('published_at', { ascending: false }).limit(12),
     supabase.from('project_budget_progress').select('*').eq('highlight_id', project.id).order('order_index'),
     supabase.from('project_gallery_images').select('*').eq('highlight_id', project.id).order('order_index'),
