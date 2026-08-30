@@ -47,17 +47,14 @@ interface Props {
   /** Abre a folha de comentários já expandida ao montar — usado pelo link
    *  do sino de notificação de comentário. */
   autoOpenComments?: boolean
-  /** `true` só quando renderizado dentro do `PostDetailViewer` (modal em
-   *  destaque) — suprime a borda esquerda de "post ligado a projeto"
-   *  (`post.highlight`), que faz sentido discreta entre outros cards do
-   *  feed mas vira uma faixa isolada/estranha num modal centralizado, sem
-   *  nada equivalente do outro lado (reportado pelo usuário com
-   *  screenshot). O indicador em si continua existindo — só não aparece
-   *  nessa apresentação específica. */
-  inDetailModal?: boolean
+  /** `true` numa lista vertical contínua (PostDetailViewer, feed do
+   *  dashboard) — tira canto arredondado/borda do card pra virar uma faixa
+   *  única, sem caixinha separada por post. `false` (padrão) é o cartão
+   *  isolado, com borda e cantos arredondados. */
+  edgeToEdge?: boolean
 }
 
-export function PostCard({ post, visitorLocale, canEdit = false, autoOpenComments = false, inDetailModal = false }: Props) {
+export function PostCard({ post, visitorLocale, canEdit = false, autoOpenComments = false, edgeToEdge = false }: Props) {
   const t = useTranslations('Feed')
   const composer = useOptionalComposer()
   const { text } = resolveLocalizedText(post.content, post.original_locale, post.translations, visitorLocale)
@@ -156,8 +153,7 @@ export function PostCard({ post, visitorLocale, canEdit = false, autoOpenComment
     <div
       className={cn(
         'bg-card overflow-hidden',
-        inDetailModal ? 'rounded-none border-0' : 'rounded-2xl border',
-        post.highlight && !inDetailModal && 'border-l-[3px] border-l-support',
+        edgeToEdge ? 'rounded-none border-0' : 'rounded-2xl border',
       )}
     >
       <div className="p-4 pb-2 flex items-start gap-2.5">
