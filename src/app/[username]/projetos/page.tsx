@@ -37,8 +37,7 @@ export default async function ProjetosPublicosPage({ params }: Props) {
       .select('*')
       .eq('profile_id', profile.id)
       .neq('status', 'hidden')
-      .order('status') // active antes de completed
-      .order('order_index'),
+      .order('created_at', { ascending: false }),
     getProfileViewerContext(username),
   ])
 
