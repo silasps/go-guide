@@ -54,6 +54,8 @@ function CadastroForm() {
       await keyManager.setupOrUnlockWithPassword(data.user.id, password).catch(() => {})
     }
 
+    fetch('/api/auth/enviar-verificacao', { method: 'POST' }).catch(() => {})
+
     toast.success(t('signupSuccess'))
     router.push(redirect)
   }

@@ -63,6 +63,9 @@ export interface Profile {
   locale: Locale
   bio_locale: Locale
   bio_translations: Partial<Record<Locale, ContentTranslation>>
+  email_verified: boolean
+  email_verification_token: string | null
+  email_verification_token_expires_at: string | null
   created_at: string
   updated_at: string
 }

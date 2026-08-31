@@ -217,7 +217,19 @@
     "newPasswordSubmit": "Salvar nova senha",
     "passwordsDontMatch": "As senhas não coincidem.",
     "passwordUpdated": "Senha atualizada com sucesso!",
-    "signupPartnerNote": "Essa conta será uma conta de apoiador — você vai poder seguir, orar e apoiar missionários."
+    "signupPartnerNote": "Essa conta será uma conta de apoiador — você vai poder seguir, orar e apoiar missionários.",
+    "verifyEmailPendingTitle": "Confirme seu e-mail",
+    "verifyEmailPendingBody": "Enviamos um link de confirmação para o seu e-mail. Confirme para liberar o acesso ao dashboard.",
+    "verifyEmailResend": "Reenviar e-mail",
+    "verifyEmailResendSuccess": "E-mail de verificação reenviado!",
+    "verifyEmailResendError": "Não foi possível reenviar o e-mail agora. Tente novamente em instantes.",
+    "verifyEmailSuccessTitle": "E-mail verificado!",
+    "verifyEmailSuccessBody": "Seu e-mail foi confirmado com sucesso. Você já pode acessar o dashboard.",
+    "verifyEmailExpiredTitle": "Link expirado",
+    "verifyEmailExpiredBody": "Esse link de verificação expirou. Solicite um novo para confirmar seu e-mail.",
+    "verifyEmailInvalidTitle": "Link inválido",
+    "verifyEmailInvalidBody": "Esse link de verificação não existe ou já foi usado.",
+    "goToDashboard": "Ir para o dashboard"
   },
   "SettingsPage": {
     "title": "Configurações",
