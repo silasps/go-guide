@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Trash2 } from 'lucide-react'
 import { toMasked, fromMasked, reformatMasked, CURRENCIES } from '@/lib/currency-mask'
 import { CoverEditor, parsePosition, uniqueFileName } from './cover-editor'
 import { uploadVideoToBunny } from '@/lib/media/upload-bunny-video'
@@ -31,6 +31,7 @@ interface Props {
 export function HighlightForm({ highlight, profileId, backPath = '/dashboard/projetos' }: Props) {
   const router = useRouter()
   const { isPending: saving, run } = usePendingAction()
+  const [deleting, setDeleting] = useState(false)
   const [title, setTitle] = useState(highlight?.title ?? '')
   const [description, setDescription] = useState(highlight?.description ?? '')
   const [originalLocale] = useState<Locale>(highlight?.original_locale ?? 'pt')
@@ -225,6 +226,19 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
         toast.error(msg)
       }
     })
+  }
+
+  async function handleDelete() {
+    if (!highlight) return
+    if (!confirm(`Excluir o projeto "${highlight.title}"? Essa ação não pode ser desfeita. Publicações, ofertas e lançamentos vinculados a ele continuam existindo, só deixam de estar associados a este projeto.`)) return
+    setDeleting(true)
+    const supabase = createClient()
+    const { error } = await supabase.from('highlights').delete().eq('id', highlight.id)
+    setDeleting(false)
+    if (error) { toast.error('Erro ao excluir projeto.'); return }
+    toast.success('Projeto excluído.')
+    router.push(backPath)
+    router.refresh()
   }
 
   return (
@@ -455,7 +469,13 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
       </div>
 
       {/* Botões — fora do grid, abaixo das duas colunas */}
-      <div className="flex gap-3 pt-2 border-t">
+      <div className="flex items-center gap-3 pt-2 border-t">
+        {highlight && (
+          <Button type="button" variant="ghost" className="mr-auto text-destructive hover:text-destructive hover:bg-destructive/10" onClick={handleDelete} disabled={deleting}>
+            {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+            Excluir projeto
+          </Button>
+        )}
         <Button type="button" variant="outline" onClick={() => router.push(backPath)}>Cancelar</Button>
         <Button type="submit" disabled={saving}>
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
