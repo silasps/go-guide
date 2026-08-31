@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { DeleteProjectDialog } from './delete-project-dialog'
-import { FolderOpen, Pencil, Eye, EyeOff, Archive, Trash2, MoreVertical } from 'lucide-react'
+import { FolderOpen, Pencil, Eye, EyeOff, Archive, Trash2, MoreVertical, ChevronUp, ChevronDown } from 'lucide-react'
 import type { HighlightStatus } from '@/types/database'
 
 interface Props {
@@ -16,6 +16,8 @@ interface Props {
   status: HighlightStatus
   openHref: string
   editHref: string
+  onMoveUp?: () => void
+  onMoveDown?: () => void
 }
 
 // Menu de ações rápidas sobre o card do projeto (listagem pública,
@@ -26,7 +28,7 @@ interface Props {
 // card (o menu abre num portal de qualquer forma, mas o botão-gatilho em
 // si não é, então ficar fora do <Link> é o jeito simples de garantir que
 // abrir o menu nunca dispara a navegação do card por baixo).
-export function ProjectCardMenu({ projectId, projectTitle, status, openHref, editHref }: Props) {
+export function ProjectCardMenu({ projectId, projectTitle, status, openHref, editHref, onMoveUp, onMoveDown }: Props) {
   const t = useTranslations('ProjectQuickActions')
   const router = useRouter()
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -70,6 +72,18 @@ export function ProjectCardMenu({ projectId, projectTitle, status, openHref, edi
             <MoreVertical className="h-3.5 w-3.5" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {(onMoveUp || onMoveDown) && (
+              <>
+                <DropdownMenuItem onClick={onMoveUp} disabled={!onMoveUp} className="gap-2">
+                  <ChevronUp className="h-3.5 w-3.5" />
+                  {t('moveUp')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onMoveDown} disabled={!onMoveDown} className="gap-2">
+                  <ChevronDown className="h-3.5 w-3.5" />
+                  {t('moveDown')}
+                </DropdownMenuItem>
+              </>
+            )}
             <DropdownMenuItem onClick={() => router.push(openHref)} className="gap-2">
               <FolderOpen className="h-3.5 w-3.5" />
               {t('open')}

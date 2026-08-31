@@ -284,6 +284,8 @@
   },
   "ProjectQuickActions": {
     "menuLabel": "Project actions",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
     "open": "Open",
     "edit": "Edit",
     "publish": "Publish",

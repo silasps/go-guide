@@ -94,8 +94,8 @@ export default async function ProfilePage({ params, searchParams }: Props) {
   const supabase = await createClient()
   const [{ count: projectsCount }, { count: completedCount }, { count: postsCount }, followCounts, visitorLocale] =
     await Promise.all([
-      supabase.from('highlights').select('id', { count: 'exact', head: true }).eq('profile_id', profile.id).eq('status', 'active'),
-      supabase.from('highlights').select('id', { count: 'exact', head: true }).eq('profile_id', profile.id).eq('status', 'completed'),
+      supabase.from('highlights').select('id', { count: 'exact', head: true }).eq('profile_id', profile.id).eq('status', 'active').is('archived_at', null),
+      supabase.from('highlights').select('id', { count: 'exact', head: true }).eq('profile_id', profile.id).eq('status', 'completed').is('archived_at', null),
       supabase.from('posts').select('id', { count: 'exact', head: true }).eq('profile_id', profile.id).eq('is_draft', false).neq('moderation_status', 'removed'),
       profile.user_role === 'missionary' ? getFollowCounts(profile.id) : Promise.resolve(null),
       getLocale() as Promise<Locale>,
@@ -143,6 +143,7 @@ async function ProjectsSectionAsync({ profileId, username, accentColor, visitorL
     .select('*')
     .eq('profile_id', profileId)
     .eq('status', 'active')
+    .is('archived_at', null)
     .order('order_index')
 
   if (!projects || projects.length === 0) return null
@@ -174,7 +175,7 @@ async function ProfileContentAsync({ profile, visitorLocale, canEdit, deepLinkPo
       .order('published_at', { ascending: false })
       .limit(20),
     isMissionary
-      ? supabase.from('highlights').select('*').eq('profile_id', profile.id).eq('status', 'active').order('order_index')
+      ? supabase.from('highlights').select('*').eq('profile_id', profile.id).eq('status', 'active').is('archived_at', null).order('order_index')
       : Promise.resolve({ data: [] }),
     isMissionary
       ? supabase.from('history_blocks').select('*').eq('profile_id', profile.id).order('order_index')

@@ -49,6 +49,7 @@ export default async function ExplorarPage() {
           .select('id, slug, title, cover_url, cover_position, category, goal_amount, current_amount, currency, original_locale, title_translations, profile:profiles(id, username, display_name, avatar_url)')
           .in('profile_id', publicIds)
           .eq('status', 'active')
+          .is('archived_at', null)
           .order('created_at', { ascending: false })
           .limit(12),
         supabase.from('posts')

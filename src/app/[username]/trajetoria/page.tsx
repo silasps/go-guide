@@ -26,6 +26,7 @@ export default async function TrajetoriaPage({ params }: Props) {
     .select('id, slug, title, description, cover_url, cover_position, goal_amount, current_amount, currency, completed_at, original_locale, title_translations, description_translations')
     .eq('profile_id', profile.id)
     .eq('status', 'completed')
+    .is('archived_at', null)
     .order('completed_at', { ascending: false })
 
   const missionStartYear = profile.mission_start_date ? new Date(profile.mission_start_date).getFullYear() : null

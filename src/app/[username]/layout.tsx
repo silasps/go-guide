@@ -40,6 +40,7 @@ async function ProfileTabsAsync({ username }: { username: string }) {
       .select('id', { count: 'exact', head: true })
       .eq('profile_id', profile.id)
       .eq('status', 'completed')
+      .is('archived_at', null)
     hasTrajectory = (count ?? 0) > 0
   }
 
