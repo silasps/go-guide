@@ -17,7 +17,7 @@ import { PledgePaymentMethod } from '@/types/database'
 import { toMasked, fromMasked, CURRENCIES } from '@/lib/currency-mask'
 import { PaymentMethodInstructions } from './payment-method-instructions'
 import { BudgetCategorySelect, type BudgetCategoryOption } from './budget-category-select'
-import { AmountChips } from './amount-chips'
+import { AmountChips, type RemainingOption } from './amount-chips'
 import { PaymentMethodCards } from './payment-method-cards'
 import { CurrencySelect } from './currency-select'
 import { DonationSummary } from './donation-summary'
@@ -32,6 +32,8 @@ interface Props {
   missionaryName: string
   highlightId?: string
   highlightTitle?: string
+  highlightGoalAmount?: number | null
+  highlightCurrentAmount?: number | null
   isRecurring: boolean
   defaultCurrency: string
   paymentOptions: PaymentOption[]
@@ -44,7 +46,7 @@ interface Props {
   onBecomePartner?: () => void
 }
 
-export function PledgeForm({ profileId, missionaryName, highlightId, highlightTitle, isRecurring, defaultCurrency, paymentOptions, stripeAvailable = false, heroImageUrl = null, heroImagePosition, budgetCategories, initialCategoryId, backHref, onBecomePartner }: Props) {
+export function PledgeForm({ profileId, missionaryName, highlightId, highlightTitle, highlightGoalAmount, highlightCurrentAmount, isRecurring, defaultCurrency, paymentOptions, stripeAvailable = false, heroImageUrl = null, heroImagePosition, budgetCategories, initialCategoryId, backHref, onBecomePartner }: Props) {
   const t = useTranslations('PledgeForm')
   const [done, setDone] = useState(false)
   const [doneAsLoggedIn, setDoneAsLoggedIn] = useState(false)
@@ -91,6 +93,27 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
   const isStripe = method === 'stripe'
   const parsedAmountPreview = parseFloat(fromMasked(amount, currency))
   const amountFormatted = amount && !isNaN(parsedAmountPreview) ? formatCurrency(parsedAmountPreview, currency) : ''
+
+  // Chip "cobrir tudo/o que falta": só faz sentido na moeda em que a meta
+  // (do projeto ou da etapa escolhida) foi cadastrada — trocar de moeda no
+  // seletor de valor esconde o chip em vez de mostrar um número que não
+  // bate com a meta de verdade.
+  const selectedCategory = categoryId ? budgetCategories?.find(c => c.id === categoryId) : null
+  const remainingSource = currency === defaultCurrency
+    ? selectedCategory
+      ? { amount: Math.max(0, selectedCategory.target_amount - selectedCategory.raised_amount), isFull: selectedCategory.raised_amount <= 0 }
+      : highlightId && highlightGoalAmount != null
+        ? { amount: Math.max(0, highlightGoalAmount - (highlightCurrentAmount ?? 0)), isFull: (highlightCurrentAmount ?? 0) <= 0 }
+        : null
+    : null
+  const remainingOption: RemainingOption | null = remainingSource
+    ? {
+        amount: remainingSource.amount,
+        label: remainingSource.isFull
+          ? t('coverFullLabel', { amount: formatCurrency(remainingSource.amount, currency) })
+          : t('coverRemainingLabel', { amount: formatCurrency(remainingSource.amount, currency) }),
+      }
+    : null
 
   function handleCurrencyChange(next: string) {
     setCurrency(next)
@@ -274,8 +297,9 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
             <Label>{t('amountLabelPlain')} *</Label>
             <CurrencySelect currencies={dropdownCurrencies} value={currency} onChange={handleCurrencyChange} searchPlaceholder={t('currencySearchPlaceholder')} />
           </div>
-          <AmountChips currency={currency} selectedMasked={amount} onSelect={setAmount} />
+          <AmountChips currency={currency} selectedMasked={amount} onSelect={setAmount} remaining={remainingOption} />
           <Input ref={amountInputRef} inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, currency))} placeholder={t('customAmountPlaceholder')} required />
+          <p className="text-xs italic text-muted-foreground">🌱 {t('sowerEncouragement')}</p>
         </div>
 
         <div className="space-y-4 border-t border-border pt-4">

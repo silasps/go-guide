@@ -38,8 +38,8 @@ export async function getPartnershipData(username: string, { highlight_id, choic
     supabase.from('payment_methods').select('*').eq('profile_id', profile.id).eq('is_active', true).order('sort_order'),
     supabase.auth.getUser(),
     highlight_id
-      ? supabase.from('highlights').select('id, title, currency, cover_url, cover_position').eq('id', highlight_id).eq('profile_id', profile.id).single()
-      : Promise.resolve({ data: null as { id: string; title: string; currency: string; cover_url: string | null; cover_position: string | null } | null }),
+      ? supabase.from('highlights').select('id, title, currency, cover_url, cover_position, goal_amount, current_amount').eq('id', highlight_id).eq('profile_id', profile.id).single()
+      : Promise.resolve({ data: null as { id: string; title: string; currency: string; cover_url: string | null; cover_position: string | null; goal_amount: number | null; current_amount: number } | null }),
     highlight_id
       ? supabase.from('project_budget_progress').select('*').eq('highlight_id', highlight_id).order('order_index')
       : Promise.resolve({ data: null }),
@@ -83,6 +83,8 @@ export async function getPartnershipData(username: string, { highlight_id, choic
     missionStartYear,
     highlightId: highlight?.id,
     highlightTitle: highlight?.title,
+    highlightGoalAmount: highlight?.goal_amount ?? null,
+    highlightCurrentAmount: highlight?.current_amount ?? 0,
     defaultCurrency,
     paymentOptions,
     budgetCategories,
