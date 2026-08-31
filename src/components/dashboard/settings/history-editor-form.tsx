@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
@@ -59,12 +59,14 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
 
   const [newYear, setNewYear] = useState('')
   const [newEventText, setNewEventText] = useState('')
+  const newYearRef = useRef<HTMLInputElement>(null)
 
   function addTimelineItem() {
     if (!newYear.trim() || !newEventText.trim()) return
     setTimelineItems([...timelineItems, { id: crypto.randomUUID(), year: newYear.trim(), text: newEventText.trim() }])
     setNewYear('')
     setNewEventText('')
+    newYearRef.current?.focus()
   }
 
   function removeTimelineItem(id: string) {
@@ -160,6 +162,7 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
 
         <div className="grid grid-cols-[80px_1fr_auto] gap-2">
           <Input
+            ref={newYearRef}
             value={newYear}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewYear(e.target.value)}
             placeholder={t('timelineYearPlaceholder')}
