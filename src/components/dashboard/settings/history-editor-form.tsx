@@ -117,8 +117,13 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
 
   return (
     <div className="space-y-8 max-w-lg">
+      <p className="text-sm text-muted-foreground">{t('pageIntro')}</p>
+
       <section className="space-y-3">
-        <h2 className="font-semibold text-sm">{t('whoWeAre')}</h2>
+        <div>
+          <h2 className="font-semibold text-sm">{t('whoWeAre')}</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">{t('whoWeAreHint')}</p>
+        </div>
         <div className="space-y-1.5">
           <Label htmlFor="who-title">{t('sectionTitle')}</Label>
           <Input id="who-title" value={whoTitle} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWhoTitle(e.target.value)} placeholder={t('whoWeAre')} />
@@ -130,7 +135,10 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-semibold text-sm">{t('ourCalling')}</h2>
+        <div>
+          <h2 className="font-semibold text-sm">{t('ourCalling')}</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">{t('ourCallingHint')}</p>
+        </div>
         <div className="space-y-1.5">
           <Label htmlFor="calling-title">{t('sectionTitle')}</Label>
           <Input id="calling-title" value={callingTitle} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCallingTitle(e.target.value)} placeholder={t('ourCalling')} />
@@ -142,7 +150,10 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-semibold text-sm">{t('timeline')}</h2>
+        <div>
+          <h2 className="font-semibold text-sm">{t('timeline')}</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">{t('timelineHint')}</p>
+        </div>
         <div className="space-y-1.5">
           <Label htmlFor="timeline-title">{t('sectionTitle')}</Label>
           <Input id="timeline-title" value={timelineTitle} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTimelineTitle(e.target.value)} placeholder={t('timeline')} />
@@ -180,14 +191,17 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-semibold text-sm">{t('cta')}</h2>
+        <div>
+          <h2 className="font-semibold text-sm">{t('cta')}</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">{t('ctaHint')}</p>
+        </div>
         <div className="space-y-1.5">
           <Label htmlFor="cta-title">{t('sectionTitle')}</Label>
-          <Input id="cta-title" value={ctaTitle} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCtaTitle(e.target.value)} placeholder={t('cta')} />
+          <Input id="cta-title" value={ctaTitle} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCtaTitle(e.target.value)} placeholder={t('ctaTitlePlaceholder')} />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="cta-text">{t('sectionText')}</Label>
-          <Textarea id="cta-text" value={ctaText} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCtaText(e.target.value)} rows={3} />
+          <Textarea id="cta-text" value={ctaText} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCtaText(e.target.value)} placeholder={t('ctaTextPlaceholder')} rows={3} />
         </div>
       </section>
 
