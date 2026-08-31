@@ -302,6 +302,29 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
           <p className="text-xs italic text-muted-foreground">🌱 {t('sowerEncouragement')}</p>
         </div>
 
+        <div className="space-y-3 border-t border-border pt-4">
+          <h2 className="text-sm font-semibold">{t('sectionPaymentTitle')}</h2>
+          {allOptions.length > 0 ? (
+            <PaymentMethodCards options={allOptions} value={optionId} onChange={handleOptionSelect} />
+          ) : (
+            <p className="text-xs text-muted-foreground italic">{t('noMethodsAvailable')}</p>
+          )}
+
+          {isStripe ? (
+            <p className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">{t('stripeInlineNote')}</p>
+          ) : selectedOption && (
+            <PaymentMethodInstructions
+              method={selectedOption.method}
+              label={selectedOption.label}
+              value={selectedOption.value}
+              details={selectedOption.details}
+              missionaryName={missionaryName}
+              otherDescription={otherDescription}
+              onOtherDescriptionChange={setOtherDescription}
+            />
+          )}
+        </div>
+
         <div className="space-y-4 border-t border-border pt-4">
           <h2 className="text-sm font-semibold">{t('sectionYourDataTitle')}</h2>
 
@@ -331,29 +354,6 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
             <Label>{t('messageLabel', { name: missionaryName })}</Label>
             <Textarea value={message} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setMessage(e.target.value)} placeholder={t('messagePlaceholder')} rows={2} />
           </div>
-        </div>
-
-        <div className="space-y-3 border-t border-border pt-4">
-          <h2 className="text-sm font-semibold">{t('sectionPaymentTitle')}</h2>
-          {allOptions.length > 0 ? (
-            <PaymentMethodCards options={allOptions} value={optionId} onChange={handleOptionSelect} />
-          ) : (
-            <p className="text-xs text-muted-foreground italic">{t('noMethodsAvailable')}</p>
-          )}
-
-          {isStripe ? (
-            <p className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">{t('stripeInlineNote')}</p>
-          ) : selectedOption && (
-            <PaymentMethodInstructions
-              method={selectedOption.method}
-              label={selectedOption.label}
-              value={selectedOption.value}
-              details={selectedOption.details}
-              missionaryName={missionaryName}
-              otherDescription={otherDescription}
-              onOtherDescriptionChange={setOtherDescription}
-            />
-          )}
 
           {!isStripe && (
             <form id="pledge-manual-form" onSubmit={handleSubmit} className="space-y-4">
