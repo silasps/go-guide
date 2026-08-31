@@ -132,7 +132,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
     .eq('profile_id', profile.id)
     .eq('is_active', true)
     .order('sort_order')
-  const pixMethod = (paymentMethods ?? []).find(m => m.type === 'pix')
+  const pixMethods = (paymentMethods ?? []).filter(m => m.type === 'pix')
   const linkPriority: PaymentMethodType[] = ['other', 'paypal', 'wise', 'bank_transfer']
   const linkMethod = linkPriority
     .map(type => (paymentMethods ?? []).find(m => m.type === type))
@@ -214,7 +214,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
 
   const activeSupportTypes = SUPPORT_TYPES.filter(t => {
     if (!types.includes(t.key)) return false
-    if (t.key === 'financial' && !donationLink && !pixMethod) return false
+    if (t.key === 'financial' && !donationLink && !pixMethods.length) return false
     return true
   })
 
@@ -382,9 +382,15 @@ export default async function ProjetoPublicoPage({ params }: Props) {
               <>
                 {project.goal_amount && pct !== null && (
                   <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="font-semibold text-base">{formatCurrency(project.current_amount, project.currency)} arrecadados</span>
-                      <span className="text-muted-foreground">Meta: {formatCurrency(project.goal_amount, project.currency)}</span>
+                    <div className="flex items-end justify-between gap-3">
+                      <div>
+                        <p className="text-2xl md:text-3xl font-bold tracking-tight leading-none">{formatCurrency(project.current_amount, project.currency)}</p>
+                        <p className="text-xs text-muted-foreground mt-1">arrecadados</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs text-muted-foreground">Meta</p>
+                        <p className="text-sm font-semibold">{formatCurrency(project.goal_amount, project.currency)}</p>
+                      </div>
                     </div>
                     <Progress value={pct} className="h-2.5" />
                     <div className="flex items-center gap-2">
@@ -413,17 +419,21 @@ export default async function ProjetoPublicoPage({ params }: Props) {
               </>
             </FinancialEditSection>
 
-            {pixMethod && (
-              <div className="rounded-xl border border-support/40 bg-support/10 p-3 space-y-1.5">
+            {pixMethods.length > 0 && (
+              <div className="rounded-xl border border-support/40 bg-support/10 p-3 space-y-3">
                 <p className="text-xs font-medium text-support text-center flex items-center justify-center gap-1.5">
-                  <QrCode className="h-3.5 w-3.5" /> Chave PIX para transferência direta
+                  <QrCode className="h-3.5 w-3.5" /> {pixMethods.length > 1 ? 'Chaves PIX para transferência direta' : 'Chave PIX para transferência direta'}
                 </p>
-                {pixMethod.label && (
-                  <p className="text-xs text-center text-muted-foreground">
-                    Em nome de <span className="font-medium text-foreground">{pixMethod.label}</span>
-                  </p>
-                )}
-                <CopyableValue value={pixMethod.value} emphasized />
+                {pixMethods.map((pix) => (
+                  <div key={pix.id} className={cn('space-y-1.5', pixMethods.length > 1 && 'pt-2 border-t border-support/20 first:pt-0 first:border-0')}>
+                    {pix.label && (
+                      <p className="text-xs text-center text-muted-foreground">
+                        Em nome de <span className="font-medium text-foreground">{pix.label}</span>
+                      </p>
+                    )}
+                    <CopyableValue value={pix.value} emphasized />
+                  </div>
+                ))}
               </div>
             )}
           </div>
