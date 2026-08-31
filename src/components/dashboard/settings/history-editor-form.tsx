@@ -11,9 +11,13 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Loader2, Plus, Trash2 } from 'lucide-react'
+import { Loader2, Plus, Trash2, GripVertical } from 'lucide-react'
+import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface TimelineItem {
+  id: string
   year: string
   text: string
 }
@@ -44,7 +48,11 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
   const [callingText, setCallingText] = useState((findBlock('our_calling')?.content.text as string) ?? '')
   const [timelineTitle, setTimelineTitle] = useState((findBlock('timeline')?.content.title as string) ?? '')
   const [timelineItems, setTimelineItems] = useState<TimelineItem[]>(
-    (findBlock('timeline')?.content.items as TimelineItem[]) ?? []
+    ((findBlock('timeline')?.content.items as { year: string; text: string }[]) ?? []).map((item) => ({ id: crypto.randomUUID(), ...item }))
+  )
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
   const [ctaTitle, setCtaTitle] = useState((findBlock('cta')?.content.title as string) ?? '')
   const [ctaText, setCtaText] = useState((findBlock('cta')?.content.text as string) ?? '')
@@ -54,13 +62,23 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
 
   function addTimelineItem() {
     if (!newYear.trim() || !newEventText.trim()) return
-    setTimelineItems([...timelineItems, { year: newYear.trim(), text: newEventText.trim() }])
+    setTimelineItems([...timelineItems, { id: crypto.randomUUID(), year: newYear.trim(), text: newEventText.trim() }])
     setNewYear('')
     setNewEventText('')
   }
 
-  function removeTimelineItem(idx: number) {
-    setTimelineItems(timelineItems.filter((_, i) => i !== idx))
+  function removeTimelineItem(id: string) {
+    setTimelineItems(timelineItems.filter((item) => item.id !== id))
+  }
+
+  function handleTimelineDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    setTimelineItems((items) => {
+      const oldIndex = items.findIndex((item) => item.id === active.id)
+      const newIndex = items.findIndex((item) => item.id === over.id)
+      return arrayMove(items, oldIndex, newIndex)
+    })
   }
 
   function handleSave() {
@@ -72,7 +90,7 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
       const sections: { type: EditableType; content: Record<string, unknown> | null }[] = [
         { type: 'who_we_are', content: whoText.trim() ? { title: whoTitle.trim() || undefined, text: whoText.trim() } : null },
         { type: 'our_calling', content: callingText.trim() ? { title: callingTitle.trim() || undefined, text: callingText.trim() } : null },
-        { type: 'timeline', content: timelineItems.length ? { title: timelineTitle.trim() || undefined, items: timelineItems } : null },
+        { type: 'timeline', content: timelineItems.length ? { title: timelineTitle.trim() || undefined, items: timelineItems.map(({ year, text }) => ({ year, text })) } : null },
         { type: 'cta', content: ctaText.trim() ? { title: ctaTitle.trim() || undefined, text: ctaText.trim() } : null },
       ]
 
@@ -129,22 +147,15 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
         </div>
 
         {timelineItems.length > 0 && (
-          <ul className="space-y-1.5">
-            {timelineItems.map((item, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm border rounded-lg p-2">
-                <span className="font-semibold text-primary shrink-0">{item.year}</span>
-                <span className="flex-1 text-muted-foreground">{item.text}</span>
-                <button
-                  type="button"
-                  onClick={() => removeTimelineItem(i)}
-                  className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
-                  aria-label={t('removeItem')}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </li>
-            ))}
-          </ul>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleTimelineDragEnd}>
+            <SortableContext items={timelineItems.map((item) => item.id)} strategy={verticalListSortingStrategy}>
+              <ul className="space-y-1.5">
+                {timelineItems.map((item) => (
+                  <SortableTimelineItem key={item.id} item={item} onRemove={removeTimelineItem} removeLabel={t('removeItem')} dragLabel={t('dragToReorder')} />
+                ))}
+              </ul>
+            </SortableContext>
+          </DndContext>
         )}
 
         <div className="grid grid-cols-[80px_1fr_auto] gap-2">
@@ -182,5 +193,39 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
         {t('save')}
       </Button>
     </div>
+  )
+}
+
+function SortableTimelineItem({ item, onRemove, removeLabel, dragLabel }: {
+  item: TimelineItem
+  onRemove: (id: string) => void
+  removeLabel: string
+  dragLabel: string
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 }
+
+  return (
+    <li ref={setNodeRef} style={style} className="flex items-start gap-2 text-sm border rounded-lg p-2 bg-background">
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="shrink-0 mt-0.5 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing touch-none"
+        aria-label={dragLabel}
+      >
+        <GripVertical className="h-3.5 w-3.5" />
+      </button>
+      <span className="font-semibold text-primary shrink-0">{item.year}</span>
+      <span className="flex-1 text-muted-foreground">{item.text}</span>
+      <button
+        type="button"
+        onClick={() => onRemove(item.id)}
+        className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+        aria-label={removeLabel}
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
+    </li>
   )
 }

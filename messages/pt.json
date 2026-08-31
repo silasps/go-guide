@@ -285,6 +285,7 @@
     "timelineEventPlaceholder": "O que aconteceu",
     "addItem": "Adicionar",
     "removeItem": "Remover",
+    "dragToReorder": "Arraste para reordenar",
     "save": "Salvar",
     "saved": "História atualizada!"
   },
