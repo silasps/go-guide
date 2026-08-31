@@ -272,6 +272,30 @@
     "historyHint": "Conte quem vocês são, o chamado, a linha do tempo e um convite pra fazer parte — aparece na aba História do seu perfil público.",
     "editHistory": "Editar história"
   },
+  "DeleteProjectDialog": {
+    "title": "Excluir projeto",
+    "warning": "Essa ação não pode ser desfeita.",
+    "sideEffectNote": "Publicações, ofertas e lançamentos vinculados a este projeto continuam existindo — só deixam de estar associados a ele.",
+    "confirmInstruction": "Para confirmar, digite o nome do projeto: {name}",
+    "cancel": "Cancelar",
+    "confirmDelete": "Excluir projeto",
+    "success": "Projeto excluído.",
+    "error": "Erro ao excluir projeto."
+  },
+  "ProjectQuickActions": {
+    "menuLabel": "Ações do projeto",
+    "open": "Abrir",
+    "edit": "Editar",
+    "publish": "Publicar",
+    "unpublish": "Despublicar",
+    "archive": "Arquivar",
+    "delete": "Excluir",
+    "published": "Projeto publicado.",
+    "unpublished": "Projeto despublicado.",
+    "archived": "Projeto arquivado.",
+    "toggleError": "Erro ao atualizar status.",
+    "archiveError": "Erro ao arquivar projeto."
+  },
   "HistoryEditor": {
     "back": "Voltar",
     "title": "Editar história",

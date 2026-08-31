@@ -272,6 +272,30 @@
     "historyHint": "Tell who you are, your calling, your timeline, and an invitation to join you — shown on the Story tab of your public profile.",
     "editHistory": "Edit story"
   },
+  "DeleteProjectDialog": {
+    "title": "Delete project",
+    "warning": "This action cannot be undone.",
+    "sideEffectNote": "Posts, pledges, and transactions linked to this project will still exist — they'll just no longer be associated with it.",
+    "confirmInstruction": "To confirm, type the project name: {name}",
+    "cancel": "Cancel",
+    "confirmDelete": "Delete project",
+    "success": "Project deleted.",
+    "error": "Error deleting project."
+  },
+  "ProjectQuickActions": {
+    "menuLabel": "Project actions",
+    "open": "Open",
+    "edit": "Edit",
+    "publish": "Publish",
+    "unpublish": "Unpublish",
+    "archive": "Archive",
+    "delete": "Delete",
+    "published": "Project published.",
+    "unpublished": "Project unpublished.",
+    "archived": "Project archived.",
+    "toggleError": "Error updating status.",
+    "archiveError": "Error archiving project."
+  },
   "HistoryEditor": {
     "back": "Back",
     "title": "Edit story",

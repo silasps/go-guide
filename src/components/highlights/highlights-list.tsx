@@ -12,20 +12,12 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { toast } from 'sonner'
+import { DeleteProjectDialog } from './delete-project-dialog'
 import { Pencil, Trash2, Eye, EyeOff, ChevronUp, ChevronDown, ExternalLink } from 'lucide-react'
 
 export function HighlightsList({ highlights: initial, basePath = '/dashboard/destaques', username }: { highlights: Highlight[], basePath?: string, username?: string }) {
   const [highlights, setHighlights] = useState(initial)
-
-  async function handleDelete(h: Highlight) {
-    if (!confirm(`Excluir o projeto "${h.title}"? Essa ação não pode ser desfeita. Publicações, ofertas e lançamentos vinculados a ele continuam existindo, só deixam de estar associados a este projeto.`)) return
-    const supabase = createClient()
-    const { error } = await supabase.from('highlights').delete().eq('id', h.id)
-    if (error) { toast.error('Erro ao excluir.'); return }
-    setHighlights(prev => prev.filter(x => x.id !== h.id))
-    toast.success('Projeto excluído.')
-  }
+  const [deleteTarget, setDeleteTarget] = useState<Highlight | null>(null)
 
   async function toggleStatus(h: Highlight) {
     const status = h.status === 'active' ? 'hidden' : 'active'
@@ -115,13 +107,23 @@ export function HighlightsList({ highlights: initial, basePath = '/dashboard/des
               <Link href={`${basePath}/${h.id}`} className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'h-7 w-7')}>
                 <Pencil className="h-3.5 w-3.5" />
               </Link>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDelete(h)}>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(h)}>
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
         )
       })}
+
+      {deleteTarget && (
+        <DeleteProjectDialog
+          open={!!deleteTarget}
+          onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+          projectId={deleteTarget.id}
+          projectTitle={deleteTarget.title}
+          onDeleted={() => setHighlights((prev) => prev.filter((x) => x.id !== deleteTarget.id))}
+        />
+      )}
     </div>
   )
 }

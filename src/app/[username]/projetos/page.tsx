@@ -14,6 +14,7 @@ import { resolveLocalizedText } from '@/lib/i18n/resolve-content-locale'
 import type { Locale } from '@/i18n/config'
 import type { Highlight } from '@/types/database'
 import { CheckCircle2, Plus } from 'lucide-react'
+import { ProjectCardMenu } from '@/components/highlights/project-card-menu'
 
 interface Props { params: Promise<{ username: string }> }
 
@@ -37,6 +38,7 @@ export default async function ProjetosPublicosPage({ params }: Props) {
       .select('*')
       .eq('profile_id', profile.id)
       .neq('status', 'hidden')
+      .is('archived_at', null)
       .order('created_at', { ascending: false }),
     getProfileViewerContext(username),
   ])
@@ -65,7 +67,7 @@ export default async function ProjetosPublicosPage({ params }: Props) {
           <section className="space-y-4">
             <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Em andamento</h2>
             <div className="grid grid-cols-2 gap-3">
-              {active.map(p => <ProjectCard key={p.id} p={p} username={username} accentColor={profile.accent_color} visitorLocale={visitorLocale} />)}
+              {active.map(p => <ProjectCard key={p.id} p={p} username={username} accentColor={profile.accent_color} visitorLocale={visitorLocale} canEdit={canEdit} />)}
             </div>
           </section>
         )}
@@ -78,7 +80,7 @@ export default async function ProjetosPublicosPage({ params }: Props) {
               Concluídos
             </h2>
             <div className="grid grid-cols-2 gap-3">
-              {completed.map(p => <ProjectCard key={p.id} p={p} username={username} accentColor={profile.accent_color} visitorLocale={visitorLocale} completed />)}
+              {completed.map(p => <ProjectCard key={p.id} p={p} username={username} accentColor={profile.accent_color} visitorLocale={visitorLocale} canEdit={canEdit} completed />)}
             </div>
           </section>
         )}
@@ -91,12 +93,13 @@ export default async function ProjetosPublicosPage({ params }: Props) {
   )
 }
 
-function ProjectCard({ p, username, accentColor, visitorLocale, completed = false }: {
+function ProjectCard({ p, username, accentColor, visitorLocale, completed = false, canEdit = false }: {
   p: Highlight
   username: string
   accentColor: string
   visitorLocale: Locale
   completed?: boolean
+  canEdit?: boolean
 }) {
   const types: string[] = Array.isArray(p.goal_type) ? p.goal_type : [p.goal_type]
   const pct = p.goal_amount ? Math.min(100, (p.current_amount / p.goal_amount) * 100) : null
@@ -104,46 +107,57 @@ function ProjectCard({ p, username, accentColor, visitorLocale, completed = fals
   const title = resolveLocalizedText(p.title, p.original_locale, p.title_translations, visitorLocale).text ?? p.title
 
   return (
-    <Link
-      href={`/${username}/projetos/${slug}`}
-      className={cn(
-        'flex flex-col rounded-2xl border bg-card overflow-hidden hover:bg-muted/50 transition-colors group',
-        completed && 'opacity-70'
-      )}
-    >
-      <div className="relative aspect-[4/3] bg-muted">
-        {p.cover_url ? (
-          <Image
-            src={coverThumbnailSrc(p.cover_url)}
-            alt={title}
-            fill
-            sizes="50vw"
-            className="object-cover group-hover:scale-105 transition-transform"
-            style={{ objectPosition: p.cover_position ?? '50% 50%' }}
-          />
-        ) : (
-          <div className="h-full w-full flex items-center justify-center text-3xl" style={{ backgroundColor: accentColor + '20' }}>🌍</div>
+    <div className="relative">
+      <Link
+        href={`/${username}/projetos/${slug}`}
+        className={cn(
+          'flex flex-col rounded-2xl border bg-card overflow-hidden hover:bg-muted/50 transition-colors group',
+          completed && 'opacity-70'
         )}
-        {completed && (
-          <div className="absolute top-2 right-2 bg-background/90 backdrop-blur rounded-full p-1">
-            <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-          </div>
-        )}
-      </div>
-      <div className="flex-1 p-3 space-y-1.5">
-        <p className="font-medium text-sm leading-snug line-clamp-2">{title}</p>
-        <div className="flex flex-wrap gap-1">
-          {types.slice(0, 2).map(t => (
-            <Badge key={t} variant="secondary" className="text-[10px] px-1.5 py-0">{TYPE_LABEL[t] ?? t}</Badge>
-          ))}
+      >
+        <div className="relative aspect-[4/3] bg-muted">
+          {p.cover_url ? (
+            <Image
+              src={coverThumbnailSrc(p.cover_url)}
+              alt={title}
+              fill
+              sizes="50vw"
+              className="object-cover group-hover:scale-105 transition-transform"
+              style={{ objectPosition: p.cover_position ?? '50% 50%' }}
+            />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center text-3xl" style={{ backgroundColor: accentColor + '20' }}>🌍</div>
+          )}
+          {completed && (
+            <div className="absolute top-2 left-2 bg-background/90 backdrop-blur rounded-full p-1">
+              <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+            </div>
+          )}
         </div>
-        {pct !== null && types.includes('financial') && (
-          <div className="space-y-0.5">
-            <Progress value={pct} className="h-1.5" />
-            <p className="text-xs text-muted-foreground">{pct.toFixed(0)}% · {formatCurrency(p.current_amount, p.currency)}</p>
+        <div className="flex-1 p-3 space-y-1.5">
+          <p className="font-medium text-sm leading-snug line-clamp-2">{title}</p>
+          <div className="flex flex-wrap gap-1">
+            {types.slice(0, 2).map(t => (
+              <Badge key={t} variant="secondary" className="text-[10px] px-1.5 py-0">{TYPE_LABEL[t] ?? t}</Badge>
+            ))}
           </div>
-        )}
-      </div>
-    </Link>
+          {pct !== null && types.includes('financial') && (
+            <div className="space-y-0.5">
+              <Progress value={pct} className="h-1.5" />
+              <p className="text-xs text-muted-foreground">{pct.toFixed(0)}% · {formatCurrency(p.current_amount, p.currency)}</p>
+            </div>
+          )}
+        </div>
+      </Link>
+      {canEdit && (
+        <ProjectCardMenu
+          projectId={p.id}
+          projectTitle={title}
+          status={p.status}
+          openHref={`/${username}/projetos/${slug}`}
+          editHref={`/dashboard/projetos/${p.id}`}
+        />
+      )}
+    </div>
   )
 }

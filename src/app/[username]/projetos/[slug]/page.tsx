@@ -32,6 +32,7 @@ import { GalleryEditSection } from '@/components/highlights/gallery-edit-section
 import { ProjectCoverFallback } from '@/components/highlights/project-cover-fallback'
 import { FloatingSupportCta } from '@/components/highlights/floating-support-cta'
 import { ProjectStoryDialog } from '@/components/highlights/project-story-dialog'
+import { DeleteProjectButton } from '@/components/highlights/delete-project-button'
 import { LetterEditSection } from '@/components/highlights/letter-edit-section'
 import { DatesStatusEditSection } from '@/components/highlights/dates-status-edit-section'
 import { StatusBadge } from '@/components/highlights/status-badge'
@@ -139,7 +140,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
 
   const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)
   let projectQuery = supabase.from('highlights').select('*').eq('profile_id', profile.id)
-  if (!canEdit) projectQuery = projectQuery.eq('status', 'active')
+  if (!canEdit) projectQuery = projectQuery.eq('status', 'active').is('archived_at', null)
   const { data: project } = await (isUUID
     ? projectQuery.or(`slug.eq.${slug},id.eq.${slug}`)
     : projectQuery.eq('slug', slug)
@@ -291,6 +292,13 @@ export default async function ProjetoPublicoPage({ params }: Props) {
                   label="Compartilhar projeto"
                   copiedLabel="Link do projeto copiado"
                 />
+                {canEdit && (
+                  <DeleteProjectButton
+                    projectId={project.id}
+                    projectTitle={project.title}
+                    redirectHref={`/${username}/projetos`}
+                  />
+                )}
               </div>
               {localizedScripture && (
                 <p className="text-sm italic text-muted-foreground border-l-2 border-primary/40 pl-3">{localizedScripture}</p>

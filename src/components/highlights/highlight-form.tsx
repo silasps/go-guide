@@ -1,22 +1,29 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
-import { Highlight, Milestone, ProjectBudgetCategory, ProjectGalleryImage } from '@/types/database'
+import { Highlight, Milestone, ProjectBudgetCategory, ProjectGalleryImage, MediaAspectRatio } from '@/types/database'
 import type { Locale } from '@/i18n/config'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Loader2, Trash2 } from 'lucide-react'
+import { Loader2, Trash2, ImagePlus } from 'lucide-react'
 import { toMasked, fromMasked, reformatMasked, CURRENCIES } from '@/lib/currency-mask'
-import { CoverEditor, parsePosition, uniqueFileName } from './cover-editor'
+import { uniqueFileName } from './cover-editor'
+import { ImageCropEditor } from '@/components/shared/media-editor/image-crop-editor'
+import { createMediaDraft, resolveCssFilter, type MediaDraft } from '@/components/shared/media-editor/types'
+import { bakeImage } from '@/lib/media/bake-image'
+import { compressImage, getMediaType } from '@/lib/media/compress'
 import { uploadVideoToBunny } from '@/lib/media/upload-bunny-video'
 import { MilestonesEditor, type MilestoneDraft } from './milestones-editor'
 import { BudgetCategoriesEditor, type BudgetCategoryDraft } from './budget-categories-editor'
 import { GalleryEditor, type GalleryImageDraft } from './gallery-editor'
+import { DeleteProjectDialog } from './delete-project-dialog'
 import { SupportTypesPicker } from './support-types-picker'
 import { LocaleContentTabs } from '@/components/dashboard/locale-content-tabs'
 import { PROJECT_CATEGORIES } from '@/lib/highlights/project-categories'
@@ -29,9 +36,10 @@ interface Props {
 }
 
 export function HighlightForm({ highlight, profileId, backPath = '/dashboard/projetos' }: Props) {
+  const tDelete = useTranslations('DeleteProjectDialog')
   const router = useRouter()
   const { isPending: saving, run } = usePendingAction()
-  const [deleting, setDeleting] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [title, setTitle] = useState(highlight?.title ?? '')
   const [description, setDescription] = useState(highlight?.description ?? '')
   const [originalLocale] = useState<Locale>(highlight?.original_locale ?? 'pt')
@@ -75,12 +83,18 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
     toMasked(String(Math.round((highlight?.current_amount ?? 0) * 100)), initialCurrency)
   )
   const [currency, setCurrency] = useState(initialCurrency)
-  const [coverFile, setCoverFile] = useState<File | null>(null)
+  // Capa nova selecionada (ainda não salva) — mesmo componente/formato do
+  // composer de post e do wizard de "novo projeto" (ImageCropEditor:
+  // zoom por pinça/roda/botões + arrastar livre), pedido do usuário. Capa
+  // já salva (`coverPreview`) fica só como prévia estática até o usuário
+  // trocar por uma nova — reeditar o recorte da capa atual é só escolher
+  // o mesmo arquivo de novo, evita ter que rebaixar uma URL remota pra
+  // File só pra reabrir o editor nela.
+  const [coverMedia, setCoverMedia] = useState<MediaDraft | null>(null)
+  const [coverAspect] = useState<MediaAspectRatio>('1.91:1')
   const [coverPreview, setCoverPreview] = useState<string>(highlight?.cover_url ?? '')
   const [coverMediaType, setCoverMediaType] = useState<'image' | 'video'>(highlight?.cover_media_type ?? 'image')
-  const [position, setPosition] = useState<{ x: number; y: number }>(
-    parsePosition(highlight?.cover_position ?? '50% 50%')
-  )
+  const coverInputRef = useRef<HTMLInputElement>(null)
   const [tripStartDate, setTripStartDate] = useState(highlight?.trip_start_date ?? '')
   const [fundingDeadline, setFundingDeadline] = useState(highlight?.funding_deadline ?? '')
   const [scripture, setScripture] = useState(highlight?.scripture ?? '')
@@ -125,7 +139,7 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
   function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!title.trim()) { toast.error('Título obrigatório.'); return }
-    if (!coverFile && !coverPreview) { toast.error('Adicione uma foto de capa antes de salvar.'); return }
+    if (!coverMedia && !coverPreview) { toast.error('Adicione uma foto de capa antes de salvar.'); return }
 
     run(true, async () => {
       try {
@@ -134,21 +148,33 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
         let cover_url: string | null | undefined = highlight?.cover_url ?? null
         let cover_status: 'ready' | 'processing' = 'ready'
         let cover_bunny_video_id: string | null = highlight?.cover_bunny_video_id ?? null
+        let cover_position = highlight?.cover_position ?? '50% 50%'
 
-        if (coverFile && coverMediaType === 'video') {
-          const { bunnyVideoId } = await uploadVideoToBunny(coverFile)
+        if (coverMedia?.type === 'video') {
+          const { bunnyVideoId } = await uploadVideoToBunny(coverMedia.file)
           cover_url = undefined
           cover_status = 'processing'
           cover_bunny_video_id = bunnyVideoId
-        } else if (coverFile) {
+          cover_position = '50% 50%'
+        } else if (coverMedia) {
+          const baked = await bakeImage({
+            previewUrl: coverMedia.previewUrl,
+            fileName: coverMedia.file.name,
+            position: coverMedia.position,
+            zoom: coverMedia.zoom,
+            aspect: coverAspect,
+            cssFilter: resolveCssFilter(coverMedia),
+          })
+          const compressed = await compressImage(baked)
           const path = `${currentUser!.id}/highlights/${uniqueFileName('webp')}`
-          const { error } = await supabase.storage.from('media').upload(path, coverFile, { upsert: true })
+          const { error } = await supabase.storage.from('media').upload(path, compressed, { upsert: true })
           if (error) throw error
           cover_url = supabase.storage.from('media').getPublicUrl(path).data.publicUrl
           cover_bunny_video_id = null
+          // Recorte já vem "assado" no pixel da imagem — sem sobra pra
+          // reposicionar via CSS, ao contrário da foto original.
+          cover_position = '50% 50%'
         }
-
-        const cover_position = `${Math.round(position.x)}% ${Math.round(position.y)}%`
 
         const galleryUrls: string[] = []
         for (const img of galleryImages) {
@@ -228,19 +254,6 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
     })
   }
 
-  async function handleDelete() {
-    if (!highlight) return
-    if (!confirm(`Excluir o projeto "${highlight.title}"? Essa ação não pode ser desfeita. Publicações, ofertas e lançamentos vinculados a ele continuam existindo, só deixam de estar associados a este projeto.`)) return
-    setDeleting(true)
-    const supabase = createClient()
-    const { error } = await supabase.from('highlights').delete().eq('id', highlight.id)
-    setDeleting(false)
-    if (error) { toast.error('Erro ao excluir projeto.'); return }
-    toast.success('Projeto excluído.')
-    router.push(backPath)
-    router.refresh()
-  }
-
   return (
     <form onSubmit={handleSave} className="space-y-6">
       {/* Desktop: 2 columns. Mobile: single column. */}
@@ -254,21 +267,57 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
               <Label>Capa</Label>
               <span className="text-xs text-muted-foreground">1200 × 630 px recomendado</span>
             </div>
-            <CoverEditor
-              initialUrl={coverPreview}
-              initialPosition={position}
-              initialMediaType={coverMediaType}
-              onChange={(file, previewUrl, pos, mediaType) => {
-                if (file) setCoverFile(file)
-                setCoverPreview(previewUrl)
-                setPosition(pos)
-                setCoverMediaType(mediaType)
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*,video/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                const type = getMediaType(file)
+                if (type === 'unknown') return
+                setCoverMedia(createMediaDraft(file, type))
+                setCoverMediaType(type)
               }}
             />
-            {coverPreview && (
-              <div className="flex items-center gap-3 pt-1">
-                <p className="text-xs text-muted-foreground">Prévia do card (como aparece na lista de projetos)</p>
+
+            {coverMedia ? (
+              coverMedia.type === 'video' ? (
+                <video src={coverMedia.previewUrl} controls className="w-full aspect-[1.91/1] rounded-lg bg-black object-cover" />
+              ) : (
+                <ImageCropEditor
+                  media={coverMedia}
+                  aspect={coverAspect}
+                  onAspectChange={() => {}}
+                  onPositionChange={(pos) => setCoverMedia((prev) => (prev ? { ...prev, position: pos } : prev))}
+                  onZoomChange={(zoom) => setCoverMedia((prev) => (prev ? { ...prev, zoom } : prev))}
+                  showAspectPicker={false}
+                />
+              )
+            ) : coverPreview ? (
+              <div className="relative w-full aspect-[1.91/1] rounded-lg overflow-hidden bg-muted">
+                {coverMediaType === 'video' ? (
+                  <video src={coverPreview} muted loop autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
+                ) : (
+                  <Image src={coverPreview} alt="Capa" fill className="object-cover" style={{ objectPosition: highlight?.cover_position ?? '50% 50%' }} />
+                )}
               </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => coverInputRef.current?.click()}
+                className="w-full aspect-[1.91/1] rounded-lg border border-dashed flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ImagePlus className="h-7 w-7" />
+                <span className="text-sm">Clique para adicionar capa (foto ou vídeo)</span>
+              </button>
+            )}
+
+            {(coverMedia || coverPreview) && (
+              <Button type="button" variant="outline" size="sm" onClick={() => coverInputRef.current?.click()}>
+                Trocar capa
+              </Button>
             )}
           </div>
 
@@ -471,9 +520,9 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
       {/* Botões — fora do grid, abaixo das duas colunas */}
       <div className="flex items-center gap-3 pt-2 border-t">
         {highlight && (
-          <Button type="button" variant="ghost" className="mr-auto text-destructive hover:text-destructive hover:bg-destructive/10" onClick={handleDelete} disabled={deleting}>
-            {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-            Excluir projeto
+          <Button type="button" variant="ghost" className="mr-auto text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteDialogOpen(true)}>
+            <Trash2 className="mr-2 h-4 w-4" />
+            {tDelete('confirmDelete')}
           </Button>
         )}
         <Button type="button" variant="outline" onClick={() => router.push(backPath)}>Cancelar</Button>
@@ -482,6 +531,16 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
           {highlight ? 'Salvar alterações' : 'Criar projeto'}
         </Button>
       </div>
+
+      {highlight && (
+        <DeleteProjectDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          projectId={highlight.id}
+          projectTitle={highlight.title}
+          onDeleted={() => { router.push(backPath); router.refresh() }}
+        />
+      )}
     </form>
   )
 }
