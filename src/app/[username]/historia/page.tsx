@@ -2,9 +2,10 @@ import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import { HistoryView } from '@/components/profile/history-view'
+import type { Locale } from '@/i18n/config'
 import { SkList } from '@/components/ui/skeleton'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -40,13 +41,14 @@ export default async function HistoriaPage({ params }: Props) {
 
   const t = await getTranslations('PublicProfile')
   const { canEdit } = await getProfileViewerContext(username)
+  const visitorLocale = (await getLocale()) as Locale
 
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto px-4 py-8 pb-20 space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">História de {profile.display_name}</h1>
-          <p className="text-muted-foreground text-sm mt-1">A jornada por trás da missão.</p>
+          <h1 className="text-2xl font-bold">{t('historiaTitle', { name: profile.display_name })}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{t('historiaDescription', { name: profile.display_name })}</p>
         </div>
         {canEdit && (
           <Link href="/dashboard/configuracoes/historia" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-2')}>
@@ -55,14 +57,14 @@ export default async function HistoriaPage({ params }: Props) {
           </Link>
         )}
         <Suspense fallback={<SkList n={3} />}>
-          <HistoryBlocksAsync profileId={profile.id} />
+          <HistoryBlocksAsync profileId={profile.id} visitorLocale={visitorLocale} />
         </Suspense>
       </div>
     </div>
   )
 }
 
-async function HistoryBlocksAsync({ profileId }: { profileId: string }) {
+async function HistoryBlocksAsync({ profileId, visitorLocale }: { profileId: string; visitorLocale: Locale }) {
   const supabase = await createClient()
   const { data: blocks } = await supabase
     .from('history_blocks')
@@ -70,5 +72,5 @@ async function HistoryBlocksAsync({ profileId }: { profileId: string }) {
     .eq('profile_id', profileId)
     .order('order_index')
 
-  return <HistoryView blocks={blocks ?? []} />
+  return <HistoryView blocks={blocks ?? []} visitorLocale={visitorLocale} />
 }
