@@ -16,7 +16,7 @@ export default async function HistoriaSettingsPage() {
     .order('order_index')
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-lg mx-auto">
       <div className="flex items-center gap-2">
         <BackButton href="/dashboard/configuracoes" label={t('back')} />
         <h1 className="text-xl font-semibold">{t('title')}</h1>

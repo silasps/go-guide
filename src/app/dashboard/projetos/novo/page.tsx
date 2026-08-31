@@ -7,7 +7,7 @@ export default async function NovoProjetoPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">Novo projeto</h1>
-      <HighlightForm profileId={profile!.id} backPath="/dashboard/projetos" />
+      <HighlightForm profileId={profile!.id} backPath={`/${profile!.username}/projetos`} />
     </div>
   )
 }

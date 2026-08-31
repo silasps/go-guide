@@ -14,6 +14,8 @@ interface SessionUser {
   id: string
   email: string | null
   user_metadata?: { full_name?: string }
+  phone?: string | null
+  whatsappOptIn?: boolean
 }
 
 export interface PartnershipWizardProps {
@@ -24,6 +26,8 @@ export interface PartnershipWizardProps {
   missionStartYear: number | null
   highlightId?: string
   highlightTitle?: string
+  highlightGoalAmount?: number | null
+  highlightCurrentAmount?: number | null
   defaultCurrency: string
   paymentOptions: { id: string; method: PledgePaymentMethod; label: string; value: string; details: string | null; currency: string }[]
   budgetCategories?: BudgetCategoryOption[]
@@ -36,7 +40,7 @@ export interface PartnershipWizardProps {
   user: SessionUser | null
 }
 
-export function PartnershipWizard({ profileId, username, initialChoice, missionaryName, missionStartYear, highlightId, highlightTitle, defaultCurrency, paymentOptions, budgetCategories, initialCategoryId, hasFinancialOptions, stripeAvailable, profileAvatarUrl, highlightCoverUrl, highlightCoverPosition, user }: PartnershipWizardProps) {
+export function PartnershipWizard({ profileId, username, initialChoice, missionaryName, missionStartYear, highlightId, highlightTitle, highlightGoalAmount, highlightCurrentAmount, defaultCurrency, paymentOptions, budgetCategories, initialCategoryId, hasFinancialOptions, stripeAvailable, profileAvatarUrl, highlightCoverUrl, highlightCoverPosition, user }: PartnershipWizardProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -75,6 +79,8 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
         missionaryName={missionaryName}
         highlightId={choice === 'financial_once' ? highlightId : undefined}
         highlightTitle={choice === 'financial_once' ? highlightTitle : undefined}
+        highlightGoalAmount={choice === 'financial_once' ? highlightGoalAmount : undefined}
+        highlightCurrentAmount={choice === 'financial_once' ? highlightCurrentAmount : undefined}
         isRecurring={false}
         defaultCurrency={defaultCurrency}
         paymentOptions={paymentOptions}

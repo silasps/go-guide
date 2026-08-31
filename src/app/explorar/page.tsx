@@ -16,6 +16,7 @@ import { formatCurrency, getInitials } from '@/lib/utils'
 import type { PostWithProfile } from '@/types/database'
 import type { Locale } from '@/i18n/config'
 import { ExploreTabs } from './explore-tabs'
+import { HeaderSearch } from '@/components/dashboard/header-search'
 
 export const metadata: Metadata = {
   title: 'Explorar',
@@ -36,6 +37,8 @@ export default async function ExplorarPage() {
     .select('id')
     .eq('privacy_mode', 'public')
     .eq('user_role', 'missionary')
+    .eq('verification_status', 'approved')
+    .eq('account_status', 'active')
 
   const publicIds = (publicProfiles ?? []).map((p) => p.id)
   const visitorLocale = (await getLocale()) as Locale
@@ -46,12 +49,14 @@ export default async function ExplorarPage() {
           .select('id, slug, title, cover_url, cover_position, category, goal_amount, current_amount, currency, original_locale, title_translations, profile:profiles(id, username, display_name, avatar_url)')
           .in('profile_id', publicIds)
           .eq('status', 'active')
+          .is('archived_at', null)
           .order('created_at', { ascending: false })
           .limit(12),
         supabase.from('posts')
           .select('*, profile:profiles(id, username, display_name, avatar_url, accent_color, user_role), highlight:highlights(title, slug, category, cover_url)')
           .in('profile_id', publicIds)
           .eq('is_draft', false)
+          .neq('moderation_status', 'removed')
           .order('published_at', { ascending: false })
           .limit(24),
       ])
@@ -72,9 +77,12 @@ export default async function ExplorarPage() {
       <SiteNav />
 
       <main className="flex-1 max-w-2xl lg:max-w-4xl mx-auto w-full px-4 py-8 space-y-8">
-        <div className="space-y-1">
-          <h1 className="font-heading text-2xl font-bold">Explorar</h1>
-          <p className="text-muted-foreground text-sm">Veja o que missionários estão fazendo agora pelo go→guide.</p>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <h1 className="font-heading text-2xl font-bold">Explorar</h1>
+            <p className="text-muted-foreground text-sm">Veja o que missionários estão fazendo agora pelo go→guide.</p>
+          </div>
+          <HeaderSearch className="block max-w-none sm:max-w-sm" />
         </div>
 
         {!hasContent && (

@@ -4,7 +4,8 @@ import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
-import { Profile, UserRole } from '@/types/database'
+import { Gender, Profile, UserRole } from '@/types/database'
+import { isReservedUsername, checkUsernameAvailability } from '@/lib/username'
 import { AccountTypeSelector, useAccountTypeCopy } from '@/components/profile/account-type-selector'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,6 +34,7 @@ export function OnboardingWizard({ profile, hasPaymentMethod }: Props) {
   // pergunta de papel e cai direto na configuração de perfil.
   const [step, setStep] = useState<Step>(profile.user_role === 'missionary' ? 'profile' : 'role')
   const [roleSaving, setRoleSaving] = useState(false)
+  const [gender, setGender] = useState<Gender>(profile.gender)
 
   // Passo 1 — perfil
   const [displayName, setDisplayName] = useState(profile.display_name)
@@ -67,7 +69,7 @@ export function OnboardingWizard({ profile, hasPaymentMethod }: Props) {
   async function chooseRole(role: UserRole) {
     setRoleSaving(true)
     const supabase = createClient()
-    const { error } = await supabase.from('profiles').update({ user_role: role }).eq('id', profile.id)
+    const { error } = await supabase.from('profiles').update({ user_role: role, gender }).eq('id', profile.id)
     setRoleSaving(false)
     if (error) { toast.error(t('errorSavingProfile')); return }
     setStep(role === 'partner' ? 'partnerDone' : 'profile')
@@ -85,12 +87,15 @@ export function OnboardingWizard({ profile, hasPaymentMethod }: Props) {
       setUsernameStatus('invalid')
       return
     }
+    if (isReservedUsername(value)) {
+      setUsernameStatus('taken')
+      return
+    }
 
     setUsernameStatus('checking')
     setUsernameTimer(setTimeout(async () => {
       const supabase = createClient()
-      const { data } = await supabase.from('profiles').select('id').eq('username', value).neq('id', profile.id).maybeSingle()
-      setUsernameStatus(data ? 'taken' : 'available')
+      setUsernameStatus(await checkUsernameAvailability(supabase, value, profile.id))
     }, 500))
   }
 
@@ -196,6 +201,25 @@ export function OnboardingWizard({ profile, hasPaymentMethod }: Props) {
               <CardDescription>{t('roleStepDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">{t('genderLabel')}</Label>
+                <div className="flex gap-2">
+                  {(['male', 'female', 'unspecified'] as Gender[]).map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      disabled={roleSaving}
+                      onClick={() => setGender(g)}
+                      className={cn(
+                        'flex-1 text-xs px-2 py-1.5 rounded-lg border transition-colors',
+                        gender === g ? 'border-primary bg-primary/5 text-foreground' : 'border-border text-muted-foreground hover:bg-muted/50'
+                      )}
+                    >
+                      {t(`gender_${g}`)}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <button
                 type="button"
                 disabled={roleSaving}

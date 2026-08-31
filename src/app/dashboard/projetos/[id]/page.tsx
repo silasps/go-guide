@@ -59,7 +59,7 @@ export default async function EditarProjetoPage({ params }: Props) {
           </Link>
         </div>
       </div>
-      <HighlightForm highlight={{ ...highlight, milestones: milestones ?? [], budgetCategories: budgetCategories ?? [], galleryImages: galleryImages ?? [] }} profileId={profile.id} backPath="/dashboard/projetos" />
+      <HighlightForm highlight={{ ...highlight, milestones: milestones ?? [], budgetCategories: budgetCategories ?? [], galleryImages: galleryImages ?? [] }} profileId={profile.id} backPath={`/${profile.username}/projetos`} />
     </div>
   )
 }

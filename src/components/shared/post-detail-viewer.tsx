@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { X } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { PostWithProfile } from '@/types/database'
 import type { Locale } from '@/i18n/config'
@@ -70,16 +70,16 @@ export function PostDetailViewer({ posts, initialIndex, visitorLocale, canEdit =
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="inset-0 sm:inset-auto sm:top-1/2 sm:left-1/2 translate-x-0 translate-y-0 sm:-translate-x-1/2 sm:-translate-y-1/2 w-full h-full sm:h-auto max-w-none sm:max-w-lg max-h-full sm:max-h-[85vh] p-0 gap-0 overflow-hidden rounded-none sm:rounded-2xl bg-card sm:bg-transparent ring-0"
+        className="inset-0 sm:inset-auto sm:top-1/2 sm:left-1/2 translate-x-0 translate-y-0 sm:-translate-x-1/2 sm:-translate-y-1/2 w-full h-full sm:w-[480px] sm:h-[95vh] max-w-none sm:max-w-none max-h-full p-0 gap-0 overflow-hidden rounded-none bg-card ring-0"
       >
         <DialogTitle className="sr-only">Post</DialogTitle>
 
         <button
           type="button"
           onClick={() => onOpenChange(false)}
-          className="absolute top-2 right-2 z-10 h-7 w-7 flex items-center justify-center rounded-full bg-background/90 text-foreground ring-1 ring-border hover:bg-muted"
+          className="absolute top-2 left-2 z-10 h-7 w-7 flex items-center justify-center rounded-full bg-background/90 text-foreground ring-1 ring-border hover:bg-muted"
         >
-          <X className="h-4 w-4" />
+          <ChevronLeft className="h-4 w-4" />
         </button>
 
         <div ref={containerRef} className="h-full overflow-y-auto snap-y snap-proximity scrollbar-hide">
@@ -94,7 +94,7 @@ export function PostDetailViewer({ posts, initialIndex, visitorLocale, canEdit =
                 visitorLocale={visitorLocale}
                 canEdit={canEdit}
                 autoOpenComments={initialCommentsOpen && i === initialIndex && activeIndex === i}
-                inDetailModal
+                edgeToEdge
               />
             </div>
           ))}

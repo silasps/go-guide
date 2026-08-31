@@ -15,15 +15,18 @@ create unique index if not exists idx_profiles_email_verification_token
 update profiles set email_verified = true where email_verified = false;
 
 -- Contas Google já vêm com e-mail verificado pelo próprio provider; só
--- e-mail/senha nasce pendente de verificação.
+-- e-mail/senha nasce pendente de verificação. Redefine de novo a mesma
+-- função da migration 055 (telefone) — CREATE OR REPLACE substitui o corpo
+-- inteiro, então repete a leitura de `phone` de lá pra não perder esse campo.
 create or replace function handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (user_id, username, display_name, email_verified)
+  insert into public.profiles (user_id, username, display_name, phone, email_verified)
   values (
     new.id,
     lower(split_part(new.email, '@', 1)) || '_' || substr(new.id::text, 1, 6),
     coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
+    nullif(new.raw_user_meta_data->>'phone', ''),
     coalesce(new.raw_app_meta_data->>'provider', 'email') != 'email'
   );
   return new;

@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
@@ -12,11 +12,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { Loader2, ChevronLeft } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 
 function LoginForm() {
   const t = useTranslations('Auth')
-  const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') ?? '/dashboard'
   const isMessageFlow = redirect.includes('/mensagens')
@@ -40,8 +39,13 @@ function LoginForm() {
         await keyManager.setupOrUnlockWithPassword(data.user.id, password).catch(() => {})
       }
 
-      router.push(redirect)
-      router.refresh()
+      // Navegação de página inteira (não router.push) — logo após o login, o
+      // destino pode estar fora da árvore de rotas já carregada no cliente
+      // (ex: vindo de /login para /[username]/parceria), e uma transição
+      // client-side às vezes resolve a árvore antes da sessão nova estar
+      // totalmente refletida, caindo em notFound(). Um load completo sempre
+      // busca do zero com a sessão já pronta.
+      window.location.href = redirect
     })
   }
 
@@ -55,14 +59,6 @@ function LoginForm() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => router.back()}
-        className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ChevronLeft className="h-4 w-4" />
-        {t('back')}
-      </button>
       <Card>
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">{t('loginTitle')}</CardTitle>

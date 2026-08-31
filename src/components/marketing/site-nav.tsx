@@ -45,6 +45,10 @@ export function SiteNav() {
         </Link>
 
         <div className="hidden md:flex items-center gap-1" ref={containerRef}>
+          <Link href="/explorar" className="px-3 py-2 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+            {tNav('explorar')}
+          </Link>
+
           <div className="relative">
             <button
               onClick={() => setOpen((v) => !v)}
@@ -105,6 +109,14 @@ export function SiteNav() {
           <div className="flex sm:hidden items-center justify-center pb-3 mb-1 border-b">
             <LanguageSwitcher />
           </div>
+
+          <Link
+            href="/explorar"
+            onClick={() => setMobileOpen(false)}
+            className="block px-1 py-2 text-sm font-semibold"
+          >
+            {tNav('explorar')}
+          </Link>
 
           <button
             onClick={() => setMobileModulesOpen((v) => !v)}

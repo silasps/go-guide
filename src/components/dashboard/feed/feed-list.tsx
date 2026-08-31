@@ -30,13 +30,13 @@ export function FeedList({ initialPosts, initialCursor, visitorLocale }: Props) 
   }
 
   return (
-    <div className="space-y-4">
+    <div>
       {posts.map((post) => (
-        <PostCard key={post.id} post={post} visitorLocale={visitorLocale} />
+        <PostCard key={post.id} post={post} visitorLocale={visitorLocale} edgeToEdge />
       ))}
 
       {cursor && (
-        <div className="flex justify-center pt-2">
+        <div className="flex justify-center pt-4">
           <Button variant="outline" size="sm" disabled={isPending} onClick={loadMore}>
             {isPending ? t('loading') : t('loadMore')}
           </Button>

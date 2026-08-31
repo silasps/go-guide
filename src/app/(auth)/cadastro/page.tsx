@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
@@ -11,11 +11,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { Loader2, ChevronLeft } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 
 function CadastroForm() {
   const t = useTranslations('Auth')
-  const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') ?? '/onboarding'
   // Quem chega aqui vindo do fluxo de "apoiar um missionário" pula o
@@ -26,6 +25,7 @@ function CadastroForm() {
   const isMessageFlow = redirect.includes('/mensagens')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -41,7 +41,7 @@ function CadastroForm() {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name } },
+      options: { data: { full_name: name, phone: phone.trim() || undefined } },
     })
 
     if (error) {
@@ -54,10 +54,14 @@ function CadastroForm() {
       await keyManager.setupOrUnlockWithPassword(data.user.id, password).catch(() => {})
     }
 
-    fetch('/api/auth/enviar-verificacao', { method: 'POST' }).catch(() => {})
+    // keepalive: o window.location.href logo abaixo derruba a página antes
+    // que um fetch normal em segundo plano tivesse tempo de completar.
+    fetch('/api/auth/enviar-verificacao', { method: 'POST', keepalive: true }).catch(() => {})
 
     toast.success(t('signupSuccess'))
-    router.push(redirect)
+    // Load completo, não router.push — mesmo motivo do /login: destino pode
+    // estar fora da árvore de rotas já carregada no cliente.
+    window.location.href = redirect
   }
 
   async function handleGoogle() {
@@ -70,14 +74,6 @@ function CadastroForm() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => router.back()}
-        className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ChevronLeft className="h-4 w-4" />
-        {t('back')}
-      </button>
       <Card>
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">{t('signupTitle')}</CardTitle>
@@ -132,6 +128,20 @@ function CadastroForm() {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="phone">
+              {t('phoneLabel')} <span className="text-muted-foreground font-normal">{t('phoneOptional')}</span>
+            </Label>
+            <Input
+              id="phone"
+              type="tel"
+              placeholder={t('phonePlaceholder')}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              autoComplete="tel"
             />
           </div>
 

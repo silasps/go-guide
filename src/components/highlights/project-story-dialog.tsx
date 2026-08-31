@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { BookOpen } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { BackButton } from '@/components/ui/back-button'
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 interface Props {
   triggerLabel: string
@@ -25,7 +27,11 @@ export function ProjectStoryDialog({ triggerLabel, title, closeLabel, children }
       <DialogTrigger render={
         <button
           type="button"
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary px-4 py-3 text-sm font-semibold transition-colors"
+          className={cn(
+            buttonVariants({ size: 'lg' }),
+            'w-full gap-2 rounded-xl shadow-sm hover:shadow transition-shadow',
+            'bg-gradient-to-r from-support to-support/70 text-support-foreground hover:opacity-90 hover:from-support hover:to-support/70',
+          )}
         >
           <BookOpen className="h-4 w-4" />
           {triggerLabel}

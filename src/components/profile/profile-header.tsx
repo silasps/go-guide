@@ -60,9 +60,9 @@ export async function ProfileHeader({ profile, postsCount, projectsCount, achiev
         </div>
 
         <ProfileStats
-          postsCount={postsCount} postsLabel={t('statsPosts')}
-          projectsCount={projectsCount} projectsLabel={t('statsProjects')}
-          achievementsCount={achievementsCount} achievementsLabel={t('statsAchievements')}
+          postsCount={postsCount} postsLabel={t('statsPosts', { count: postsCount })}
+          projectsCount={projectsCount} projectsLabel={t('statsProjects', { count: projectsCount })}
+          achievementsCount={achievementsCount} achievementsLabel={t('statsAchievements', { count: achievementsCount })}
           username={profile.username}
         />
       </div>
@@ -74,7 +74,7 @@ export async function ProfileHeader({ profile, postsCount, projectsCount, achiev
         <div className="grid grid-cols-2 text-center rounded-xl border py-2">
           <Link href={`/${profile.username}/seguidores`}>
             <span className="text-sm font-semibold">{followersCount}</span>{' '}
-            <span className="text-xs text-muted-foreground">{t('statsFollowers')}</span>
+            <span className="text-xs text-muted-foreground">{t('statsFollowers', { count: followersCount })}</span>
           </Link>
           <Link href={`/${profile.username}/seguidores?tab=seguindo`} className="border-l">
             <span className="text-sm font-semibold">{followingCount}</span>{' '}

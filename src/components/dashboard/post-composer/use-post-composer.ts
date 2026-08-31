@@ -220,7 +220,16 @@ export function usePostComposer({ post, profileId, userId, originalLocale, onSav
         router.refresh()
         onSaved()
       } catch (err) {
-        toast.error('Não foi possível salvar a publicação.')
+        const message = err instanceof Error ? err.message : ''
+        if (message === 'content_flagged') {
+          toast.error('Este texto parece violar nossas diretrizes de conteúdo (discurso de ódio, conteúdo sexual, assédio ou violência). Ajuste o texto e tente novamente.')
+        } else if (message === 'account_hidden_pending_review') {
+          toast.error('Sua conta está em análise por denúncias e não pode publicar no momento.')
+        } else if (message === 'account_suspended') {
+          toast.error('Sua conta está suspensa e não pode publicar.')
+        } else {
+          toast.error('Não foi possível salvar a publicação.')
+        }
         console.error(err)
       } finally {
         setUploadProgress(null)

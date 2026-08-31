@@ -75,7 +75,7 @@ export function ProfileContentTabs({ posts, projects, historyBlocks, username, a
         <ProfilePostsGrid posts={posts} visitorLocale={visitorLocale} canEdit={canEdit} deepLinkPostId={deepLinkPostId} deepLinkComments={deepLinkComments} />
       ) : <EmptyState label={t('noContentYet')} />)}
       {tab === 'projects' && (projects.length ? <ProjectsGrid projects={projects} username={username} accentColor={accentColor} visitorLocale={visitorLocale} /> : <EmptyState label={t('noContentYet')} />)}
-      {tab === 'history' && (historyBlocks.length ? <HistoryView blocks={historyBlocks} /> : <EmptyState label={t('noContentYet')} />)}
+      {tab === 'history' && (historyBlocks.length ? <HistoryView blocks={historyBlocks} visitorLocale={visitorLocale} /> : <EmptyState label={t('noContentYet')} />)}
     </div>
   )
 }

@@ -24,52 +24,49 @@ export interface SearchProject {
   profile: { username: string; display_name: string; accent_color: string }
 }
 
-// PostgREST monta o filtro de .or() como uma string separada por vírgula —
-// sem escapar, o usuário poderia injetar cláusulas extra (ex: ",status.eq.hidden").
-// Só letras/números/espaço/acento passam; o resto vira espaço.
-function sanitizeForIlike(q: string) {
-  return q.replace(/[,()%_]/g, ' ').trim()
+interface SearchHighlightRow {
+  id: string
+  slug: string | null
+  title: string
+  cover_url: string | null
+  cover_position: string
+  profile_username: string
+  profile_display_name: string
+  profile_accent_color: string
+}
+
+// search_missionaries/search_highlights (migration 059) recebem `q` como
+// parâmetro de função (sem risco de injeção de filtro); só limpamos aqui
+// pra evitar que % ou _ digitados pelo usuário virem coringa dentro do
+// LIKE que a função monta internamente.
+function sanitizeQuery(q: string) {
+  return q.replace(/[%_]/g, ' ').trim()
 }
 
 export async function searchDirectory(query: string): Promise<{ missionaries: SearchMissionary[]; projects: SearchProject[] }> {
-  const q = sanitizeForIlike(query)
+  const q = sanitizeQuery(query)
   if (q.length < 2) return { missionaries: [], projects: [] }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  let missionaryQuery = supabase
-    .from('profiles')
-    .select('id, username, display_name, avatar_url, accent_color, bio, location, show_location')
-    .eq('privacy_mode', 'public')
-    .eq('user_role', 'missionary')
-    .or(`display_name.ilike.%${q}%,username.ilike.%${q}%,bio.ilike.%${q}%`)
-    .limit(RESULTS_LIMIT)
-  if (user) missionaryQuery = missionaryQuery.neq('user_id', user.id)
+  // Busca por similaridade de trigrama (pg_trgm) tolerante a acento —
+  // resultados diretos primeiro, depois os "parecidos" acima do piso de
+  // similaridade, em vez de sumir quando não há match exato (ver 059).
+  const [{ data: missionaries }, { data: projects }] = await Promise.all([
+    supabase.rpc('search_missionaries', { q, viewer_user_id: user?.id ?? null, result_limit: RESULTS_LIMIT }),
+    supabase.rpc('search_highlights', { q, result_limit: RESULTS_LIMIT }),
+  ])
 
-  const projectsQuery = supabase
-    .from('highlights')
-    .select('id, slug, title, cover_url, cover_position, profile:profiles(username, display_name, accent_color, privacy_mode, user_role)')
-    .neq('status', 'hidden')
-    .or(`title.ilike.%${q}%,description.ilike.%${q}%`)
-    .limit(RESULTS_LIMIT * 2)
-
-  const [{ data: missionaries }, { data: projects }] = await Promise.all([missionaryQuery, projectsQuery])
-
-  const visibleProjects = (projects ?? [])
-    .filter((p) => {
-      const profile = p.profile as unknown as { privacy_mode: string; user_role: string } | null
-      return profile?.privacy_mode === 'public' && profile?.user_role === 'missionary'
-    })
-    .slice(0, RESULTS_LIMIT)
-    .map((p) => ({
+  return {
+    missionaries: missionaries ?? [],
+    projects: ((projects ?? []) as SearchHighlightRow[]).map((p) => ({
       id: p.id,
       slug: p.slug,
       title: p.title,
       cover_url: p.cover_url,
       cover_position: p.cover_position,
-      profile: p.profile as unknown as SearchProject['profile'],
-    }))
-
-  return { missionaries: missionaries ?? [], projects: visibleProjects }
+      profile: { username: p.profile_username, display_name: p.profile_display_name, accent_color: p.profile_accent_color },
+    })),
+  }
 }

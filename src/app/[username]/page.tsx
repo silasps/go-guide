@@ -15,7 +15,7 @@ import { ProfileTabProvider } from '@/components/profile/profile-tab-context'
 import { enrichWithEngagement } from '@/lib/posts/enrich-with-engagement'
 import type { PostWithProfile, Profile } from '@/types/database'
 import { SkCardGrid, SkFeedPosts } from '@/components/ui/skeleton'
-import { getProfile } from '@/lib/profile/get-profile'
+import { getProfile, getProfileOrRedirect } from '@/lib/profile/get-profile'
 import { getProfileViewerContext } from '@/lib/profile/viewer-context'
 import { getFollowCounts } from '@/app/dashboard/feed/follows-list-actions'
 import { markNotificationTypesRead } from '@/lib/notifications/mark-read'
@@ -57,11 +57,22 @@ export default async function ProfilePage({ params, searchParams }: Props) {
   const { username } = await params
   const { post: deepLinkPostId, comments: deepLinkComments, tab } = await searchParams
   const initialTab = VALID_TABS.find((t) => t === tab)
-  const profile = await getProfile(username)
+  const profile = await getProfileOrRedirect(username)
 
   if (!profile) notFound()
 
   const { canEdit } = await getProfileViewerContext(username)
+
+  // Missionário aguardando aprovação (ver becomeMissionary()) ou conta
+  // ocultada por denúncia (migration 056) — bloqueado pra qualquer um que
+  // não seja o próprio dono, senão a pessoa recebe doação via link direto
+  // mesmo sem aprovação/enquanto revisada, o que anularia o gate.
+  if (profile.verification_status === 'pending' && !canEdit) {
+    return <UnderReviewScreen name={profile.display_name} messageKey="verificationPendingMessage" />
+  }
+  if (profile.account_status !== 'active' && !canEdit) {
+    return <UnderReviewScreen name={profile.display_name} messageKey={profile.account_status === 'suspended' ? 'accountSuspendedMessage' : 'accountUnderReviewMessage'} />
+  }
 
   if (profile.privacy_mode === 'private' && !canEdit) {
     const supabase = await createClient()
@@ -83,9 +94,9 @@ export default async function ProfilePage({ params, searchParams }: Props) {
   const supabase = await createClient()
   const [{ count: projectsCount }, { count: completedCount }, { count: postsCount }, followCounts, visitorLocale] =
     await Promise.all([
-      supabase.from('highlights').select('id', { count: 'exact', head: true }).eq('profile_id', profile.id).eq('status', 'active'),
-      supabase.from('highlights').select('id', { count: 'exact', head: true }).eq('profile_id', profile.id).eq('status', 'completed'),
-      supabase.from('posts').select('id', { count: 'exact', head: true }).eq('profile_id', profile.id).eq('is_draft', false),
+      supabase.from('highlights').select('id', { count: 'exact', head: true }).eq('profile_id', profile.id).eq('status', 'active').is('archived_at', null),
+      supabase.from('highlights').select('id', { count: 'exact', head: true }).eq('profile_id', profile.id).eq('status', 'completed').is('archived_at', null),
+      supabase.from('posts').select('id', { count: 'exact', head: true }).eq('profile_id', profile.id).eq('is_draft', false).neq('moderation_status', 'removed'),
       profile.user_role === 'missionary' ? getFollowCounts(profile.id) : Promise.resolve(null),
       getLocale() as Promise<Locale>,
     ])
@@ -105,7 +116,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
         {canEdit ? (
           <ProfileOwnerActions profile={profile} />
         ) : (
-          <ProfileCTA username={profile.username} hasTrajectory={(completedCount ?? 0) > 0} />
+          <ProfileCTA username={profile.username} profileId={profile.id} hasTrajectory={(completedCount ?? 0) > 0} />
         )}
         <Suspense fallback={<SkCardGrid n={3} />}>
           <ProjectsSectionAsync profileId={profile.id} username={profile.username} accentColor={profile.accent_color} visitorLocale={visitorLocale} />
@@ -132,6 +143,7 @@ async function ProjectsSectionAsync({ profileId, username, accentColor, visitorL
     .select('*')
     .eq('profile_id', profileId)
     .eq('status', 'active')
+    .is('archived_at', null)
     .order('order_index')
 
   if (!projects || projects.length === 0) return null
@@ -159,10 +171,11 @@ async function ProfileContentAsync({ profile, visitorLocale, canEdit, deepLinkPo
       .select('*, highlight:highlights(title, slug, category, cover_url)')
       .eq('profile_id', profile.id)
       .eq('is_draft', false)
+      .neq('moderation_status', 'removed')
       .order('published_at', { ascending: false })
       .limit(20),
     isMissionary
-      ? supabase.from('highlights').select('*').eq('profile_id', profile.id).eq('status', 'active').order('order_index')
+      ? supabase.from('highlights').select('*').eq('profile_id', profile.id).eq('status', 'active').is('archived_at', null).order('order_index')
       : Promise.resolve({ data: [] }),
     isMissionary
       ? supabase.from('history_blocks').select('*').eq('profile_id', profile.id).order('order_index')
@@ -222,6 +235,21 @@ async function PrivateProfileScreen({ name }: { name: string }) {
         <h1 className="text-xl font-semibold">{name}</h1>
         <p className="text-muted-foreground text-sm">
           {t('privateProfileMessage')}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+async function UnderReviewScreen({ name, messageKey }: { name: string; messageKey: 'verificationPendingMessage' | 'accountUnderReviewMessage' | 'accountSuspendedMessage' }) {
+  const t = await getTranslations('PublicProfile')
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="text-center space-y-4 max-w-sm">
+        <div className="text-5xl">⏳</div>
+        <h1 className="text-xl font-semibold">{name}</h1>
+        <p className="text-muted-foreground text-sm">
+          {t(messageKey)}
         </p>
       </div>
     </div>

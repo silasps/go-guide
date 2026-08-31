@@ -16,11 +16,13 @@ export async function getFeedPage(cursor: string | null): Promise<{
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { posts: [], nextCursor: null }
 
-  const [{ data: follows }, { data: partners }, { data: pledges }, { data: recurring }] = await Promise.all([
+  const [{ data: follows }, { data: partners }, { data: pledges }, { data: recurring }, { data: ownProfiles }, { data: managedProfiles }] = await Promise.all([
     supabase.from('follows').select('profile_id').eq('follower_user_id', user.id),
     supabase.from('partners').select('profile_id').eq('user_id', user.id),
     supabase.from('pledges').select('profile_id, highlight:highlights(category)').eq('reporter_user_id', user.id).eq('status', 'confirmed'),
     supabase.from('recurring_pledges').select('profile_id').eq('reporter_user_id', user.id).eq('status', 'active'),
+    supabase.from('profiles').select('id').eq('user_id', user.id),
+    supabase.from('profile_managers').select('profile_id').eq('user_id', user.id),
   ])
 
   const followedProfileIds = new Set((follows ?? []).map((f) => f.profile_id))
@@ -30,9 +32,13 @@ export async function getFeedPage(cursor: string | null): Promise<{
     (pledges ?? []).flatMap((p) => (p.highlight as { category?: string[] } | null)?.category ?? [])
   ) as AffinitySignals['affinityCategories']
 
+  // Perfil próprio (e os que você gerencia) entram no feed também — senão
+  // você nunca vê a própria publicação aparecer na timeline, só no seu perfil.
   const profileIds = new Set<string>([
     ...followedProfileIds,
     ...(partners ?? []).map((p) => p.profile_id),
+    ...(ownProfiles ?? []).map((p) => p.id),
+    ...(managedProfiles ?? []).map((p) => p.profile_id),
   ])
 
   if (profileIds.size === 0) {
@@ -44,6 +50,7 @@ export async function getFeedPage(cursor: string | null): Promise<{
     .select('*, profile:profiles(id, username, display_name, avatar_url, accent_color, user_role), highlight:highlights(title, slug, category, cover_url)')
     .in('profile_id', Array.from(profileIds))
     .eq('is_draft', false)
+    .neq('moderation_status', 'removed')
     .order('published_at', { ascending: false })
     .limit(PAGE_SIZE)
 
@@ -101,6 +108,8 @@ export async function getDiscoverMissionaries() {
     .select('id, username, display_name, avatar_url, cover_url, accent_color, bio, location, show_location')
     .eq('privacy_mode', 'public')
     .eq('user_role', 'missionary')
+    .eq('verification_status', 'approved')
+    .eq('account_status', 'active')
     .order('created_at', { ascending: false })
     .limit(20)
 
@@ -146,6 +155,7 @@ export async function getFollowedProjectStories(): Promise<ProjectStory[]> {
       .select('id, project_id, content, media_urls, type, published_at, original_locale, translations')
       .in('project_id', highlightIds)
       .eq('is_draft', false)
+      .neq('moderation_status', 'removed')
       .order('published_at', { ascending: false })
       .limit(300),
     supabase.from('project_story_views').select('highlight_id, last_viewed_at').eq('user_id', user.id),

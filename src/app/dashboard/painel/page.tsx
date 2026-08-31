@@ -141,6 +141,7 @@ async function RecentPosts({ profileId }: { profileId: string }) {
     .select('id, content, type, published_at')
     .eq('profile_id', profileId)
     .eq('is_draft', false)
+    .neq('moderation_status', 'removed')
     .order('published_at', { ascending: false })
     .limit(5)
 

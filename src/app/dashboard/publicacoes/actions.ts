@@ -5,6 +5,7 @@ import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/
 import { revalidatePath } from 'next/cache'
 import type { HighlightStatus, Locale, MediaAspectRatio, PostType } from '@/types/database'
 import { getNearbyLocationsCascade, searchLocationsCascade } from '@/lib/geocoding/cascade'
+import { checkTextModeration } from '@/lib/ai/moderate-text'
 
 function serviceClient() {
   return createSupabaseClient(
@@ -17,7 +18,7 @@ function serviceClient() {
 async function assertProfileAccess(service: SupabaseClient, profileId: string, userId: string) {
   const { data: profileRow } = await service
     .from('profiles')
-    .select('id, user_id')
+    .select('id, user_id, account_status')
     .eq('id', profileId)
     .single()
   if (!profileRow) throw new Error('Perfil não encontrado')
@@ -34,6 +35,7 @@ async function assertProfileAccess(service: SupabaseClient, profileId: string, u
     authorized = Boolean(manager)
   }
   if (!authorized) throw new Error('Perfil não autorizado')
+  if (profileRow.account_status !== 'active') throw new Error(`account_${profileRow.account_status}`)
 }
 
 export async function savePost(input: {
@@ -68,6 +70,11 @@ export async function savePost(input: {
       .eq('profile_id', input.profileId)
       .maybeSingle()
     if (!highlightRow) throw new Error('Projeto não encontrado')
+  }
+
+  if (input.content.trim()) {
+    const moderation = await checkTextModeration(input.content.trim())
+    if (moderation.flagged) throw new Error('content_flagged')
   }
 
   const translations = Object.fromEntries(
