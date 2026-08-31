@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import { getProfileOrRedirect } from '@/lib/profile/get-profile'
 import { getProfileViewerContext } from '@/lib/profile/viewer-context'
 import type { Locale } from '@/i18n/config'
-import { CheckCircle2, Plus } from 'lucide-react'
+import { CheckCircle2, Plus, Archive } from 'lucide-react'
 import { ProjectGrid } from '@/components/highlights/project-grid'
 
 interface Props { params: Promise<{ username: string }> }
@@ -44,10 +44,20 @@ export default async function ProjetosPublicosPage({ params }: Props) {
             <p className="text-muted-foreground text-sm mt-1">Veja tudo o que {profile.display_name} está construindo e o que já foi realizado.</p>
           </div>
           {canEdit && (
-            <Link href="/dashboard/projetos/novo" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5 shrink-0')}>
-              <Plus className="h-3.5 w-3.5" />
-              {t('createProject')}
-            </Link>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Link
+                href="/dashboard/projetos/arquivados"
+                className={cn(buttonVariants({ variant: 'outline', size: 'icon' }), 'shrink-0')}
+                aria-label="Projetos arquivados"
+                title="Projetos arquivados"
+              >
+                <Archive className="h-3.5 w-3.5" />
+              </Link>
+              <Link href="/dashboard/projetos/novo" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5 shrink-0')}>
+                <Plus className="h-3.5 w-3.5" />
+                {t('createProject')}
+              </Link>
+            </div>
           )}
         </div>
 

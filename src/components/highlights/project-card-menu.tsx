@@ -7,7 +7,9 @@ import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { DeleteProjectDialog } from './delete-project-dialog'
-import { FolderOpen, Pencil, Eye, EyeOff, Archive, Trash2, MoreVertical, ChevronUp, ChevronDown } from 'lucide-react'
+import { FolderOpen, Pencil, Eye, EyeOff, Archive, Trash2, MoreVertical, ChevronUp, ChevronDown, Share2 } from 'lucide-react'
+
+const ITEM_CLASS = 'gap-2.5 px-2.5 py-2'
 import type { HighlightStatus } from '@/types/database'
 
 interface Props {
@@ -61,6 +63,20 @@ export function ProjectCardMenu({ projectId, projectTitle, status, openHref, edi
     router.refresh()
   }
 
+  async function handleShare() {
+    const url = `${window.location.origin}${openHref}`
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: projectTitle, url })
+      } catch {
+        // usuário cancelou o compartilhamento — não é um erro
+      }
+      return
+    }
+    await navigator.clipboard.writeText(url)
+    toast.success(t('linkCopied'))
+  }
+
   return (
     <>
       <div className="absolute top-2 right-2 z-10">
@@ -71,36 +87,40 @@ export function ProjectCardMenu({ projectId, projectTitle, status, openHref, edi
           >
             <MoreVertical className="h-3.5 w-3.5" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="w-56">
             {(onMoveUp || onMoveDown) && (
               <>
-                <DropdownMenuItem onClick={onMoveUp} disabled={!onMoveUp} className="gap-2">
+                <DropdownMenuItem onClick={onMoveUp} disabled={!onMoveUp} className={ITEM_CLASS}>
                   <ChevronUp className="h-3.5 w-3.5" />
                   {t('moveUp')}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={onMoveDown} disabled={!onMoveDown} className="gap-2">
+                <DropdownMenuItem onClick={onMoveDown} disabled={!onMoveDown} className={ITEM_CLASS}>
                   <ChevronDown className="h-3.5 w-3.5" />
                   {t('moveDown')}
                 </DropdownMenuItem>
               </>
             )}
-            <DropdownMenuItem onClick={() => router.push(openHref)} className="gap-2">
+            <DropdownMenuItem onClick={() => router.push(openHref)} className={ITEM_CLASS}>
               <FolderOpen className="h-3.5 w-3.5" />
               {t('open')}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push(editHref)} className="gap-2">
+            <DropdownMenuItem onClick={() => router.push(editHref)} className={ITEM_CLASS}>
               <Pencil className="h-3.5 w-3.5" />
               {t('edit')}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={toggleStatus} className="gap-2">
+            <DropdownMenuItem onClick={handleShare} className={ITEM_CLASS}>
+              <Share2 className="h-3.5 w-3.5" />
+              {t('share')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={toggleStatus} className={ITEM_CLASS}>
               {status === 'active' ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
               {status === 'active' ? t('unpublish') : t('publish')}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleArchive} className="gap-2">
+            <DropdownMenuItem onClick={handleArchive} className={ITEM_CLASS}>
               <Archive className="h-3.5 w-3.5" />
               {t('archive')}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setDeleteOpen(true)} variant="destructive" className="gap-2">
+            <DropdownMenuItem onClick={() => setDeleteOpen(true)} variant="destructive" className={ITEM_CLASS}>
               <Trash2 className="h-3.5 w-3.5" />
               {t('delete')}
             </DropdownMenuItem>
