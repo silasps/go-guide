@@ -1,11 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { LanguageSwitcher } from '@/components/marketing/language-switcher'
 import { AccountMenuDrawer, type DrawerProfile } from '@/components/dashboard/account-menu-drawer'
+import { ProfileMoreMenu } from './profile-more-menu'
 import { BackButton } from '@/components/ui/back-button'
 import { useHideOnScroll } from '@/hooks/use-hide-on-scroll'
 import { User, BookOpen, FolderOpen, Trophy } from 'lucide-react'
@@ -15,7 +16,6 @@ interface Props {
   hasTrajectory: boolean
   isMissionary: boolean
   canEdit: boolean
-  viewerUserId: string | null
   ownerProfile: DrawerProfile | null
 }
 
@@ -28,8 +28,9 @@ interface Props {
 // layout.tsx) pra nunca se sobrepor às abas — nas telas sem abas, ele volta
 // a flutuar isolado no canto, ao lado do único botão de voltar (fixo,
 // discreto) dessas telas.
-export function ProfileTabs({ username, hasTrajectory, isMissionary, canEdit, viewerUserId, ownerProfile }: Props) {
+export function ProfileTabs({ username, hasTrajectory, isMissionary, canEdit, ownerProfile }: Props) {
   const pathname = usePathname()
+  const router = useRouter()
   const t = useTranslations('PublicProfile')
   const base = `/${username}`
   const hidden = useHideOnScroll()
@@ -81,10 +82,19 @@ export function ProfileTabs({ username, hasTrajectory, isMissionary, canEdit, vi
         hidden ? '-translate-y-full' : 'translate-y-0'
       )}
     >
-      <div className="max-w-xl mx-auto flex items-center gap-1">
+      {/* pl-4: sem essa margem o BackButton fica encostado no pixel 0 da tela —
+          em iOS (Safari/WebView do WhatsApp), a borda esquerda é reservada pro
+          gesto do sistema de "voltar", que compete com o toque e engole o
+          clique (reportado pelo usuário testando um link aberto direto do
+          WhatsApp num iPhone real). Mesma distância já usada no outro
+          BackButton deste arquivo (variante de /mensagens e /oracao, acima). */}
+      <div className="max-w-xl mx-auto flex items-center gap-1 pl-4">
+        {/* Sempre volta pra /explorar, nunca "de verdade" pro histórico —
+            esse botão aqui não é "voltar", é "sair do perfil" (pedido do
+            usuário), diferente do BackButton padrão usado no resto do app. */}
         <BackButton
-          href={viewerUserId ? '/dashboard' : '/explorar'}
-          label={viewerUserId ? t('backToDashboard') : t('backToHome')}
+          onClick={() => router.push('/explorar')}
+          label={t('backToHome')}
           className="shrink-0"
         />
         <nav className="flex-1 flex overflow-x-auto scrollbar-hide">
@@ -92,10 +102,10 @@ export function ProfileTabs({ username, hasTrajectory, isMissionary, canEdit, vi
             const active = exact ? pathname === href : pathname.startsWith(href)
             return (
               // `replace`: trocar de aba (Perfil/História/Projetos) não deve
-              // empilhar histórico — o `BackButton` acima usa `router.back()`
-              // de verdade, então sem isso "voltar" ficava saltando de aba em
-              // aba em vez de sair direto pra onde a pessoa veio (feedback
-              // direto do usuário, que ficou "preso" alternando entre abas).
+              // empilhar histórico — sem isso, o botão de voltar nativo do
+              // navegador ficava saltando de aba em aba em vez de sair direto
+              // pra onde a pessoa veio (feedback direto do usuário, que ficou
+              // "preso" alternando entre abas).
               <Link
                 key={href}
                 href={href}
@@ -118,9 +128,16 @@ export function ProfileTabs({ username, hasTrajectory, isMissionary, canEdit, vi
             <AccountMenuDrawer profile={ownerProfile} />
           </div>
         )}
-        <div className="shrink-0 pr-2">
-          <LanguageSwitcher compact />
-        </div>
+        {ownerProfile && (
+          <div className="shrink-0 pr-2">
+            <ProfileMoreMenu
+              profileId={ownerProfile.id}
+              username={ownerProfile.username}
+              displayName={ownerProfile.display_name}
+              canEdit={canEdit}
+            />
+          </div>
+        )}
       </div>
     </div>
   )

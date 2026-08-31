@@ -116,7 +116,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
         {canEdit ? (
           <ProfileOwnerActions profile={profile} />
         ) : (
-          <ProfileCTA username={profile.username} profileId={profile.id} hasTrajectory={(completedCount ?? 0) > 0} />
+          <ProfileCTA username={profile.username} hasTrajectory={(completedCount ?? 0) > 0} />
         )}
         <Suspense fallback={<SkCardGrid n={3} />}>
           <ProjectsSectionAsync profileId={profile.id} username={profile.username} accentColor={profile.accent_color} visitorLocale={visitorLocale} />

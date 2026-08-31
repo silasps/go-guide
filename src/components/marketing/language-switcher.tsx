@@ -11,8 +11,11 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Globe } from 'lucide-react'
 import { toast } from 'sonner'
 
 const LOCALE_FLAGS: Record<Locale, string> = {
@@ -29,9 +32,12 @@ interface Props {
   // WhatsApp, X...) expõe troca de idioma na tela principal; isso é o
   // meio-termo entre "escondido" e "chamativo".
   compact?: boolean
+  // Renderiza como DropdownMenuSub em vez de DropdownMenu completo — pra
+  // ser embutido dentro de outro DropdownMenu pai (ver ProfileMoreMenu).
+  submenu?: boolean
 }
 
-export function LanguageSwitcher({ className, compact = false }: Props) {
+export function LanguageSwitcher({ className, compact = false, submenu = false }: Props) {
   const locale = useLocale() as Locale
   const t = useTranslations('Nav')
   const tAccount = useTranslations('AccountForm')
@@ -57,6 +63,25 @@ export function LanguageSwitcher({ className, compact = false }: Props) {
 
       router.refresh()
     })
+  }
+
+  if (submenu) {
+    return (
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger disabled={switching} className="gap-2">
+          <Globe className="h-4 w-4" />
+          {t('selecionarIdioma')}
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent>
+          {LOCALES.map((l) => (
+            <DropdownMenuItem key={l} onClick={() => handleSwitch(l)} className="gap-2">
+              <span>{LOCALE_FLAGS[l]}</span>
+              <span className={l === locale ? 'font-medium' : ''}>{l.toUpperCase()}</span>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+    )
   }
 
   if (compact) {
