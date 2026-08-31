@@ -24,6 +24,12 @@ export function PartnershipForm({ profileId, missionaryName, defaultType }: Prop
   const [birthDate, setBirthDate] = useState('')
   const [notes, setNotes] = useState('')
   const [type, setType] = useState<'financial' | 'prayer' | 'both' | 'ambassador'>(defaultType ?? 'both')
+  // Com defaultType (usuário já escolheu "Oração" etc. na tela anterior),
+  // título/CTA/placeholder da mensagem refletem esse tipo em vez do texto
+  // genérico do seletor — clicar em "Comprometer-me em oração" e cair numa
+  // tela "Como deseja se envolver?" parecia ignorar o que a pessoa acabou
+  // de escolher.
+  const suffix = defaultType ? `_${defaultType}` : ''
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -66,7 +72,7 @@ export function PartnershipForm({ profileId, missionaryName, defaultType }: Prop
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Como deseja se envolver?</CardTitle>
+        <CardTitle className="text-base">{t(`title${suffix}`)}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -110,12 +116,12 @@ export function PartnershipForm({ profileId, missionaryName, defaultType }: Prop
           </div>
           <div className="space-y-2">
             <Label>Mensagem (opcional)</Label>
-            <Textarea value={notes} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNotes(e.target.value)} placeholder="Como posso orar por vocês?" rows={2} />
+            <Textarea value={notes} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNotes(e.target.value)} placeholder={t(`messagePlaceholder${type === 'prayer' || type === 'both' ? '_prayer' : ''}`)} rows={2} />
           </div>
 
           <Button type="submit" className="w-full" disabled={saving}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Quero ser parceiro
+            {t(`cta_${type}`)}
           </Button>
         </form>
       </CardContent>

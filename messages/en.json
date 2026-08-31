@@ -454,7 +454,18 @@
     "becomePartnerCta": "I want to become a regular partner"
   },
   "PartnershipForm": {
-    "whatsappLabel": "WhatsApp/Phone"
+    "whatsappLabel": "WhatsApp/Phone",
+    "title": "How would you like to get involved?",
+    "title_prayer": "Confirm your prayer commitment",
+    "title_financial": "I want to support financially",
+    "title_both": "Become a financial + prayer partner",
+    "title_ambassador": "I want to share and support",
+    "cta_prayer": "I want to pray regularly",
+    "cta_financial": "I want to support financially",
+    "cta_both": "I want to become a partner",
+    "cta_ambassador": "I want to share and support",
+    "messagePlaceholder": "Leave a message (optional)",
+    "messagePlaceholder_prayer": "How can I pray for you?"
   },
   "RecurringPledge": {
     "needsAccountTitle": "Create your account to continue",

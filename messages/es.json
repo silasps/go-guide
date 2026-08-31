@@ -454,7 +454,18 @@
     "becomePartnerCta": "Quiero ser socio fijo"
   },
   "PartnershipForm": {
-    "whatsappLabel": "WhatsApp/Teléfono"
+    "whatsappLabel": "WhatsApp/Teléfono",
+    "title": "¿Cómo deseas involucrarte?",
+    "title_prayer": "Confirma tu compromiso de oración",
+    "title_financial": "Quiero apoyar económicamente",
+    "title_both": "Sé socio(a) económico y de oración",
+    "title_ambassador": "Quiero difundir y apoyar",
+    "cta_prayer": "Quiero orar regularmente",
+    "cta_financial": "Quiero apoyar económicamente",
+    "cta_both": "Quiero ser socio(a)",
+    "cta_ambassador": "Quiero difundir y apoyar",
+    "messagePlaceholder": "Deja un mensaje (opcional)",
+    "messagePlaceholder_prayer": "¿Cómo puedo orar por ustedes?"
   },
   "RecurringPledge": {
     "needsAccountTitle": "Crea tu cuenta para continuar",

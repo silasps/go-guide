@@ -303,6 +303,8 @@ export interface Partner {
   tags: string[]
   joined_at: string
   created_at: string
+  last_update_email_sent_at: string | null
+  update_emails_opt_in: boolean
 }
 
 export type VisibilityGrantSection = 'full_profile' | 'financial_summary' | 'prayer_requests' | 'sensitive_fields' | 'messages'
