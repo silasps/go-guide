@@ -8,6 +8,24 @@ const PULL_THRESHOLD = 70
 const MAX_PULL = 100
 const RESISTANCE = 0.5
 
+/** Encontra o ancestral rolável mais próximo do toque (ex.: o `<main
+ *  overflow-y-auto>` do dashboard, que rola por baixo enquanto a `window`
+ *  em si fica travada por `h-screen overflow-hidden`). Sem isso o gesto
+ *  usava `window.scrollY`, que nunca sai de 0 nessas páginas — o app
+ *  achava que sempre estava "no topo" e disparava o refresh mesmo com o
+ *  feed rolado. `null` significa que quem rola é a própria `window`. */
+function getScrollParent(el: HTMLElement | null): HTMLElement | null {
+  let node = el
+  while (node && node !== document.body && node !== document.documentElement) {
+    const overflowY = getComputedStyle(node).overflowY
+    if ((overflowY === 'auto' || overflowY === 'scroll') && node.scrollHeight > node.clientHeight) {
+      return node
+    }
+    node = node.parentElement
+  }
+  return null
+}
+
 /** Pull-to-refresh estilo app nativo — arrastar pra baixo já no topo
  *  recarrega a página. Existe porque o navegador não faz isso sozinho no
  *  modo PWA instalado ("adicionar à tela inicial"): sem a chrome do
@@ -21,19 +39,27 @@ export function PullToRefresh() {
   const [refreshing, setRefreshing] = useState(false)
   const startY = useRef<number | null>(null)
   const distanceRef = useRef(0)
+  const scrollParentRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
+    function scrollTopOf(el: HTMLElement | null) {
+      return el ? el.scrollTop : window.scrollY
+    }
+
     function onTouchStart(e: TouchEvent) {
       if (refreshing) return
-      if (window.scrollY > 0) return
-      if ((e.target as HTMLElement | null)?.closest('[data-slot="dialog-content"]')) return
+      const target = e.target as HTMLElement | null
+      if (target?.closest('[data-slot="dialog-content"]')) return
+      const scrollParent = getScrollParent(target)
+      if (scrollTopOf(scrollParent) > 0) return
+      scrollParentRef.current = scrollParent
       startY.current = e.touches[0].clientY
     }
 
     function onTouchMove(e: TouchEvent) {
       if (startY.current === null) return
       const delta = e.touches[0].clientY - startY.current
-      if (delta <= 0 || window.scrollY > 0) {
+      if (delta <= 0 || scrollTopOf(scrollParentRef.current) > 0) {
         startY.current = null
         distanceRef.current = 0
         setPullDistance(0)
