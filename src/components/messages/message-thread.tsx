@@ -73,7 +73,6 @@ export function MessageThread({ profileId, myUserId, otherUserId, otherName }: P
     <div className="flex flex-col h-[calc(100vh-14rem)] md:h-[600px] rounded-xl border bg-card overflow-hidden">
       <div className="px-4 py-3 border-b">
         <p className="font-medium text-sm">{otherName}</p>
-        <p className="text-xs text-muted-foreground flex items-center gap-1">🔒 Conversa cifrada ponta-a-ponta</p>
       </div>
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-0.5">

@@ -10,7 +10,10 @@ interface SendEmailArgs {
 export async function sendEmail({ to, toName, subject, html }: SendEmailArgs): Promise<boolean> {
   const apiKey = process.env.BREVO_API_KEY
   const fromEmail = process.env.BREVO_FROM_EMAIL
-  if (!apiKey || !fromEmail) return false
+  if (!apiKey || !fromEmail) {
+    console.error('sendEmail: BREVO_API_KEY ou BREVO_FROM_EMAIL não configurados neste ambiente.')
+    return false
+  }
 
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
@@ -26,6 +29,11 @@ export async function sendEmail({ to, toName, subject, html }: SendEmailArgs): P
       htmlContent: html,
     }),
   })
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    console.error(`sendEmail: Brevo respondeu ${res.status}: ${body}`)
+  }
 
   return res.ok
 }
