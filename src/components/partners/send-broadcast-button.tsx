@@ -62,6 +62,7 @@ export function SendBroadcastButton({ profileId, activeHighlights, aiConfigured,
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
   const [filter, setFilter] = useState<BroadcastRecipientFilter>('all')
+  const [sendByEmail, setSendByEmail] = useState(true)
 
   const [includeFinancial, setIncludeFinancial] = useState(false)
   const [financialPeriod, setFinancialPeriod] = useState<FinancialPeriodKey>('30d')
@@ -80,6 +81,7 @@ export function SendBroadcastButton({ profileId, activeHighlights, aiConfigured,
     setSubject('')
     setBody('')
     setFilter('all')
+    setSendByEmail(true)
     setIncludeFinancial(false)
     setFinancialSnapshot(null)
     setIncludeProjects(false)
@@ -126,12 +128,16 @@ export function SendBroadcastButton({ profileId, activeHighlights, aiConfigured,
         body,
         filter,
         includeProjects ? selectedHighlightIds : [],
-        includeFinancial ? financialSnapshot : null
+        includeFinancial ? financialSnapshot : null,
+        sendByEmail
       )
-      if (recipientCount === 0) {
+      if (sendByEmail && recipientCount === 0) {
         toast.error('Nenhum parceiro encontrado com esse filtro (ou ninguém com e-mail cadastrado).')
-      } else {
+      } else if (sendByEmail) {
         toast.success(`Atualização enviada para ${recipientCount} parceiro(s). O envio por e-mail acontece em alguns minutos.`)
+        setShareUrl(url)
+      } else {
+        toast.success('Link gerado!')
         setShareUrl(url)
       }
     } catch {
@@ -153,7 +159,7 @@ export function SendBroadcastButton({ profileId, activeHighlights, aiConfigured,
     <>
       <Button variant="outline" onClick={() => setOpen(true)}>
         <Megaphone className="h-4 w-4 mr-2" />
-        Enviar atualização
+        Criar atualização
       </Button>
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm() }}>
         <DialogContent className="max-w-md">
@@ -161,9 +167,11 @@ export function SendBroadcastButton({ profileId, activeHighlights, aiConfigured,
             <div className="space-y-4 text-center py-2">
               <PartyPopper className="h-8 w-8 text-primary mx-auto" />
               <div>
-                <p className="font-semibold">Atualização a caminho!</p>
+                <p className="font-semibold">{sendByEmail ? 'Atualização a caminho!' : 'Página pronta!'}</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Também gerei uma página com essa atualização — copia o link e manda pelo WhatsApp pra quem preferir ler por lá.
+                  {sendByEmail
+                    ? 'Também gerei uma página com essa atualização — copia o link e manda pelo WhatsApp pra quem preferir ler por lá.'
+                    : 'Copia o link abaixo e manda pra quem quiser, por WhatsApp ou onde preferir.'}
                 </p>
               </div>
               <div className="flex items-center gap-2 rounded-lg border p-2">
@@ -177,24 +185,31 @@ export function SendBroadcastButton({ profileId, activeHighlights, aiConfigured,
           ) : (
             <>
               <DialogHeader>
-                <DialogTitle>Enviar atualização pros parceiros</DialogTitle>
-                <DialogDescription>Manda por e-mail e gera uma página pra compartilhar pelo WhatsApp, fora do fluxo normal de posts.</DialogDescription>
+                <DialogTitle>Criar atualização</DialogTitle>
+                <DialogDescription>Gera sempre uma página pra compartilhar (por WhatsApp, por exemplo) — mandar por e-mail pra rede de parceiros é opcional.</DialogDescription>
               </DialogHeader>
 
               <form onSubmit={handleSend} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="broadcast-filter">Destinatários</Label>
-                  <select
-                    id="broadcast-filter"
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value as BroadcastRecipientFilter)}
-                    className="flex h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                  >
-                    {Object.entries(FILTER_LABEL).map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </select>
-                </div>
+                <label className="flex items-center gap-2 text-sm cursor-pointer rounded-xl border p-3">
+                  <input type="checkbox" checked={sendByEmail} onChange={(e) => setSendByEmail(e.target.checked)} />
+                  Também enviar por e-mail pros parceiros
+                </label>
+
+                {sendByEmail && (
+                  <div className="space-y-2">
+                    <Label htmlFor="broadcast-filter">Destinatários</Label>
+                    <select
+                      id="broadcast-filter"
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value as BroadcastRecipientFilter)}
+                      className="flex h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                    >
+                      {Object.entries(FILTER_LABEL).map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="broadcast-subject">Assunto</Label>
@@ -278,7 +293,7 @@ export function SendBroadcastButton({ profileId, activeHighlights, aiConfigured,
 
                 <Button type="submit" className="w-full" disabled={sending}>
                   {sending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Enviar
+                  {sendByEmail ? 'Enviar' : 'Gerar link'}
                 </Button>
               </form>
             </>

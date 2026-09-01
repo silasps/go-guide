@@ -14,12 +14,17 @@ interface CreateBroadcastResult {
 // monta a lista de destinatários no momento do envio (não guarda uma lista
 // congelada) e enfileira 1 linha por parceiro em partner_broadcast_
 // recipients — o cron broadcast-sender (a cada 5min) drena de fato.
+// `sendByEmail=false` só cria o registro (e a landing page pública que ele
+// gera) sem enfileirar nenhum e-mail — pra quando o missionário quer só o
+// link pra mandar por WhatsApp, sem disparar pra rede de parceiros.
+// "Gerar link" e "mandar e-mail" são decisões independentes.
 export async function createBroadcast(
   subject: string,
   body: string,
   recipientFilter: BroadcastRecipientFilter,
   highlightIds: string[] = [],
-  financialSnapshot: unknown = null
+  financialSnapshot: unknown = null,
+  sendByEmail: boolean = true
 ): Promise<CreateBroadcastResult> {
   const trimmedSubject = subject.trim()
   const trimmedBody = body.trim()
@@ -32,17 +37,21 @@ export async function createBroadcast(
   const profile = await getActiveProfile()
   if (!profile) throw new Error('Perfil não encontrado.')
 
-  let query = supabase
-    .from('partners')
-    .select('id, email')
-    .eq('profile_id', profile.id)
-    .not('email', 'is', null)
-    .eq('update_emails_opt_in', true)
+  let partners: { id: string; email: string | null }[] = []
+  if (sendByEmail) {
+    let query = supabase
+      .from('partners')
+      .select('id, email')
+      .eq('profile_id', profile.id)
+      .not('email', 'is', null)
+      .eq('update_emails_opt_in', true)
 
-  if (recipientFilter !== 'all') query = query.eq('type', recipientFilter)
+    if (recipientFilter !== 'all') query = query.eq('type', recipientFilter)
 
-  const { data: partners, error: partnersError } = await query
-  if (partnersError) throw partnersError
+    const { data, error: partnersError } = await query
+    if (partnersError) throw partnersError
+    partners = data ?? []
+  }
 
   const { data: broadcast, error: insertError } = await supabase
     .from('partner_broadcasts')
@@ -52,7 +61,7 @@ export async function createBroadcast(
       subject: trimmedSubject,
       body: trimmedBody,
       recipient_filter: recipientFilter,
-      recipient_count: partners?.length ?? 0,
+      recipient_count: partners.length,
       highlight_ids: highlightIds,
       financial_snapshot: financialSnapshot,
     })
@@ -60,7 +69,7 @@ export async function createBroadcast(
     .single()
   if (insertError) throw insertError
 
-  if (partners && partners.length > 0) {
+  if (partners.length > 0) {
     const rows = partners.map((p) => ({ broadcast_id: broadcast.id, partner_id: p.id, email: p.email as string }))
     const { error: recipientsError } = await supabase.from('partner_broadcast_recipients').insert(rows)
     if (recipientsError) throw recipientsError
@@ -68,5 +77,5 @@ export async function createBroadcast(
 
   revalidatePath('/dashboard/parceiros')
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  return { recipientCount: partners?.length ?? 0, shareUrl: `${appUrl}/${profile.username}/atualizacoes/${broadcast.id}` }
+  return { recipientCount: partners.length, shareUrl: `${appUrl}/${profile.username}/atualizacoes/${broadcast.id}` }
 }
