@@ -164,7 +164,7 @@ export function SendBroadcastButton({ profileId, activeHighlights, aiConfigured,
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm() }}>
         <DialogContent className="max-w-md">
           {shareUrl ? (
-            <div className="space-y-4 text-center py-2">
+            <div className="space-y-4 text-center py-2 min-w-0">
               <PartyPopper className="h-8 w-8 text-primary mx-auto" />
               <div>
                 <p className="font-semibold">{sendByEmail ? 'Atualização a caminho!' : 'Página pronta!'}</p>
@@ -174,9 +174,9 @@ export function SendBroadcastButton({ profileId, activeHighlights, aiConfigured,
                     : 'Copia o link abaixo e manda pra quem quiser, por WhatsApp ou onde preferir.'}
                 </p>
               </div>
-              <div className="flex items-center gap-2 rounded-lg border p-2">
-                <p className="text-xs text-muted-foreground truncate flex-1 text-left">{shareUrl}</p>
-                <Button type="button" variant="outline" size="icon-sm" onClick={handleCopyLink}>
+              <div className="flex items-start gap-2 rounded-lg border p-2 min-w-0">
+                <p className="text-xs text-muted-foreground break-all flex-1 min-w-0 text-left">{shareUrl}</p>
+                <Button type="button" variant="outline" size="icon-sm" className="shrink-0" onClick={handleCopyLink}>
                   {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
                 </Button>
               </div>
