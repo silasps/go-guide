@@ -3,11 +3,11 @@ import { createClient } from '@/lib/supabase/server'
 import { getOrCreateShortLinkCode, shortLinkUrl, shortenWithExternalProvider } from '@/lib/short-links'
 
 // Gera (ou reaproveita) o link curto de um perfil/projeto e, na mesma
-// chamada, tenta embrulhar num encurtador externo (is.gd — ver migration
-// 072) enquanto não há domínio curto próprio. Fica em route server-side
+// chamada, tenta embrulhar num encurtador externo (TinyURL — ver migration
+// 073) enquanto não há domínio curto próprio. Fica em route server-side
 // (em vez de mutação direta do client, padrão usado no resto do app)
-// porque a chamada ao is.gd precisa rodar no servidor (CORS) e só nesse
-// ponto exato — não é um endpoint genérico de "encurtar qualquer URL".
+// porque a chamada ao provedor externo precisa rodar no servidor (CORS) e
+// só nesse ponto exato — não é um endpoint genérico de "encurtar qualquer URL".
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
