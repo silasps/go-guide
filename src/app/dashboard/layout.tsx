@@ -31,6 +31,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   ])
 
   if (!profile) redirect('/login')
+  if (!profile.email_verified) redirect('/verificar-email/pendente')
 
   // Preview de papel só tem efeito pra quem está na allowlist de
   // SUPERADMIN_EMAILS — nunca troca o user_role real, só decide qual nav

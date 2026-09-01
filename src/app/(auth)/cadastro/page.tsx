@@ -28,7 +28,6 @@ function CadastroForm() {
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [confirmEmailSent, setConfirmEmailSent] = useState(false)
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
@@ -51,17 +50,13 @@ function CadastroForm() {
       return
     }
 
-    // Com confirmação de e-mail ativada no projeto, signUp() não devolve
-    // sessão — a conta existe mas só loga depois do clique no link enviado.
-    if (!data.session) {
-      setLoading(false)
-      setConfirmEmailSent(true)
-      return
-    }
-
     if (data.user) {
       await keyManager.setupOrUnlockWithPassword(data.user.id, password).catch(() => {})
     }
+
+    // keepalive: o window.location.href logo abaixo derruba a página antes
+    // que um fetch normal em segundo plano tivesse tempo de completar.
+    fetch('/api/auth/enviar-verificacao', { method: 'POST', keepalive: true }).catch(() => {})
 
     toast.success(t('signupSuccess'))
     // Load completo, não router.push — mesmo motivo do /login: destino pode
@@ -75,17 +70,6 @@ function CadastroForm() {
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirect)}` },
     })
-  }
-
-  if (confirmEmailSent) {
-    return (
-      <Card>
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">{t('confirmEmailTitle')}</CardTitle>
-          <CardDescription>{t('confirmEmailSubtitle', { email })}</CardDescription>
-        </CardHeader>
-      </Card>
-    )
   }
 
   return (
