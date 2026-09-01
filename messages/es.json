@@ -217,6 +217,7 @@
     "requestNewLink": "Solicitar nuevo enlace",
     "newPasswordTitle": "Nueva contraseña",
     "newPasswordSubtitle": "Elige una nueva contraseña para tu cuenta",
+    "resetE2eeWarning": "Esta cuenta tiene mensajes o datos cifrados. Cambiar la contraseña por este flujo los vuelve permanentemente ilegibles — no se pueden recuperar sin la contraseña anterior.",
     "newPassword": "Nueva contraseña",
     "confirmPassword": "Confirmar contraseña",
     "newPasswordSubmit": "Guardar nueva contraseña",

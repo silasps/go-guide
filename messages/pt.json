@@ -217,6 +217,7 @@
     "requestNewLink": "Solicitar novo link",
     "newPasswordTitle": "Nova senha",
     "newPasswordSubtitle": "Escolha uma nova senha para sua conta",
+    "resetE2eeWarning": "Você tem mensagens ou dados cifrados nesta conta. Ao trocar a senha por este fluxo, eles ficam permanentemente ilegíveis — não é possível recuperá-los sem a senha antiga.",
     "newPassword": "Nova senha",
     "confirmPassword": "Confirmar senha",
     "newPasswordSubmit": "Salvar nova senha",

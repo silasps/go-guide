@@ -217,6 +217,7 @@
     "requestNewLink": "Request new link",
     "newPasswordTitle": "New password",
     "newPasswordSubtitle": "Choose a new password for your account",
+    "resetE2eeWarning": "This account has encrypted messages or data. Changing your password through this flow makes them permanently unreadable — they can't be recovered without the old password.",
     "newPassword": "New password",
     "confirmPassword": "Confirm password",
     "newPasswordSubmit": "Save new password",

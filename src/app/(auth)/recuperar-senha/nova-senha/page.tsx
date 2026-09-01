@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
+import * as keyManager from '@/lib/crypto/key-manager'
 import { usePendingAction } from '@/hooks/use-pending-action'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, AlertTriangle } from 'lucide-react'
 
 export default function NovaSenhaPage() {
   const t = useTranslations('Auth')
@@ -19,14 +20,19 @@ export default function NovaSenhaPage() {
 
   const [checking, setChecking] = useState(true)
   const [validSession, setValidSession] = useState(false)
+  const [hasE2eeKeys, setHasE2eeKeys] = useState(false)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const { isPending: loading, run } = usePendingAction()
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setValidSession(!!session)
+      // A chave privada antiga (mensagens, dados sensíveis) só é decifrável com a
+      // senha antiga — trocar a senha aqui a torna irrecuperável (ver
+      // system.architecture.md 7.5). Só vale avisar quem já tem chave configurada.
+      if (session) setHasE2eeKeys(await keyManager.hasKeysConfigured(session.user.id))
       setChecking(false)
     })
   }, [])
@@ -85,6 +91,12 @@ export default function NovaSenhaPage() {
       </CardHeader>
 
       <CardContent>
+        {hasE2eeKeys && (
+          <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-500">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            <p>{t('resetE2eeWarning')}</p>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="password">{t('newPassword')}</Label>

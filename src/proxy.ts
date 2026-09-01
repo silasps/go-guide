@@ -51,7 +51,14 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  if (isAuthRoute && user) {
+  // Exceção: /recuperar-senha/nova-senha PRECISA ser acessível com usuário
+  // autenticado — é exatamente o estado em que a pessoa chega ao clicar no
+  // link do e-mail de recuperação (o Supabase autentica a sessão de recovery
+  // antes do redirect pra cá). Sem essa exceção, a regra de "rota de auth +
+  // logado -> /dashboard" abaixo pulava a tela de trocar senha inteira.
+  const isPasswordResetPage = pathname.startsWith('/recuperar-senha/nova-senha')
+
+  if (isAuthRoute && user && !isPasswordResetPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)
