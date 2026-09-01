@@ -64,3 +64,25 @@ export async function getOrCreateShortLinkCode(
 export function shortLinkUrl(code: string): string {
   return `${process.env.NEXT_PUBLIC_APP_URL}/l/${code}`
 }
+
+// Camada temporária (ver migration 072): sem domínio curto próprio ainda,
+// embrulha o nosso /l/[code] num encurtador público gratuito (is.gd, sem
+// API key). Só server-side — chamada de terceiro, evita CORS e mantém a
+// URL sempre a que a gente acabou de gerar (nunca input arbitrário do
+// client). Retorna null em qualquer falha (rede, timeout, resposta de
+// erro) pra quem chama cair de volta no link próprio sem quebrar nada —
+// confirmado na prática que a API do is.gd falha esporadicamente mesmo
+// com URL válida.
+export async function shortenWithExternalProvider(longUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(longUrl)}`, {
+      headers: { 'User-Agent': 'GoGuide-ShortLinks/1.0' },
+      signal: AbortSignal.timeout(5000),
+    })
+    if (!res.ok) return null
+    const text = (await res.text()).trim()
+    return text.startsWith('https://is.gd/') ? text : null
+  } catch {
+    return null
+  }
+}
