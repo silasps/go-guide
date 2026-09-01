@@ -12,6 +12,7 @@ import { NotificationsBell } from '@/components/dashboard/notifications-bell'
 import { SuperadminRoleSwitcher } from '@/components/dashboard/superadmin-role-switcher'
 import { PostComposerProvider } from '@/components/dashboard/post-composer-provider'
 import { ProjectComposerProvider } from '@/components/highlights/project-composer/project-composer-provider'
+import { EmailVerificationBanner } from '@/components/dashboard/email-verification-banner'
 import { ThemeToggle } from '@/components/theme-toggle'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -31,7 +32,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
   ])
 
   if (!profile) redirect('/login')
-  if (!profile.email_verified) redirect('/verificar-email/pendente')
 
   // Preview de papel só tem efeito pra quem está na allowlist de
   // SUPERADMIN_EMAILS — nunca troca o user_role real, só decide qual nav
@@ -73,6 +73,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <main className="flex-1 overflow-y-auto overflow-x-hidden pb-16 md:pb-0">
             {/* max-w-5xl keeps content readable on ultrawide screens */}
             <div className="p-4 md:p-8 max-w-5xl mx-auto w-full">
+              {!profile.email_verified && <EmailVerificationBanner />}
               {children}
             </div>
           </main>

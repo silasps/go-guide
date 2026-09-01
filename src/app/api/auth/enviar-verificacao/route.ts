@@ -3,9 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { sendVerificationEmail } from '@/lib/email/send-verification-email'
 
 // Dispara (ou reenvia) o e-mail de verificação pra conta logada — chamada logo
-// após o cadastro por e-mail/senha e também pelo botão "reenviar" da tela de
-// bloqueio (/verificar-email/pendente). Sempre gera um token novo, invalidando
-// qualquer link anterior.
+// após o cadastro por e-mail/senha e também pelo botão "reenviar" do
+// EmailVerificationBanner, exibido no dashboard enquanto não confirmar.
+// Sempre gera um token novo, invalidando qualquer link anterior.
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

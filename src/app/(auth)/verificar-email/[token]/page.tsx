@@ -65,7 +65,7 @@ async function Result({ icon: Icon, title, description, success }: {
       <CardContent />
       <CardFooter className="justify-center">
         <Link
-          href={success ? '/dashboard' : '/verificar-email/pendente'}
+          href="/dashboard"
           className={cn(buttonVariants(), 'w-full')}
         >
           {success ? t('goToDashboard') : t('requestNewLink')}
