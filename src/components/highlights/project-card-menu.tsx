@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { DeleteProjectDialog } from './delete-project-dialog'
+import { getOrCreateShortLinkCode, shortLinkUrl } from '@/lib/short-links'
 import { FolderOpen, Pencil, Eye, EyeOff, Archive, Trash2, MoreVertical, ChevronUp, ChevronDown, Share2, Link2 } from 'lucide-react'
 
 const ITEM_CLASS = 'gap-2.5 px-2.5 py-2'
@@ -80,21 +81,17 @@ export function ProjectCardMenu({ projectId, profileId, projectTitle, status, op
   }
 
   // Link curto (ver migration 070) pensado pra bio do Instagram/redes —
-  // /[username]/projetos/[slug] costuma ficar longo demais pra isso. Passa
-  // pela API route (não mutação direta do client) porque o backend tenta
-  // embrulhar num encurtador externo antes de devolver (migration 072).
+  // /[username]/projetos/[slug] costuma ficar longo demais pra isso. Direto
+  // no domínio do próprio app (nunca um encurtador de terceiro — testado e
+  // descartado, ver Changelog 2026-09-01: não faz sentido mandar quem vai
+  // doar pra um domínio que não é o nosso).
   async function handleCopyShortLink() {
     if (generatingShortLink) return
     setGeneratingShortLink(true)
     try {
-      const res = await fetch('/api/short-links', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profileId, targetType: 'project', highlightId: projectId }),
-      })
-      if (!res.ok) throw new Error('failed to create short link')
-      const { url } = await res.json()
-      await navigator.clipboard.writeText(url)
+      const supabase = createClient()
+      const code = await getOrCreateShortLinkCode(supabase, profileId, { targetType: 'project', highlightId: projectId })
+      await navigator.clipboard.writeText(shortLinkUrl(code))
       toast.success(t('shortLinkCopied'))
     } catch {
       toast.error(t('shortLinkError'))

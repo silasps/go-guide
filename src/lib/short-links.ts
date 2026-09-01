@@ -64,31 +64,3 @@ export async function getOrCreateShortLinkCode(
 export function shortLinkUrl(code: string): string {
   return `${process.env.NEXT_PUBLIC_APP_URL}/l/${code}`
 }
-
-// Camada temporária (ver migration 073): sem domínio curto próprio ainda,
-// embrulha o nosso /l/[code] num encurtador público gratuito (TinyURL, sem
-// API key). Só server-side — chamada de terceiro, evita CORS e mantém a
-// URL sempre a que a gente acabou de gerar (nunca input arbitrário do
-// client). Retorna null em qualquer falha (rede, timeout, resposta de
-// erro) pra quem chama cair de volta no link próprio sem quebrar nada.
-//
-// Não é is.gd (cogitado inicialmente, domínio final mais curto): testado
-// em produção e is.gd bloqueia `*.vercel.app` de propósito (comum em
-// encurtador, contra abuso via domínio de hospedagem gratuita — nosso
-// domínio de produção hoje é literalmente esse, sem domínio próprio
-// ainda) — falha 100% das vezes, não é instabilidade. TinyURL não bloqueia.
-export async function shortenWithExternalProvider(longUrl: string): Promise<string | null> {
-  try {
-    const res = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`, {
-      headers: { 'User-Agent': 'GoGuide-ShortLinks/1.0' },
-      signal: AbortSignal.timeout(5000),
-    })
-    const text = (await res.text()).trim()
-    if (res.ok && text.startsWith('https://tinyurl.com/')) return text
-    console.warn('[short-links] TinyURL não devolveu um link curto', { status: res.status, body: text.slice(0, 200) })
-    return null
-  } catch (err) {
-    console.warn('[short-links] falha ao chamar TinyURL', err)
-    return null
-  }
-}
