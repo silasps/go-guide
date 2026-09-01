@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { MoreHorizontal, Share2, Flag } from 'lucide-react'
+import { MoreHorizontal, Share2, Link2, Flag } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -13,6 +13,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { LanguageSwitcher } from '@/components/marketing/language-switcher'
 import { ReportDialog } from '@/components/shared/report-dialog'
+import { createClient } from '@/lib/supabase/client'
+import { getOrCreateShortLinkCode, shortLinkUrl } from '@/lib/short-links'
 
 interface Props {
   profileId: string
@@ -30,6 +32,7 @@ export function ProfileMoreMenu({ profileId, username, displayName, canEdit }: P
   const t = useTranslations('PublicProfile')
   const tReport = useTranslations('Report')
   const [reportOpen, setReportOpen] = useState(false)
+  const [generatingShortLink, setGeneratingShortLink] = useState(false)
 
   async function handleShare() {
     const url = `${process.env.NEXT_PUBLIC_APP_URL}/${username}`
@@ -43,6 +46,24 @@ export function ProfileMoreMenu({ profileId, username, displayName, canEdit }: P
     }
     await navigator.clipboard.writeText(url)
     toast.success(t('linkCopied'))
+  }
+
+  // Link curto (ver migration 070) pensado pra bio do Instagram/redes,
+  // onde o link precisa ser curto — diferente de "compartilhar" acima,
+  // que usa o link canônico completo.
+  async function handleCopyShortLink() {
+    if (generatingShortLink) return
+    setGeneratingShortLink(true)
+    try {
+      const supabase = createClient()
+      const code = await getOrCreateShortLinkCode(supabase, profileId, { targetType: 'profile' })
+      await navigator.clipboard.writeText(shortLinkUrl(code))
+      toast.success(t('shortLinkCopied'))
+    } catch {
+      toast.error(t('shortLinkError'))
+    } finally {
+      setGeneratingShortLink(false)
+    }
   }
 
   return (
@@ -59,6 +80,12 @@ export function ProfileMoreMenu({ profileId, username, displayName, canEdit }: P
             <Share2 className="h-4 w-4" />
             {t('shareProfile')}
           </DropdownMenuItem>
+          {canEdit && (
+            <DropdownMenuItem onClick={handleCopyShortLink} disabled={generatingShortLink} className="gap-2">
+              <Link2 className="h-4 w-4" />
+              {t('copyShortLink')}
+            </DropdownMenuItem>
+          )}
           <LanguageSwitcher submenu />
           {!canEdit && (
             <>

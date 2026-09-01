@@ -106,6 +106,7 @@ export function ProjectGrid({ projects: initial, username, accentColor, visitorL
             {canEdit && (
               <ProjectCardMenu
                 projectId={p.id}
+                profileId={p.profile_id}
                 projectTitle={title}
                 status={p.status}
                 openHref={`/${username}/projetos/${slug}`}

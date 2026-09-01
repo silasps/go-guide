@@ -7,13 +7,15 @@ import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { DeleteProjectDialog } from './delete-project-dialog'
-import { FolderOpen, Pencil, Eye, EyeOff, Archive, Trash2, MoreVertical, ChevronUp, ChevronDown, Share2 } from 'lucide-react'
+import { getOrCreateShortLinkCode, shortLinkUrl } from '@/lib/short-links'
+import { FolderOpen, Pencil, Eye, EyeOff, Archive, Trash2, MoreVertical, ChevronUp, ChevronDown, Share2, Link2 } from 'lucide-react'
 
 const ITEM_CLASS = 'gap-2.5 px-2.5 py-2'
 import type { HighlightStatus } from '@/types/database'
 
 interface Props {
   projectId: string
+  profileId: string
   projectTitle: string
   status: HighlightStatus
   openHref: string
@@ -30,12 +32,13 @@ interface Props {
 // card (o menu abre num portal de qualquer forma, mas o botão-gatilho em
 // si não é, então ficar fora do <Link> é o jeito simples de garantir que
 // abrir o menu nunca dispara a navegação do card por baixo).
-export function ProjectCardMenu({ projectId, projectTitle, status, openHref, editHref, onMoveUp, onMoveDown }: Props) {
+export function ProjectCardMenu({ projectId, profileId, projectTitle, status, openHref, editHref, onMoveUp, onMoveDown }: Props) {
   const t = useTranslations('ProjectQuickActions')
   const router = useRouter()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [toggling, setToggling] = useState(false)
   const [archiving, setArchiving] = useState(false)
+  const [generatingShortLink, setGeneratingShortLink] = useState(false)
 
   async function toggleStatus() {
     if (toggling) return
@@ -77,6 +80,23 @@ export function ProjectCardMenu({ projectId, projectTitle, status, openHref, edi
     toast.success(t('linkCopied'))
   }
 
+  // Link curto (ver migration 070) pensado pra bio do Instagram/redes —
+  // /[username]/projetos/[slug] costuma ficar longo demais pra isso.
+  async function handleCopyShortLink() {
+    if (generatingShortLink) return
+    setGeneratingShortLink(true)
+    try {
+      const supabase = createClient()
+      const code = await getOrCreateShortLinkCode(supabase, profileId, { targetType: 'project', highlightId: projectId })
+      await navigator.clipboard.writeText(shortLinkUrl(code))
+      toast.success(t('shortLinkCopied'))
+    } catch {
+      toast.error(t('shortLinkError'))
+    } finally {
+      setGeneratingShortLink(false)
+    }
+  }
+
   return (
     <>
       <div className="absolute top-2 right-2 z-10">
@@ -111,6 +131,10 @@ export function ProjectCardMenu({ projectId, projectTitle, status, openHref, edi
             <DropdownMenuItem onClick={handleShare} className={ITEM_CLASS}>
               <Share2 className="h-3.5 w-3.5" />
               {t('share')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleCopyShortLink} disabled={generatingShortLink} className={ITEM_CLASS}>
+              <Link2 className="h-3.5 w-3.5" />
+              {t('shortLink')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={toggleStatus} className={ITEM_CLASS}>
               {status === 'active' ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
