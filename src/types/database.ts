@@ -480,6 +480,19 @@ export interface Notification {
   created_at: string
 }
 
+export type BroadcastRecipientFilter = 'all' | 'financial' | 'prayer' | 'both' | 'ambassador'
+
+export interface PartnerBroadcast {
+  id: string
+  profile_id: string
+  sender_user_id: string | null
+  subject: string
+  body: string
+  recipient_filter: BroadcastRecipientFilter
+  recipient_count: number
+  created_at: string
+}
+
 export interface Message {
   id: string
   sender_id: string

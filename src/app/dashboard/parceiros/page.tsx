@@ -3,6 +3,7 @@ import { getActiveProfile } from '@/lib/profile/active-profile'
 import { markNotificationTypesRead } from '@/lib/notifications/mark-read'
 import { PartnersList } from '@/components/partners/partners-list'
 import { AddPartnerButton } from '@/components/partners/add-partner-button'
+import { SendBroadcastButton } from '@/components/partners/send-broadcast-button'
 
 export default async function ParceirosPage() {
   const supabase = await createClient()
@@ -29,7 +30,10 @@ export default async function ParceirosPage() {
           <h1 className="text-xl font-semibold">Parceiros</h1>
           <p className="text-muted-foreground text-sm mt-0.5">{partners?.length ?? 0} parceiro(s) cadastrado(s)</p>
         </div>
-        <AddPartnerButton profileId={profile!.id} plan={profile!.plan} partnerCount={partners?.length ?? 0} />
+        <div className="flex items-center gap-2">
+          <SendBroadcastButton />
+          <AddPartnerButton profileId={profile!.id} plan={profile!.plan} partnerCount={partners?.length ?? 0} />
+        </div>
       </div>
       <PartnersList partners={partners ?? []} profileId={profile!.id} grantsByPartner={grantsByPartner} />
     </div>

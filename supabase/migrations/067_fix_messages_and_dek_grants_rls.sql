@@ -63,7 +63,39 @@ CREATE POLICY "messages_participants_delete" ON messages
 -- completamente exigiria validar, no banco, que o resource_id
 -- corresponde a uma conversa/pedido real entre as partes, o que fica
 -- para uma revisão futura dedicada a isso.
+--
+-- has_dek_grant() já devia existir desde as migrations 018/030, mas
+-- descoberto ao tentar aplicar esta (2026-09-01) que o banco remoto nunca
+-- rodou nenhuma das duas — só a versão original (015) chegou a ser
+-- aplicada. CREATE OR REPLACE aqui deixa esta migration auto-suficiente,
+-- sem depender de differences de histórico entre ambientes.
 -- ------------------------------------------------------------
+CREATE OR REPLACE FUNCTION has_dek_grant(p_resource_type text, p_resource_id uuid)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM encrypted_dek_grants
+    WHERE resource_type = p_resource_type
+      AND resource_id = p_resource_id
+      AND grantee_user_id = auth.uid()
+      AND revoked_at IS NULL
+  );
+$$;
+
+-- Mesma descoberta: a policy de SELECT com "roster read" (018/030) também
+-- nunca tinha chegado nesse banco — sem ela, o self-healing de grants
+-- (ensureResourceKey, key-manager.ts) não consegue enxergar quem mais já
+-- tem grant no recurso, então nunca detecta quem falta conceder acesso.
+DROP POLICY IF EXISTS "encrypted_dek_grants_grantee_read" ON encrypted_dek_grants;
+CREATE POLICY "encrypted_dek_grants_grantee_read" ON encrypted_dek_grants
+  FOR SELECT USING (
+    auth.uid() = grantee_user_id
+    OR has_dek_grant(resource_type, resource_id)
+  );
+
 DROP POLICY IF EXISTS "encrypted_dek_grants_insert_authenticated" ON encrypted_dek_grants;
 CREATE POLICY "encrypted_dek_grants_insert_scoped" ON encrypted_dek_grants
   FOR INSERT WITH CHECK (
