@@ -76,7 +76,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { highlightId, profileId, title, description, goalTypes, category, goalAmount, currentAmount,
     currency, coverUrl, coverPosition, coverMediaType, coverStatus, coverBunnyVideoId, tripStartDate, fundingDeadline, scripture, letter, status, milestones, budgetCategories,
-    galleryImages, originalLocale, titleTranslations, descriptionTranslations, scriptureTranslations, letterTranslations } = body
+    galleryImages, originalLocale, titleTranslations, descriptionTranslations, scriptureTranslations, letterTranslations,
+    letterImageUrl, letterImageCaption, letterImageUrl2, letterImageCaption2 } = body
 
   try {
     await assertProfileAccess(profileId, user.id)
@@ -110,6 +111,10 @@ export async function POST(req: NextRequest) {
     funding_deadline: fundingDeadline ?? null,
     scripture: scripture || null,
     letter: letter || null,
+    letter_image_url: letterImageUrl || null,
+    letter_image_caption: letterImageCaption || null,
+    letter_image_url_2: letterImageUrl2 || null,
+    letter_image_caption_2: letterImageCaption2 || null,
     status,
     original_locale: originalLocale ?? 'pt',
     title_translations: titleTranslations ?? {},

@@ -1,10 +1,16 @@
+import Image from 'next/image'
+import Link from 'next/link'
+import { HeartHandshake } from 'lucide-react'
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import { MarkdownLite } from '@/lib/text/markdown-lite'
 import type { HistoryBlock } from '@/types/history'
 import type { ContentTranslation, Locale } from '@/types/database'
 import { resolveLocalizedText } from '@/lib/i18n/resolve-content-locale'
 
-interface Props { blocks: HistoryBlock[]; visitorLocale: Locale }
+interface Props { blocks: HistoryBlock[]; visitorLocale: Locale; username: string; ctaButtonLabel?: string }
 
-export function HistoryView({ blocks, visitorLocale }: Props) {
+export function HistoryView({ blocks, visitorLocale, username, ctaButtonLabel = 'Faça parte' }: Props) {
   if (!blocks.length) {
     return (
       <div className="py-12 text-center text-muted-foreground">
@@ -15,33 +21,37 @@ export function HistoryView({ blocks, visitorLocale }: Props) {
 
   return (
     <div className="space-y-8">
-      {blocks.map(b => <HistoryBlock key={b.id} block={b} visitorLocale={visitorLocale} />)}
+      {blocks.map(b => <HistoryBlock key={b.id} block={b} visitorLocale={visitorLocale} username={username} ctaButtonLabel={ctaButtonLabel} />)}
     </div>
   )
 }
 
 type Translations = Partial<Record<Locale, ContentTranslation>> | undefined
 
-function HistoryBlock({ block, visitorLocale }: { block: HistoryBlock; visitorLocale: Locale }) {
+function HistoryBlock({ block, visitorLocale, username, ctaButtonLabel }: { block: HistoryBlock; visitorLocale: Locale; username: string; ctaButtonLabel: string }) {
   const c = block.content as Record<string, unknown>
   const originalLocale = block.original_locale ?? 'pt'
   const title = resolveLocalizedText((c.title as string) ?? null, originalLocale, c.title_translations as Translations, visitorLocale).text
   const text = resolveLocalizedText((c.text as string) ?? null, originalLocale, c.text_translations as Translations, visitorLocale).text
+  const imageUrl = c.image_url as string | undefined
+  const imageCaption = c.image_caption as string | undefined
 
   if (block.type === 'who_we_are') {
     return (
-      <section className="space-y-2">
+      <section className="space-y-3">
         <h2 className="text-lg font-bold">{title || 'Quem somos'}</h2>
-        <p className="text-muted-foreground leading-relaxed">{text}</p>
+        <MarkdownLite text={text ?? ''} className="text-muted-foreground" />
+        {imageUrl && <HistoryImage src={imageUrl} caption={imageCaption} />}
       </section>
     )
   }
 
   if (block.type === 'our_calling') {
     return (
-      <section className="space-y-2">
+      <section className="space-y-3">
         <h2 className="text-lg font-bold">{title || 'Nosso chamado'}</h2>
-        <p className="text-muted-foreground leading-relaxed">{text}</p>
+        <MarkdownLite text={text ?? ''} className="text-muted-foreground" />
+        {imageUrl && <HistoryImage src={imageUrl} caption={imageCaption} />}
       </section>
     )
   }
@@ -69,13 +79,30 @@ function HistoryBlock({ block, visitorLocale }: { block: HistoryBlock; visitorLo
       <section className="rounded-xl bg-primary/5 border border-primary/20 p-6 text-center space-y-3">
         <h2 className="text-lg font-bold">{title || 'Caminhe conosco'}</h2>
         {text ? <p className="text-muted-foreground text-sm">{text}</p> : null}
+        <Link href={`/${username}/parceria`} className={cn(buttonVariants({ variant: 'support' }), 'gap-2')}>
+          <HeartHandshake className="h-4 w-4" />
+          {ctaButtonLabel}
+        </Link>
       </section>
     )
   }
 
   return (
     <section>
-      <p className="text-muted-foreground leading-relaxed">{c.text as string}</p>
+      <MarkdownLite text={c.text as string} className="text-muted-foreground" />
     </section>
+  )
+}
+
+// Quebra o texto corrido com uma foto real dessa fase da história — pedido
+// do usuário pra não ficar um "textão chapado" sem nenhuma imagem no meio.
+function HistoryImage({ src, caption }: { src: string; caption?: string }) {
+  return (
+    <figure className="space-y-1.5">
+      <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-muted">
+        <Image src={src} alt={caption ?? ''} fill sizes="(min-width: 640px) 42rem, 100vw" className="object-cover" />
+      </div>
+      {caption && <figcaption className="text-xs text-muted-foreground text-center">{caption}</figcaption>}
+    </figure>
   )
 }

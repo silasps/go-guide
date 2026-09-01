@@ -70,6 +70,8 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
   const [whoText, setWhoText] = useState((findBlock('who_we_are')?.content.text as string) ?? '')
   const [whoTextTranslations, setWhoTextTranslations] = useState(() => initialTranslations(translationsOf('who_we_are', 'text')))
   const [whoTextSources, setWhoTextSources] = useState(() => initialSources(translationsOf('who_we_are', 'text')))
+  const [whoImageUrl, setWhoImageUrl] = useState((findBlock('who_we_are')?.content.image_url as string) ?? '')
+  const [whoImageCaption, setWhoImageCaption] = useState((findBlock('who_we_are')?.content.image_caption as string) ?? '')
 
   const [callingTitle, setCallingTitle] = useState((findBlock('our_calling')?.content.title as string) ?? '')
   const [callingTitleTranslations, setCallingTitleTranslations] = useState(() => initialTranslations(translationsOf('our_calling', 'title')))
@@ -77,6 +79,8 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
   const [callingText, setCallingText] = useState((findBlock('our_calling')?.content.text as string) ?? '')
   const [callingTextTranslations, setCallingTextTranslations] = useState(() => initialTranslations(translationsOf('our_calling', 'text')))
   const [callingTextSources, setCallingTextSources] = useState(() => initialSources(translationsOf('our_calling', 'text')))
+  const [callingImageUrl, setCallingImageUrl] = useState((findBlock('our_calling')?.content.image_url as string) ?? '')
+  const [callingImageCaption, setCallingImageCaption] = useState((findBlock('our_calling')?.content.image_caption as string) ?? '')
 
   const [timelineTitle, setTimelineTitle] = useState((findBlock('timeline')?.content.title as string) ?? '')
   const [timelineTitleTranslations, setTimelineTitleTranslations] = useState(() => initialTranslations(translationsOf('timeline', 'title')))
@@ -192,6 +196,8 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
             title_translations: buildTranslations(whoTitleTranslations, whoTitleSources),
             text: whoText.trim(),
             text_translations: buildTranslations(whoTextTranslations, whoTextSources),
+            image_url: whoImageUrl.trim() || undefined,
+            image_caption: whoImageCaption.trim() || undefined,
           } : null,
         },
         {
@@ -201,6 +207,8 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
             title_translations: buildTranslations(callingTitleTranslations, callingTitleSources),
             text: callingText.trim(),
             text_translations: buildTranslations(callingTextTranslations, callingTextSources),
+            image_url: callingImageUrl.trim() || undefined,
+            image_caption: callingImageCaption.trim() || undefined,
           } : null,
         },
         {
@@ -276,7 +284,23 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
             onTranslateWithAi={(locale) => translateField(whoText, locale, setWhoTextTranslations, setWhoTextSources)}
             rows={4}
             textareaClassName="field-sizing-fixed resize-y"
+            maxLength={600}
           />
+        </div>
+        <div className="space-y-1.5 rounded-lg border border-dashed p-3">
+          <Label className="text-xs text-muted-foreground">{t('sectionImageLabel')}</Label>
+          <Input
+            value={whoImageUrl}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWhoImageUrl(e.target.value)}
+            placeholder={t('sectionImageUrlPlaceholder')}
+          />
+          {whoImageUrl.trim() && (
+            <Input
+              value={whoImageCaption}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWhoImageCaption(e.target.value)}
+              placeholder={t('sectionImageCaptionPlaceholder')}
+            />
+          )}
         </div>
       </section>
 
@@ -309,7 +333,23 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
             onTranslateWithAi={(locale) => translateField(callingText, locale, setCallingTextTranslations, setCallingTextSources)}
             rows={4}
             textareaClassName="field-sizing-fixed resize-y"
+            maxLength={600}
           />
+        </div>
+        <div className="space-y-1.5 rounded-lg border border-dashed p-3">
+          <Label className="text-xs text-muted-foreground">{t('sectionImageLabel')}</Label>
+          <Input
+            value={callingImageUrl}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCallingImageUrl(e.target.value)}
+            placeholder={t('sectionImageUrlPlaceholder')}
+          />
+          {callingImageUrl.trim() && (
+            <Input
+              value={callingImageCaption}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCallingImageCaption(e.target.value)}
+              placeholder={t('sectionImageCaptionPlaceholder')}
+            />
+          )}
         </div>
       </section>
 

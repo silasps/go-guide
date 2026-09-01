@@ -34,6 +34,7 @@ import { FloatingSupportCta } from '@/components/highlights/floating-support-cta
 import { ProjectStoryDialog } from '@/components/highlights/project-story-dialog'
 import { DeleteProjectButton } from '@/components/highlights/delete-project-button'
 import { LetterEditSection } from '@/components/highlights/letter-edit-section'
+import { LetterBody } from '@/components/highlights/letter-body'
 import { DatesStatusEditSection } from '@/components/highlights/dates-status-edit-section'
 import { StatusBadge } from '@/components/highlights/status-badge'
 import type { HighlightSnapshot } from '@/components/highlights/section-types'
@@ -240,6 +241,10 @@ export default async function ProjetoPublicoPage({ params }: Props) {
     scriptureTranslations: project.scripture_translations ?? {},
     letter: project.letter ?? '',
     letterTranslations: project.letter_translations ?? {},
+    letterImageUrl: project.letter_image_url,
+    letterImageCaption: project.letter_image_caption,
+    letterImageUrl2: project.letter_image_url_2,
+    letterImageCaption2: project.letter_image_caption_2,
     status: project.status,
     milestones: (milestones ?? []).map(m => ({ id: m.id, title: m.title, titleTranslations: m.title_translations ?? {}, is_completed: m.is_completed })),
     budgetCategories: (budgetCategories ?? []).map(b => ({ category_type: b.category_type, custom_label: b.custom_label, description: b.description, target_amount: b.target_amount })),
@@ -323,11 +328,13 @@ export default async function ProjetoPublicoPage({ params }: Props) {
           >
             <LetterEditSection {...sectionProps}>
               {localizedLetter ? (
-                <div className="prose prose-sm dark:prose-invert max-w-none">
-                  {localizedLetter.split('\n').filter((l: string) => l.trim()).map((para: string, i: number) => (
-                    <p key={i} className="text-sm leading-relaxed text-foreground/80 mb-3">{para}</p>
-                  ))}
-                </div>
+                <LetterBody
+                  letter={localizedLetter}
+                  imageUrl={project.letter_image_url}
+                  imageCaption={project.letter_image_caption}
+                  imageUrl2={project.letter_image_url_2}
+                  imageCaption2={project.letter_image_caption_2}
+                />
               ) : (
                 canEdit ? <p className="text-sm text-muted-foreground italic">Adicionar história...</p> : null
               )}

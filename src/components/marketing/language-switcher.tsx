@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { usePendingAction } from '@/hooks/use-pending-action'
@@ -15,7 +16,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu'
-import { ChevronDown, Globe } from 'lucide-react'
+import { ChevronDown, Globe, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 const LOCALE_FLAGS: Record<Locale, string> = {
@@ -43,9 +44,11 @@ export function LanguageSwitcher({ className, compact = false, submenu = false }
   const tAccount = useTranslations('AccountForm')
   const router = useRouter()
   const { isPending: switching, run } = usePendingAction()
+  const [pendingLocale, setPendingLocale] = useState<Locale | null>(null)
 
   function handleSwitch(next: Locale) {
     if (next === locale || switching) return
+    setPendingLocale(next)
     run(true, async () => {
       // Cookie cobre o visitante anônimo (ver src/i18n/request.ts). Se
       // houver usuário logado, profiles.locale sempre manda por cima do
@@ -69,7 +72,7 @@ export function LanguageSwitcher({ className, compact = false, submenu = false }
     return (
       <DropdownMenuSub>
         <DropdownMenuSubTrigger disabled={switching} className="gap-2">
-          <Globe className="h-4 w-4" />
+          {switching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
           {t('selecionarIdioma')}
         </DropdownMenuSubTrigger>
         <DropdownMenuSubContent>
@@ -92,8 +95,8 @@ export function LanguageSwitcher({ className, compact = false, submenu = false }
           disabled={switching}
           className={cn('flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors', className)}
         >
-          {locale.toUpperCase()}
-          <ChevronDown className="h-3 w-3" />
+          {(pendingLocale ?? locale).toUpperCase()}
+          {switching ? <Loader2 className="h-3 w-3 animate-spin" /> : <ChevronDown className="h-3 w-3" />}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {LOCALES.map((l) => (
@@ -108,7 +111,7 @@ export function LanguageSwitcher({ className, compact = false, submenu = false }
   }
 
   return (
-    <div className={cn('flex items-center gap-0.5', className)} role="group" aria-label={t('selecionarIdioma')}>
+    <div className={cn('flex items-center gap-0.5', switching && 'opacity-60', className)} role="group" aria-label={t('selecionarIdioma')}>
       {LOCALES.map((l) => (
         <button
           key={l}
@@ -121,7 +124,7 @@ export function LanguageSwitcher({ className, compact = false, submenu = false }
             l === locale ? 'opacity-100 ring-1 ring-foreground/15' : 'opacity-40 hover:opacity-70'
           )}
         >
-          {LOCALE_FLAGS[l]}
+          {switching && l === pendingLocale ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : LOCALE_FLAGS[l]}
         </button>
       ))}
     </div>
