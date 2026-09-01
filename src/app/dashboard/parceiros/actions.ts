@@ -7,6 +7,7 @@ import { BroadcastRecipientFilter } from '@/types/database'
 
 interface CreateBroadcastResult {
   recipientCount: number
+  shareUrl: string
 }
 
 // Fase 1 de "campanhas pra parceiros" (system.architecture.md 7.10-bis):
@@ -17,7 +18,8 @@ export async function createBroadcast(
   subject: string,
   body: string,
   recipientFilter: BroadcastRecipientFilter,
-  highlightIds: string[] = []
+  highlightIds: string[] = [],
+  financialSnapshot: unknown = null
 ): Promise<CreateBroadcastResult> {
   const trimmedSubject = subject.trim()
   const trimmedBody = body.trim()
@@ -52,6 +54,7 @@ export async function createBroadcast(
       recipient_filter: recipientFilter,
       recipient_count: partners?.length ?? 0,
       highlight_ids: highlightIds,
+      financial_snapshot: financialSnapshot,
     })
     .select('id')
     .single()
@@ -64,5 +67,6 @@ export async function createBroadcast(
   }
 
   revalidatePath('/dashboard/parceiros')
-  return { recipientCount: partners?.length ?? 0 }
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  return { recipientCount: partners?.length ?? 0, shareUrl: `${appUrl}/${profile.username}/atualizacoes/${broadcast.id}` }
 }

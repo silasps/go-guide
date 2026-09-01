@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await generatePartnerUpdate({ draftText: draftText ?? '', financial, projects })
-    return NextResponse.json({ body, remainingCredits: newBalance })
+    return NextResponse.json({ body, financial, remainingCredits: newBalance })
   } catch {
     return NextResponse.json({ error: 'ai_provider_error' }, { status: 502 })
   }

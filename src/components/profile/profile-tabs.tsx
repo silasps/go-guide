@@ -46,6 +46,11 @@ export function ProfileTabs({ username, hasTrajectory, isMissionary, canEdit, ow
   // dois cabeçalhos fixos disputando o mesmo topo de tela.
   if (pathname === `${base}/parceria`) return null
 
+  // /atualizacoes/[id] é a landing page de uma campanha (system.architecture.md
+  // 7.10-bis) — feita pra ser compartilhada direto por WhatsApp/link, não
+  // navegada como parte do perfil. Mesmo motivo de /parceria: chrome própria.
+  if (pathname.startsWith(`${base}/atualizacoes/`)) return null
+
   const contentMaxWidth: Record<string, string> = {
     [`${base}/mensagens`]: 'max-w-lg',
     [`${base}/oracao`]: 'max-w-md',

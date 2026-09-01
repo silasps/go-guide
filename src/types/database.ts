@@ -491,6 +491,7 @@ export interface PartnerBroadcast {
   recipient_filter: BroadcastRecipientFilter
   recipient_count: number
   highlight_ids: string[]
+  financial_snapshot: unknown | null
   created_at: string
 }
 
