@@ -16,7 +16,8 @@ interface CreateBroadcastResult {
 export async function createBroadcast(
   subject: string,
   body: string,
-  recipientFilter: BroadcastRecipientFilter
+  recipientFilter: BroadcastRecipientFilter,
+  highlightIds: string[] = []
 ): Promise<CreateBroadcastResult> {
   const trimmedSubject = subject.trim()
   const trimmedBody = body.trim()
@@ -50,6 +51,7 @@ export async function createBroadcast(
       body: trimmedBody,
       recipient_filter: recipientFilter,
       recipient_count: partners?.length ?? 0,
+      highlight_ids: highlightIds,
     })
     .select('id')
     .single()

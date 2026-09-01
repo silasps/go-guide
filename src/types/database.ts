@@ -490,6 +490,7 @@ export interface PartnerBroadcast {
   body: string
   recipient_filter: BroadcastRecipientFilter
   recipient_count: number
+  highlight_ids: string[]
   created_at: string
 }
 

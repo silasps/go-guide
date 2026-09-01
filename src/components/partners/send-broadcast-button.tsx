@@ -104,7 +104,7 @@ export function SendBroadcastButton({ profileId, activeHighlights, aiConfigured,
     e.preventDefault()
     setSending(true)
     try {
-      const { recipientCount } = await createBroadcast(subject, body, filter)
+      const { recipientCount } = await createBroadcast(subject, body, filter, includeProjects ? selectedHighlightIds : [])
       if (recipientCount === 0) {
         toast.error('Nenhum parceiro encontrado com esse filtro (ou ninguém com e-mail cadastrado).')
       } else {
