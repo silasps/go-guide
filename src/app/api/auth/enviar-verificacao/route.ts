@@ -32,5 +32,5 @@ export async function POST(req: NextRequest) {
   const verifyUrl = `${req.nextUrl.origin}/verificar-email/${token}`
   const sent = await sendVerificationEmail(user.email, profile.display_name, verifyUrl)
 
-  return NextResponse.json({ ok: sent })
+  return NextResponse.json({ ok: sent, email: user.email })
 }

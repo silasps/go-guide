@@ -25,7 +25,7 @@ export function EmailVerificationBanner() {
       const res = await fetch('/api/auth/enviar-verificacao', { method: 'POST' })
       const data = await res.json().catch(() => ({}))
       if (res.ok && data.ok) {
-        toast.success(t('verifyEmailResendSuccess'))
+        toast.success(t('verifyEmailResendSuccess', { email: data.email }))
         setCooldown(true)
         setTimeout(() => setCooldown(false), RESEND_COOLDOWN_MS)
       } else {

@@ -226,7 +226,7 @@
     "verifyEmailPendingTitle": "Confirme seu e-mail",
     "verifyEmailPendingBody": "Enviamos um link de confirmação para o seu e-mail. Confirme para liberar o acesso ao dashboard.",
     "verifyEmailResend": "Reenviar e-mail",
-    "verifyEmailResendSuccess": "E-mail de verificação reenviado!",
+    "verifyEmailResendSuccess": "Um e-mail de verificação foi enviado para {email}.",
     "verifyEmailResendError": "Não foi possível reenviar o e-mail agora. Tente novamente em instantes.",
     "verifyEmailSuccessTitle": "E-mail verificado!",
     "verifyEmailSuccessBody": "Seu e-mail foi confirmado com sucesso. Você já pode acessar o dashboard.",
@@ -847,7 +847,8 @@
     "cta": "Virar missionário"
   },
   "Superadmin": {
-    "viewingAs": "Visualizando como:",
+    "backToApp": "Voltar ao app",
+  "viewingAs": "Visualizando como:",
     "missionary": "Missionário",
     "partner": "Parceiro",
     "reset": "Voltar ao normal",

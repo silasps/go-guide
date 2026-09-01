@@ -226,7 +226,7 @@
     "verifyEmailPendingTitle": "Confirm your email",
     "verifyEmailPendingBody": "We've sent a confirmation link to your email. Confirm it to unlock dashboard access.",
     "verifyEmailResend": "Resend email",
-    "verifyEmailResendSuccess": "Verification email resent!",
+    "verifyEmailResendSuccess": "A verification email has been sent to {email}.",
     "verifyEmailResendError": "Couldn't resend the email right now. Please try again shortly.",
     "verifyEmailSuccessTitle": "Email verified!",
     "verifyEmailSuccessBody": "Your email has been confirmed. You can now access the dashboard.",
@@ -847,7 +847,8 @@
     "cta": "Become a missionary"
   },
   "Superadmin": {
-    "viewingAs": "Viewing as:",
+    "backToApp": "Back to app",
+  "viewingAs": "Viewing as:",
     "missionary": "Missionary",
     "partner": "Partner",
     "reset": "Back to normal",
