@@ -45,7 +45,7 @@ export default async function HistoriaPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-2xl mx-auto px-4 py-8 pb-20 space-y-6">
+      <div className="max-w-2xl mx-auto px-6 sm:px-8 py-8 pb-20 space-y-6">
         <div>
           <h1 className="text-2xl font-bold">{t('historiaTitle', { name: profile.display_name })}</h1>
           <p className="text-muted-foreground text-sm mt-1">{t('historiaDescription', { name: profile.display_name })}</p>
@@ -57,14 +57,14 @@ export default async function HistoriaPage({ params }: Props) {
           </Link>
         )}
         <Suspense fallback={<SkList n={3} />}>
-          <HistoryBlocksAsync profileId={profile.id} visitorLocale={visitorLocale} />
+          <HistoryBlocksAsync profileId={profile.id} visitorLocale={visitorLocale} username={username} ctaButtonLabel={t('historiaCtaButton')} />
         </Suspense>
       </div>
     </div>
   )
 }
 
-async function HistoryBlocksAsync({ profileId, visitorLocale }: { profileId: string; visitorLocale: Locale }) {
+async function HistoryBlocksAsync({ profileId, visitorLocale, username, ctaButtonLabel }: { profileId: string; visitorLocale: Locale; username: string; ctaButtonLabel: string }) {
   const supabase = await createClient()
   const { data: blocks } = await supabase
     .from('history_blocks')
@@ -72,5 +72,5 @@ async function HistoryBlocksAsync({ profileId, visitorLocale }: { profileId: str
     .eq('profile_id', profileId)
     .order('order_index')
 
-  return <HistoryView blocks={blocks ?? []} visitorLocale={visitorLocale} />
+  return <HistoryView blocks={blocks ?? []} visitorLocale={visitorLocale} username={username} ctaButtonLabel={ctaButtonLabel} />
 }

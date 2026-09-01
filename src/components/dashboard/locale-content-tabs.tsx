@@ -112,6 +112,11 @@ export function LocaleContentTabs({
               onChange={(e) => (isOriginal ? onOriginalChange(e.target.value) : onTranslationChange(locale, e.target.value))}
               placeholder={isOriginal ? originalPlaceholder : t('manualPlaceholder')}
             />
+            {maxLength && (
+              <p className="text-xs text-muted-foreground text-right">
+                {(isOriginal ? originalText : translations[locale] ?? '').length}/{maxLength}
+              </p>
+            )}
           </div>
         )
       })}

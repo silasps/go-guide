@@ -23,6 +23,10 @@ export interface HighlightSnapshot {
   scriptureTranslations: Partial<Record<Locale, ContentTranslation>>
   letter: string
   letterTranslations: Partial<Record<Locale, ContentTranslation>>
+  letterImageUrl: string | null
+  letterImageCaption: string | null
+  letterImageUrl2: string | null
+  letterImageCaption2: string | null
   status: string
   milestones: { id?: string; title: string; titleTranslations: Partial<Record<Locale, ContentTranslation>>; is_completed: boolean }[]
   budgetCategories: { category_type: string; custom_label: string | null; description: string | null; target_amount: number }[]
