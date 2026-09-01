@@ -65,7 +65,7 @@ export function shortLinkUrl(code: string): string {
   return `${process.env.NEXT_PUBLIC_APP_URL}/l/${code}`
 }
 
-// Camada temporária (ver migration 072): sem domínio curto próprio ainda,
+// Camada temporária (ver migration 073): sem domínio curto próprio ainda,
 // embrulha o nosso /l/[code] num encurtador público gratuito (is.gd, sem
 // API key). Só server-side — chamada de terceiro, evita CORS e mantém a
 // URL sempre a que a gente acabou de gerar (nunca input arbitrário do
@@ -79,10 +79,12 @@ export async function shortenWithExternalProvider(longUrl: string): Promise<stri
       headers: { 'User-Agent': 'GoGuide-ShortLinks/1.0' },
       signal: AbortSignal.timeout(5000),
     })
-    if (!res.ok) return null
     const text = (await res.text()).trim()
-    return text.startsWith('https://is.gd/') ? text : null
-  } catch {
+    if (res.ok && text.startsWith('https://is.gd/')) return text
+    console.warn('[short-links] is.gd não devolveu um link curto', { status: res.status, body: text.slice(0, 200) })
+    return null
+  } catch (err) {
+    console.warn('[short-links] falha ao chamar is.gd', err)
     return null
   }
 }
