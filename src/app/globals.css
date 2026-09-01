@@ -156,6 +156,14 @@
   html {
     @apply font-sans;
   }
+  /* Diferente de `<a href>`, `<button>` não ganha cursor de mão por padrão
+     do navegador — sem isso, toda tab/ícone/gatilho de menu construído com
+     `<button>` (a maioria do app) parece não-clicável (reportado pelo
+     usuário nas abas de Posts/Projetos do perfil). */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
 }
 
 @layer utilities {
