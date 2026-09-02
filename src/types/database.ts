@@ -488,7 +488,7 @@ export type BroadcastRecipientFilter = 'all' | 'financial' | 'prayer' | 'both' |
 // 'exact' = qualquer pessoa com o link vê valores exatos (comportamento
 // original). 'percent_only' = público geral só vê percentuais/proporções;
 // valores exatos ficam reservados a parceiros com o grant `financial_summary`
-// (ver migration 074 e system.architecture.md 7.10-bis/7.10-quater).
+// (ver migration 075 e system.architecture.md 7.10-bis/7.10-quater).
 export type FinancialVisibility = 'exact' | 'percent_only'
 
 export interface PartnerBroadcast {
