@@ -5,14 +5,13 @@ import { useRouter } from 'next/navigation'
 import { createBroadcast } from '@/app/dashboard/parceiros/actions'
 import { BroadcastRecipientFilter, FinancialVisibility } from '@/types/database'
 import { PartnerUpdateFinancial } from '@/lib/ai/generate-partner-update'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Megaphone, FileText, Loader2, Sparkles, Copy, Check, PartyPopper } from 'lucide-react'
+import { Megaphone, FileText, Loader2, Sparkles, LayoutTemplate, Copy, Check, PartyPopper } from 'lucide-react'
 
 const FILTER_LABEL: Record<BroadcastRecipientFilter, string> = {
   all: 'Todos os parceiros',
@@ -68,11 +67,10 @@ interface Props {
 
 export function SendBroadcastButton({ profileId, mode = 'campaign', activeHighlights = [], aiConfigured, aiPlanIncluded }: Props) {
   const isReportMode = mode === 'report'
-  const aiEnabled = aiConfigured && aiPlanIncluded
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [sending, setSending] = useState(false)
-  const [generating, setGenerating] = useState(false)
+  const [generatingMode, setGeneratingMode] = useState<'ai' | 'template' | null>(null)
   const [subject, setSubject] = useState(() => (isReportMode ? defaultReportSubject() : ''))
   const [body, setBody] = useState('')
   const [filter, setFilter] = useState<BroadcastRecipientFilter>('all')
@@ -105,8 +103,8 @@ export function SendBroadcastButton({ profileId, mode = 'campaign', activeHighli
     setCopied(false)
   }
 
-  async function handleGenerate() {
-    setGenerating(true)
+  async function handleGenerate(mode: 'ai' | 'template') {
+    setGeneratingMode(mode)
     try {
       const res = await fetch('/api/ai/generate-partner-update', {
         method: 'POST',
@@ -117,6 +115,7 @@ export function SendBroadcastButton({ profileId, mode = 'campaign', activeHighli
           financialPeriod: includeFinancial ? periodRange(financialPeriod) : null,
           financialVisibility,
           highlightIds: includeProjects ? selectedHighlightIds : [],
+          mode,
         }),
       })
       const data = await res.json()
@@ -124,16 +123,16 @@ export function SendBroadcastButton({ profileId, mode = 'campaign', activeHighli
         if (data.error === 'insufficient_ai_credits') {
           toast.error('Créditos de IA insuficientes.', { action: { label: 'Ver planos', onClick: () => router.push('/planos') } })
         } else {
-          toast.error('Erro ao gerar com IA.')
+          toast.error(mode === 'ai' ? 'Erro ao gerar com IA.' : 'Erro ao montar o informativo.')
         }
         return
       }
       setBody(data.body)
       setFinancialSnapshot(data.financial ?? null)
     } catch {
-      toast.error('Erro ao gerar com IA.')
+      toast.error(mode === 'ai' ? 'Erro ao gerar com IA.' : 'Erro ao montar o informativo.')
     }
-    setGenerating(false)
+    setGeneratingMode(null)
   }
 
   async function handleSend(e: React.FormEvent<HTMLFormElement>) {
@@ -245,17 +244,11 @@ export function SendBroadcastButton({ profileId, mode = 'campaign', activeHighli
                 </div>
 
                 <div className="rounded-xl border p-3 space-y-3">
-                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                    {isReportMode ? 'A IA tece os números num texto só' : 'Blocos opcionais (a IA tece tudo num texto só)'}
-                    {!aiConfigured && <span className="font-normal">— em breve</span>}
-                    {aiConfigured && !aiPlanIncluded && (
-                      <button type="button" onClick={() => router.push('/planos')} className="font-normal underline underline-offset-2">
-                        — disponível no Pro
-                      </button>
-                    )}
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {isReportMode ? 'O que incluir' : 'Blocos (o sistema monta o texto pra você)'}
                   </p>
 
-                  <fieldset disabled={!aiEnabled} className={cn('space-y-3', !aiEnabled && 'opacity-40')}>
+                  <div className="space-y-3">
                     <div className="space-y-2">
                       {isReportMode ? (
                         <p className="text-sm font-medium">Prestação de contas (o que foi arrecadado/gasto)</p>
@@ -311,12 +304,27 @@ export function SendBroadcastButton({ profileId, mode = 'campaign', activeHighli
                     )}
 
                     {canGenerate && (
-                      <Button type="button" variant="secondary" size="sm" className="w-full" onClick={handleGenerate} disabled={generating}>
-                        {generating ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-2 h-3.5 w-3.5" />}
-                        Gerar com IA
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" variant="secondary" size="sm" className="flex-1" onClick={() => handleGenerate('template')} disabled={generatingMode !== null}>
+                          {generatingMode === 'template' ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <LayoutTemplate className="mr-2 h-3.5 w-3.5" />}
+                          Montar informativo
+                        </Button>
+                        {aiConfigured && (
+                          aiPlanIncluded ? (
+                            <Button type="button" variant="secondary" size="sm" className="flex-1" onClick={() => handleGenerate('ai')} disabled={generatingMode !== null}>
+                              {generatingMode === 'ai' ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-2 h-3.5 w-3.5" />}
+                              Gerar com IA
+                            </Button>
+                          ) : (
+                            <Button type="button" variant="outline" size="sm" className="flex-1" onClick={() => router.push('/planos')}>
+                              <Sparkles className="mr-2 h-3.5 w-3.5" />
+                              Gerar com IA — Pro
+                            </Button>
+                          )
+                        )}
+                      </div>
                     )}
-                  </fieldset>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -325,7 +333,7 @@ export function SendBroadcastButton({ profileId, mode = 'campaign', activeHighli
                     id="broadcast-body"
                     value={body}
                     onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setBody(e.target.value)}
-                    placeholder="Escreva a atualização, ou marque um bloco acima e gere com IA..."
+                    placeholder="Escreva a atualização, ou marque um bloco acima e monte automaticamente..."
                     className="min-h-32"
                     required
                   />
