@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveProfile } from '@/lib/profile/active-profile'
 import { HighlightForm } from '@/components/highlights/highlight-form'
+import { BudgetBreakdown } from '@/components/highlights/budget-breakdown'
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
 import { ExternalLink, Users } from 'lucide-react'
@@ -25,6 +26,15 @@ export default async function EditarProjetoPage({ params }: Props) {
 
   const { data: budgetCategories } = await supabase
     .from('project_budget_categories')
+    .select('*')
+    .eq('highlight_id', id)
+    .order('order_index')
+
+  // Fundo restrito: mesmas categorias acima, mas via view (raised_amount/
+  // spent_amount calculados a partir de `transactions`) — só pro painel
+  // read-only "Financeiro do projeto", não pro formulário de edição.
+  const { data: budgetProgress } = await supabase
+    .from('project_budget_progress')
     .select('*')
     .eq('highlight_id', id)
     .order('order_index')
@@ -59,6 +69,9 @@ export default async function EditarProjetoPage({ params }: Props) {
           </Link>
         </div>
       </div>
+      {budgetProgress && budgetProgress.length > 0 && (
+        <BudgetBreakdown categories={budgetProgress} currency={highlight.currency} showSpent heading="Financeiro do projeto" />
+      )}
       <HighlightForm highlight={{ ...highlight, milestones: milestones ?? [], budgetCategories: budgetCategories ?? [], galleryImages: galleryImages ?? [] }} profileId={profile.id} backPath={`/${profile.username}/projetos`} />
     </div>
   )

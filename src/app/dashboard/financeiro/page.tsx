@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getActiveProfile } from '@/lib/profile/active-profile'
-import { BalanceSummary } from '@/components/financial/balance-summary'
+import { FinancialDashboard } from '@/components/financial/financial-dashboard'
 import { TransactionTable } from '@/components/financial/transaction-table'
 import { Card, CardContent } from '@/components/ui/card'
 import Link from 'next/link'
@@ -15,17 +15,19 @@ export default async function FinanceiroPage() {
     supabase.from('financial_accounts').select('*').order('created_at', { ascending: true }),
   ])
 
-  const startOfMonth = new Date()
-  startOfMonth.setDate(1)
-  startOfMonth.setHours(0, 0, 0, 0)
+  const twelveMonthsAgo = new Date()
+  twelveMonthsAgo.setDate(1)
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 11)
+  twelveMonthsAgo.setHours(0, 0, 0, 0)
 
-  const [{ data: monthTransactions }, { data: recent }] = await Promise.all([
-    supabase.from('transactions').select('*').eq('profile_id', profile!.id).gte('date', startOfMonth.toISOString().slice(0, 10)),
+  const [{ data: yearTransactions }, { data: recent }, { data: categories }] = await Promise.all([
+    supabase.from('transactions').select('*').eq('profile_id', profile!.id).gte('date', twelveMonthsAgo.toISOString().slice(0, 10)),
     supabase.from('transactions')
       .select('*, category:transaction_categories!transactions_category_id_fkey(*), partner:partners(name)')
       .eq('profile_id', profile!.id)
       .order('date', { ascending: false })
       .limit(8),
+    supabase.from('transaction_categories').select('*').eq('profile_id', profile!.id),
   ])
 
   if (!accounts || accounts.length === 0) {
@@ -43,7 +45,7 @@ export default async function FinanceiroPage() {
 
   return (
     <div className="space-y-6">
-      <BalanceSummary accounts={accounts} monthTransactions={monthTransactions ?? []} />
+      <FinancialDashboard accounts={accounts} transactions={yearTransactions ?? []} categories={categories ?? []} />
 
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-sm">Últimos lançamentos</h2>

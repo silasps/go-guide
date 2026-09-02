@@ -25,9 +25,13 @@ interface Props {
   partners: Partner[]
   profileId: string
   grantsByPartner: Record<string, string[]>
+  /** Parceiros com um compromisso recorrente ativo que ficou quieto por
+   *  tempo demais (ver GET /api/cron/lapsed-donor-check) — tom convidativo,
+   *  nunca alarme (mesma decisão de produto já usada no FundingProjectionCard). */
+  lapsedPartnerIds?: Set<string>
 }
 
-export function PartnersList({ partners: initial, profileId, grantsByPartner }: Props) {
+export function PartnersList({ partners: initial, profileId, grantsByPartner, lapsedPartnerIds }: Props) {
   const [partners, setPartners] = useState(initial)
   const [search, setSearch] = useState('')
 
@@ -77,6 +81,9 @@ export function PartnersList({ partners: initial, profileId, grantsByPartner }: 
               <p className="text-xs text-muted-foreground truncate">{p.email ?? p.phone ?? 'Sem contato'}</p>
             </div>
             <Badge variant={TYPE_VARIANT[p.type]} className="text-xs shrink-0">{TYPE_LABEL[p.type]}</Badge>
+            {lapsedPartnerIds?.has(p.id) && (
+              <Badge variant="secondary" className="text-xs shrink-0">Parece ter parado</Badge>
+            )}
             <span className="text-xs text-muted-foreground shrink-0 hidden sm:block">{formatDate(p.joined_at)}</span>
             {p.user_id && (
               <>

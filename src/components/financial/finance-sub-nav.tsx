@@ -7,10 +7,12 @@ import { cn } from '@/lib/utils'
 const items = [
   { href: '/dashboard/financeiro', label: 'Visão geral', exact: true },
   { href: '/dashboard/financeiro/lancamentos', label: 'Lançamentos' },
+  { href: '/dashboard/financeiro/recorrentes', label: 'Recorrentes' },
   { href: '/dashboard/financeiro/contas', label: 'Contas' },
   { href: '/dashboard/financeiro/categorias', label: 'Categorias' },
   { href: '/dashboard/financeiro/conciliacao', label: 'Conciliação' },
   { href: '/dashboard/financeiro/cambio', label: 'Câmbio' },
+  { href: '/dashboard/financeiro/relatorios', label: 'Relatórios' },
 ]
 
 export function FinanceSubNav() {

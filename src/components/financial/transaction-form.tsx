@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 
-interface HighlightOption { id: string; title: string }
+interface HighlightOption { id: string; title: string; budgetCategories: { id: string; label: string }[] }
 
 interface Props {
   open: boolean
@@ -53,9 +53,11 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
   const [categoryId, setCategoryId] = useState(transaction?.category_id ?? '')
   const [partnerId, setPartnerId] = useState(transaction?.partner_id ?? '')
   const [highlightId, setHighlightId] = useState(transaction?.highlight_id ?? defaultHighlightId ?? '')
+  const [budgetCategoryId, setBudgetCategoryId] = useState(transaction?.budget_category_id ?? '')
   const [date, setDate] = useState(transaction?.date ?? new Date().toISOString().slice(0, 10))
 
   const topCategories = categories.filter(c => !c.parent_id)
+  const selectedHighlight = highlights.find(h => h.id === highlightId)
   const selectedAccount = accounts.find(a => a.id === accountId)
   const isCreditAccount = selectedAccount?.account_type === 'credit'
   const [faturaDate, setFaturaDate] = useState(transaction?.fatura_date ?? defaultFaturaDate(date, selectedAccount?.closing_day ?? null))
@@ -89,6 +91,7 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
         category_id: categoryId || null,
         partner_id: partnerId || null,
         highlight_id: highlightId || null,
+        budget_category_id: highlightId ? (budgetCategoryId || null) : null,
         date,
         is_credit_purchase: isCreditAccount,
         fatura_date: isCreditAccount ? faturaDate : null,
@@ -184,9 +187,19 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
           {highlights.length > 0 && (
             <div className="space-y-2">
               <Label>Projeto (opcional)</Label>
-              <select value={highlightId} onChange={(e) => setHighlightId(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
+              <select value={highlightId} onChange={(e) => { setHighlightId(e.target.value); setBudgetCategoryId('') }} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
                 <option value="">Nenhum</option>
                 {highlights.map(h => <option key={h.id} value={h.id}>{h.title}</option>)}
+              </select>
+            </div>
+          )}
+
+          {selectedHighlight && selectedHighlight.budgetCategories.length > 0 && (
+            <div className="space-y-2">
+              <Label>Categoria do orçamento (opcional)</Label>
+              <select value={budgetCategoryId} onChange={(e) => setBudgetCategoryId(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
+                <option value="">Projeto geral</option>
+                {selectedHighlight.budgetCategories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
               </select>
             </div>
           )}

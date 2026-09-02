@@ -7,7 +7,7 @@ export type MediaAspectRatio = 'original' | '1:1' | '4:5' | '1.91:1' | '21:9'
 export type PartnerType = 'financial' | 'prayer' | 'both' | 'ambassador'
 export type AccountType = 'checking' | 'savings' | 'credit'
 export type TransactionType = 'income' | 'expense' | 'transfer'
-export type TransactionSource = 'manual' | 'whatsapp' | 'api'
+export type TransactionSource = 'manual' | 'whatsapp' | 'api' | 'recurring'
 export type RequesterType = 'missionary' | 'partner'
 export type AccountMemberRole = 'owner' | 'viewer'
 export type HighlightStatus = 'active' | 'hidden' | 'completed'
@@ -37,6 +37,7 @@ export type NotificationType =
   | 'pledge_confirmed'
   | 'prayer_reply'
   | 'new_comment'
+  | 'partner_lapsed'
 
 export type BudgetCategoryType =
   | 'airfare' | 'bus' | 'boat' | 'ferry' | 'rideshare' | 'lodging'
@@ -203,6 +204,7 @@ export interface ProjectBudgetCategory {
 
 export interface ProjectBudgetProgress extends ProjectBudgetCategory {
   raised_amount: number
+  spent_amount: number
 }
 
 export interface ProjectGalleryImage {
@@ -386,6 +388,7 @@ export interface RecurringPledge {
   next_reminder_at: string | null
   stripe_subscription_id: string | null
   status: RecurringPledgeStatus
+  lapsed_notified_at: string | null
   created_at: string
 }
 
@@ -482,6 +485,12 @@ export interface Notification {
 
 export type BroadcastRecipientFilter = 'all' | 'financial' | 'prayer' | 'both' | 'ambassador'
 
+// 'exact' = qualquer pessoa com o link vê valores exatos (comportamento
+// original). 'percent_only' = público geral só vê percentuais/proporções;
+// valores exatos ficam reservados a parceiros com o grant `financial_summary`
+// (ver migration 074 e system.architecture.md 7.10-bis/7.10-quater).
+export type FinancialVisibility = 'exact' | 'percent_only'
+
 export interface PartnerBroadcast {
   id: string
   profile_id: string
@@ -492,6 +501,7 @@ export interface PartnerBroadcast {
   recipient_count: number
   highlight_ids: string[]
   financial_snapshot: unknown | null
+  financial_visibility: FinancialVisibility
   created_at: string
 }
 
@@ -559,6 +569,22 @@ export interface TransactionWithCategory extends Transaction {
   category: TransactionCategory | null
   subcategory: TransactionCategory | null
   partner: Pick<Partner, 'name'> | null
+}
+
+export interface RecurringTransaction {
+  id: string
+  profile_id: string
+  account_id: string
+  created_by_user_id: string | null
+  type: 'income' | 'expense'
+  amount: number
+  currency: string
+  description: string
+  category_id: string | null
+  next_due_date: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
 }
 
 export interface PartnerWithStats extends Partner {

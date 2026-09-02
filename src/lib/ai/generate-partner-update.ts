@@ -13,6 +13,8 @@ export interface PartnerUpdateFinancial {
   topExpenseCategories: { name: string; amount: number; currency: string }[]
 }
 
+export type FinancialVisibility = 'exact' | 'percent_only'
+
 export interface PartnerUpdateProject {
   title: string
   goalAmount: number | null
@@ -31,6 +33,34 @@ function describeFinancial(f: PartnerUpdateFinancial): string {
     `Total gasto: ${expense}.`,
     top ? `Maiores categorias de gasto: ${top}.` : null,
   ].filter(Boolean).join(' ')
+}
+
+// Modo privado: a IA NUNCA recebe os valores em moeda (minimização de
+// dado — mais seguro que confiar em instrução de "não fale o valor" no
+// prompt, já que o modelo não pode vazar um número que nunca viu). Calcula
+// percentuais em TypeScript a partir da moeda dominante (maior total de
+// gasto) e descarta o resto — se o missionário movimenta mais de uma
+// moeda, só a dominante entra no resumo percentual.
+function describeFinancialPercentOnly(f: PartnerUpdateFinancial): string {
+  const currencies = Object.entries(f.expenseByCurrency)
+  if (currencies.length === 0) return `Período: ${f.periodLabel}. Nenhuma despesa registrada neste período.`
+
+  const [dominantCurrency, totalExpense] = currencies.reduce((a, b) => (b[1] > a[1] ? b : a))
+  if (totalExpense <= 0) return `Período: ${f.periodLabel}. Nenhuma despesa registrada neste período.`
+
+  const top = f.topExpenseCategories
+    .filter((c) => c.currency === dominantCurrency)
+    .map((c) => ({ name: c.name, pct: Math.round((c.amount / totalExpense) * 100) }))
+  const others = Math.max(0, 100 - top.reduce((sum, c) => sum + c.pct, 0))
+
+  const breakdown = [...top.map((c) => `${c.name} ${c.pct}%`), others > 0 ? `outras categorias ${others}%` : null]
+    .filter(Boolean)
+    .join(', ')
+
+  return [
+    `Período: ${f.periodLabel}.`,
+    `Distribuição proporcional dos gastos (não revele nenhum valor monetário, fale só em termos de proporção/percentual): ${breakdown}.`,
+  ].join(' ')
 }
 
 function describeProjects(projects: PartnerUpdateProject[]): string {
@@ -54,23 +84,32 @@ function describeProjects(projects: PartnerUpdateProject[]): string {
 export async function generatePartnerUpdate({
   draftText,
   financial,
+  financialVisibility = 'exact',
   projects,
 }: {
   draftText: string
   financial: PartnerUpdateFinancial | null
+  financialVisibility?: FinancialVisibility
   projects: PartnerUpdateProject[]
 }): Promise<string> {
   const client = getAnthropicClient()
 
   const contextParts: string[] = []
   if (draftText.trim()) contextParts.push(`Rascunho escrito pelo missionário (use como base de voz e conteúdo, não substitua):\n${draftText.trim()}`)
-  if (financial) contextParts.push(`Dados financeiros reais do período (use pra enriquecer o texto, nunca invente números diferentes destes):\n${describeFinancial(financial)}`)
+  if (financial) {
+    const description = financialVisibility === 'percent_only' ? describeFinancialPercentOnly(financial) : describeFinancial(financial)
+    contextParts.push(`Dados financeiros reais do período (use pra enriquecer o texto, nunca invente números diferentes destes):\n${description}`)
+  }
   if (projects.length) contextParts.push(`Projetos em andamento que precisam de apoio (mencione pelo nome, especialmente os que ainda não bateram a meta):\n${describeProjects(projects)}`)
+
+  const financialPrivacyNote = financialVisibility === 'percent_only'
+    ? ' Esta atualização é em modo privado: você não recebeu nenhum valor monetário exato, só proporções — nunca invente ou estime um valor em R$/$/€ para a parte financeira, fale só em termos percentuais ou qualitativos (ex.: "a maior parte foi pra moradia").'
+    : ''
 
   const response = await client.messages.create({
     model: MODEL_GENERATE,
     max_tokens: 1024,
-    system: `Você ajuda um missionário a escrever uma atualização por e-mail pra sua rede de parceiros (apoiadores financeiros e de oração). O texto precisa soar pessoal e caloroso, como se o próprio missionário estivesse contando as novidades a um amigo — nunca como um relatório financeiro ou um comunicado corporativo. Teça os números com naturalidade dentro de frases, nunca como uma lista de dados isolada ou tabela. Não use markdown, títulos nem bullet points. Parágrafos curtos, separados por linha em branco. Se houver projetos, um cartão com foto, barra de progresso e botão de cada um já aparece automaticamente logo depois do seu texto — então feche o texto convidando emocionalmente a continuar apoiando ou conhecer mais, sem tentar descrever números exatos de novo nem inventar um link (o botão real já vem a seguir). Responda apenas com o JSON pedido.`,
+    system: `Você ajuda um missionário a escrever uma atualização por e-mail pra sua rede de parceiros (apoiadores financeiros e de oração). O texto precisa soar pessoal e caloroso, como se o próprio missionário estivesse contando as novidades a um amigo — nunca como um relatório financeiro ou um comunicado corporativo. Teça os números com naturalidade dentro de frases, nunca como uma lista de dados isolada ou tabela. Não use markdown, títulos nem bullet points. Parágrafos curtos, separados por linha em branco. Se houver projetos, um cartão com foto, barra de progresso e botão de cada um já aparece automaticamente logo depois do seu texto — então feche o texto convidando emocionalmente a continuar apoiando ou conhecer mais, sem tentar descrever números exatos de novo nem inventar um link (o botão real já vem a seguir).${financialPrivacyNote} Responda apenas com o JSON pedido.`,
     output_config: {
       format: {
         type: 'json_schema',

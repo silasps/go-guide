@@ -10,7 +10,7 @@ interface Props {
   accounts: FinancialAccount[]
   categories: TransactionCategory[]
   partners: Partner[]
-  highlights: { id: string; title: string }[]
+  highlights: { id: string; title: string; budgetCategories: { id: string; label: string }[] }[]
   defaultHighlightId?: string
 }
 

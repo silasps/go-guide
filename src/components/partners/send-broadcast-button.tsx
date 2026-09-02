@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBroadcast } from '@/app/dashboard/parceiros/actions'
-import { BroadcastRecipientFilter } from '@/types/database'
+import { BroadcastRecipientFilter, FinancialVisibility } from '@/types/database'
 import { PartnerUpdateFinancial } from '@/lib/ai/generate-partner-update'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Megaphone, Loader2, Sparkles, Copy, Check, PartyPopper } from 'lucide-react'
+import { Megaphone, FileText, Loader2, Sparkles, Copy, Check, PartyPopper } from 'lucide-react'
 
 const FILTER_LABEL: Record<BroadcastRecipientFilter, string> = {
   all: 'Todos os parceiros',
@@ -37,6 +37,14 @@ function periodRange(key: FinancialPeriodKey) {
   return { from: iso(from), to: iso(to), label: FINANCIAL_PERIODS[key] }
 }
 
+// Atalho do modo 'report' (aba Relatórios) — assunto pré-preenchido em vez
+// de vazio, pra reduzir digitação de quem só quer publicar a prestação de
+// contas do mês. Continua editável.
+function defaultReportSubject() {
+  const label = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+  return `Prestação de contas — ${label.charAt(0).toUpperCase() + label.slice(1)}`
+}
+
 interface ActiveHighlight {
   id: string
   title: string
@@ -48,24 +56,31 @@ interface ActiveHighlight {
 
 interface Props {
   profileId: string
-  activeHighlights: ActiveHighlight[]
+  /** 'campaign' (default) = compositor completo, usado em /dashboard/parceiros.
+   *  'report' = atalho da aba Relatórios (/dashboard/financeiro/relatorios):
+   *  bloco financeiro sempre ligado (sem checkbox), sem bloco de projetos,
+   *  assunto pré-preenchido, não manda e-mail por padrão. */
+  mode?: 'campaign' | 'report'
+  activeHighlights?: ActiveHighlight[]
   aiConfigured: boolean
   aiPlanIncluded: boolean
 }
 
-export function SendBroadcastButton({ profileId, activeHighlights, aiConfigured, aiPlanIncluded }: Props) {
+export function SendBroadcastButton({ profileId, mode = 'campaign', activeHighlights = [], aiConfigured, aiPlanIncluded }: Props) {
+  const isReportMode = mode === 'report'
   const aiEnabled = aiConfigured && aiPlanIncluded
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [sending, setSending] = useState(false)
   const [generating, setGenerating] = useState(false)
-  const [subject, setSubject] = useState('')
+  const [subject, setSubject] = useState(() => (isReportMode ? defaultReportSubject() : ''))
   const [body, setBody] = useState('')
   const [filter, setFilter] = useState<BroadcastRecipientFilter>('all')
-  const [sendByEmail, setSendByEmail] = useState(true)
+  const [sendByEmail, setSendByEmail] = useState(!isReportMode)
 
-  const [includeFinancial, setIncludeFinancial] = useState(false)
+  const [includeFinancial, setIncludeFinancial] = useState(isReportMode)
   const [financialPeriod, setFinancialPeriod] = useState<FinancialPeriodKey>('30d')
+  const [financialVisibility, setFinancialVisibility] = useState<FinancialVisibility>('exact')
   const [financialSnapshot, setFinancialSnapshot] = useState<PartnerUpdateFinancial | null>(null)
   const [includeProjects, setIncludeProjects] = useState(false)
   const [selectedHighlightIds, setSelectedHighlightIds] = useState<string[]>(() => activeHighlights.map((h) => h.id))
@@ -78,11 +93,12 @@ export function SendBroadcastButton({ profileId, activeHighlights, aiConfigured,
   }
 
   function resetForm() {
-    setSubject('')
+    setSubject(isReportMode ? defaultReportSubject() : '')
     setBody('')
     setFilter('all')
-    setSendByEmail(true)
-    setIncludeFinancial(false)
+    setSendByEmail(!isReportMode)
+    setIncludeFinancial(isReportMode)
+    setFinancialVisibility('exact')
     setFinancialSnapshot(null)
     setIncludeProjects(false)
     setShareUrl(null)
@@ -99,6 +115,7 @@ export function SendBroadcastButton({ profileId, activeHighlights, aiConfigured,
           profileId,
           draftText: body,
           financialPeriod: includeFinancial ? periodRange(financialPeriod) : null,
+          financialVisibility,
           highlightIds: includeProjects ? selectedHighlightIds : [],
         }),
       })
@@ -129,7 +146,8 @@ export function SendBroadcastButton({ profileId, activeHighlights, aiConfigured,
         filter,
         includeProjects ? selectedHighlightIds : [],
         includeFinancial ? financialSnapshot : null,
-        sendByEmail
+        sendByEmail,
+        includeFinancial ? financialVisibility : 'exact'
       )
       if (sendByEmail && recipientCount === 0) {
         toast.error('Nenhum parceiro encontrado com esse filtro (ou ninguém com e-mail cadastrado).')
@@ -158,8 +176,8 @@ export function SendBroadcastButton({ profileId, activeHighlights, aiConfigured,
   return (
     <>
       <Button variant="outline" onClick={() => setOpen(true)}>
-        <Megaphone className="h-4 w-4 mr-2" />
-        Criar atualização
+        {isReportMode ? <FileText className="h-4 w-4 mr-2" /> : <Megaphone className="h-4 w-4 mr-2" />}
+        {isReportMode ? 'Nova prestação de contas' : 'Criar atualização'}
       </Button>
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm() }}>
         <DialogContent className="max-w-md">
@@ -180,13 +198,17 @@ export function SendBroadcastButton({ profileId, activeHighlights, aiConfigured,
                   {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
                 </Button>
               </div>
-              <Button className="w-full" onClick={() => { setOpen(false); resetForm() }}>Concluir</Button>
+              <Button className="w-full" onClick={() => { setOpen(false); resetForm(); router.refresh() }}>Concluir</Button>
             </div>
           ) : (
             <>
               <DialogHeader>
-                <DialogTitle>Criar atualização</DialogTitle>
-                <DialogDescription>Gera sempre uma página pra compartilhar (por WhatsApp, por exemplo) — mandar por e-mail pra rede de parceiros é opcional.</DialogDescription>
+                <DialogTitle>{isReportMode ? 'Nova prestação de contas' : 'Criar atualização'}</DialogTitle>
+                <DialogDescription>
+                  {isReportMode
+                    ? 'Gera uma página pra compartilhar o que foi arrecadado/gasto — mandar por e-mail pra rede de parceiros é opcional.'
+                    : 'Gera sempre uma página pra compartilhar (por WhatsApp, por exemplo) — mandar por e-mail pra rede de parceiros é opcional.'}
+                </DialogDescription>
               </DialogHeader>
 
               <form onSubmit={handleSend} className="space-y-4">
@@ -224,7 +246,7 @@ export function SendBroadcastButton({ profileId, activeHighlights, aiConfigured,
 
                 <div className="rounded-xl border p-3 space-y-3">
                   <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                    Blocos opcionais (a IA tece tudo num texto só)
+                    {isReportMode ? 'A IA tece os números num texto só' : 'Blocos opcionais (a IA tece tudo num texto só)'}
                     {!aiConfigured && <span className="font-normal">— em breve</span>}
                     {aiConfigured && !aiPlanIncluded && (
                       <button type="button" onClick={() => router.push('/planos')} className="font-normal underline underline-offset-2">
@@ -235,40 +257,58 @@ export function SendBroadcastButton({ profileId, activeHighlights, aiConfigured,
 
                   <fieldset disabled={!aiEnabled} className={cn('space-y-3', !aiEnabled && 'opacity-40')}>
                     <div className="space-y-2">
-                      <label className="flex items-center gap-2 text-sm cursor-pointer">
-                        <input type="checkbox" checked={includeFinancial} onChange={(e) => setIncludeFinancial(e.target.checked)} />
-                        Prestação de contas (o que foi arrecadado/gasto)
-                      </label>
-                      {includeFinancial && (
-                        <select
-                          value={financialPeriod}
-                          onChange={(e) => setFinancialPeriod(e.target.value as FinancialPeriodKey)}
-                          className="ml-6 h-8 rounded-lg border border-input bg-transparent px-2 text-xs outline-none"
-                        >
-                          {Object.entries(FINANCIAL_PERIODS).map(([value, label]) => (
-                            <option key={value} value={value}>{label}</option>
-                          ))}
-                        </select>
+                      {isReportMode ? (
+                        <p className="text-sm font-medium">Prestação de contas (o que foi arrecadado/gasto)</p>
+                      ) : (
+                        <label className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input type="checkbox" checked={includeFinancial} onChange={(e) => setIncludeFinancial(e.target.checked)} />
+                          Prestação de contas (o que foi arrecadado/gasto)
+                        </label>
                       )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2 text-sm cursor-pointer">
-                        <input type="checkbox" checked={includeProjects} onChange={(e) => setIncludeProjects(e.target.checked)} />
-                        Projetos em destaque (meta, progresso, o que falta)
-                      </label>
-                      {includeProjects && (
-                        <div className="ml-6 space-y-1">
-                          {activeHighlights.length === 0 && <p className="text-xs text-muted-foreground">Nenhum projeto ativo.</p>}
-                          {activeHighlights.map((h) => (
-                            <label key={h.id} className="flex items-center gap-2 text-xs cursor-pointer">
-                              <input type="checkbox" checked={selectedHighlightIds.includes(h.id)} onChange={() => toggleHighlight(h.id)} />
-                              {h.title}
+                      {includeFinancial && (
+                        <div className="ml-6 space-y-2">
+                          <select
+                            value={financialPeriod}
+                            onChange={(e) => setFinancialPeriod(e.target.value as FinancialPeriodKey)}
+                            className="h-8 rounded-lg border border-input bg-transparent px-2 text-xs outline-none"
+                          >
+                            {Object.entries(FINANCIAL_PERIODS).map(([value, label]) => (
+                              <option key={value} value={value}>{label}</option>
+                            ))}
+                          </select>
+                          <div className="space-y-1">
+                            <label className="flex items-start gap-2 text-xs cursor-pointer">
+                              <input type="radio" name="financial-visibility" className="mt-0.5" checked={financialVisibility === 'exact'} onChange={() => setFinancialVisibility('exact')} />
+                              <span>Valores exatos <span className="text-muted-foreground">— qualquer pessoa com o link vê (padrão)</span></span>
                             </label>
-                          ))}
+                            <label className="flex items-start gap-2 text-xs cursor-pointer">
+                              <input type="radio" name="financial-visibility" className="mt-0.5" checked={financialVisibility === 'percent_only'} onChange={() => setFinancialVisibility('percent_only')} />
+                              <span>Só percentuais <span className="text-muted-foreground">— mais privado; valor exato fica reservado a parceiros autorizados</span></span>
+                            </label>
+                          </div>
                         </div>
                       )}
                     </div>
+
+                    {!isReportMode && (
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input type="checkbox" checked={includeProjects} onChange={(e) => setIncludeProjects(e.target.checked)} />
+                          Projetos em destaque (meta, progresso, o que falta)
+                        </label>
+                        {includeProjects && (
+                          <div className="ml-6 space-y-1">
+                            {activeHighlights.length === 0 && <p className="text-xs text-muted-foreground">Nenhum projeto ativo.</p>}
+                            {activeHighlights.map((h) => (
+                              <label key={h.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                                <input type="checkbox" checked={selectedHighlightIds.includes(h.id)} onChange={() => toggleHighlight(h.id)} />
+                                {h.title}
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {canGenerate && (
                       <Button type="button" variant="secondary" size="sm" className="w-full" onClick={handleGenerate} disabled={generating}>

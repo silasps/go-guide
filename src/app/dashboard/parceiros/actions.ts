@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveProfile } from '@/lib/profile/active-profile'
-import { BroadcastRecipientFilter } from '@/types/database'
+import { BroadcastRecipientFilter, FinancialVisibility } from '@/types/database'
 
 interface CreateBroadcastResult {
   recipientCount: number
@@ -24,7 +24,8 @@ export async function createBroadcast(
   recipientFilter: BroadcastRecipientFilter,
   highlightIds: string[] = [],
   financialSnapshot: unknown = null,
-  sendByEmail: boolean = true
+  sendByEmail: boolean = true,
+  financialVisibility: FinancialVisibility = 'exact'
 ): Promise<CreateBroadcastResult> {
   const trimmedSubject = subject.trim()
   const trimmedBody = body.trim()
@@ -64,6 +65,7 @@ export async function createBroadcast(
       recipient_count: partners.length,
       highlight_ids: highlightIds,
       financial_snapshot: financialSnapshot,
+      financial_visibility: financialVisibility,
     })
     .select('id')
     .single()
@@ -76,6 +78,7 @@ export async function createBroadcast(
   }
 
   revalidatePath('/dashboard/parceiros')
+  revalidatePath('/dashboard/financeiro/relatorios')
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
   return { recipientCount: partners.length, shareUrl: `${appUrl}/${profile.username}/atualizacoes/${broadcast.id}` }
 }

@@ -14,9 +14,14 @@ interface Props {
   contributeLabel?: string
   heading?: string
   missingLabel?: (amount: string) => string
+  /** Mostra "Gasto"/"Disponível" por categoria (fundo restrito) — só faz
+   *  sentido no painel do dono (`/dashboard/projetos/[id]`); desligado por
+   *  padrão pra não mudar a página pública de doação, que só precisa de
+   *  meta/arrecadado pra quem tá decidindo contribuir. */
+  showSpent?: boolean
 }
 
-export function BudgetBreakdown({ categories, currency, contributeBaseHref, contributeLabel, heading, missingLabel }: Props) {
+export function BudgetBreakdown({ categories, currency, contributeBaseHref, contributeLabel, heading, missingLabel, showSpent }: Props) {
   if (categories.length === 0) return null
 
   // No modo "contribuir" (perfil público, contributeBaseHref presente), o
@@ -37,6 +42,8 @@ export function BudgetBreakdown({ categories, currency, contributeBaseHref, cont
           const missing = Math.max(0, c.target_amount - c.raised_amount)
           const isFunded = missing <= 0
           const pct = c.target_amount > 0 ? Math.min(100, (c.raised_amount / c.target_amount) * 100) : 0
+          const isOverspent = showSpent && c.spent_amount > c.raised_amount
+          const available = Math.max(0, c.raised_amount - c.spent_amount)
           return (
             <div key={c.id} className="rounded-xl border border-border/60 bg-background/40 p-3 space-y-2">
               <div className="flex items-start justify-between gap-2 text-xs">
@@ -47,6 +54,20 @@ export function BudgetBreakdown({ categories, currency, contributeBaseHref, cont
                 <p className="text-xs text-muted-foreground">{c.description}</p>
               )}
               <Progress value={pct} className="h-1.5" />
+              {showSpent && (
+                <div className="pt-1 border-t border-border/40 space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Gasto</span>
+                    <span className="font-medium">{formatCurrency(c.spent_amount, currency)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">{isOverspent ? 'Excedeu o arrecadado em' : 'Disponível'}</span>
+                    <span className={cn('font-medium', isOverspent ? 'text-destructive' : 'text-support')}>
+                      {formatCurrency(isOverspent ? c.spent_amount - c.raised_amount : available, currency)}
+                    </span>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center justify-between gap-2">
                 {(showMissingInline || isFunded) ? (
                   <p className="text-xs font-medium text-support">

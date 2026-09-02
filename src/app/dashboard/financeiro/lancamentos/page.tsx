@@ -4,6 +4,7 @@ import { markNotificationTypesRead } from '@/lib/notifications/mark-read'
 import { TransactionTable } from '@/components/financial/transaction-table'
 import { NewTransactionButton } from '@/components/financial/new-transaction-button'
 import { TransactionFilters } from '@/components/financial/transaction-filters'
+import { resolveBudgetCategoryLabel } from '@/lib/highlights/budget-category-labels'
 
 interface Props {
   searchParams: Promise<{ account?: string; category?: string }>
@@ -22,6 +23,18 @@ export default async function LancamentosPage({ searchParams }: Props) {
   const { data: partners } = await supabase.from('partners').select('*').eq('profile_id', profile!.id).order('name')
   const { data: highlights } = await supabase.from('highlights').select('id, title').eq('profile_id', profile!.id).order('title')
 
+  const highlightIds = (highlights ?? []).map(h => h.id)
+  const { data: budgetCategories } = highlightIds.length > 0
+    ? await supabase.from('project_budget_categories').select('*').in('highlight_id', highlightIds)
+    : { data: [] }
+  const highlightsWithBudget = (highlights ?? []).map(h => ({
+    id: h.id,
+    title: h.title,
+    budgetCategories: (budgetCategories ?? [])
+      .filter(c => c.highlight_id === h.id)
+      .map(c => ({ id: c.id, label: resolveBudgetCategoryLabel(c) })),
+  }))
+
   let query = supabase
     .from('transactions')
     .select('*, category:transaction_categories!transactions_category_id_fkey(*), partner:partners(name)')
@@ -38,10 +51,10 @@ export default async function LancamentosPage({ searchParams }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <TransactionFilters accounts={accounts ?? []} categories={categories ?? []} />
-        <NewTransactionButton accounts={accounts ?? []} categories={categories ?? []} partners={partners ?? []} highlights={highlights ?? []} />
+        <NewTransactionButton accounts={accounts ?? []} categories={categories ?? []} partners={partners ?? []} highlights={highlightsWithBudget} />
       </div>
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <TransactionTable transactions={(transactions ?? []) as any} accounts={accounts ?? []} categories={categories ?? []} partners={partners ?? []} highlights={highlights ?? []} />
+      <TransactionTable transactions={(transactions ?? []) as any} accounts={accounts ?? []} categories={categories ?? []} partners={partners ?? []} highlights={highlightsWithBudget} />
     </div>
   )
 }

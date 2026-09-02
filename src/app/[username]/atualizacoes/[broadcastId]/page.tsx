@@ -4,7 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import { getProfile } from '@/lib/profile/get-profile'
 import { formatCurrency, getInitials } from '@/lib/utils'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { Progress } from '@/components/ui/progress'
 import { PartnerUpdateFinancial } from '@/lib/ai/generate-partner-update'
+import { FinancialVisibility } from '@/types/database'
 
 interface Props { params: Promise<{ username: string; broadcastId: string }> }
 
@@ -23,6 +25,7 @@ interface PublicBroadcast {
   body: string
   highlight_ids: string[]
   financial_snapshot: PartnerUpdateFinancial | null
+  financial_visibility: FinancialVisibility
   created_at: string
 }
 
@@ -43,6 +46,24 @@ export default async function AtualizacaoPage({ params }: Props) {
   if (!broadcast || broadcast.profile_id !== profile.id) notFound()
 
   const financial = broadcast.financial_snapshot
+
+  // Redação da prestação de contas: modo 'percent_only' esconde valores
+  // exatos de quem não tem o grant `financial_summary` (partner_visibility_
+  // grants, migration 011 — existia desde sempre no toggle da UI, mas
+  // nunca era checado em lugar nenhum do código até aqui). A checagem de
+  // fato acontece no banco (SECURITY DEFINER, mesma técnica de
+  // is_authorized_partner/has_partner_grant, migration 011) — aqui só
+  // decide o que renderizar. Isso é
+  // seguro porque esta página é um Server Component puro (StatTile/
+  // ProjectCard/PercentBreakdown abaixo são funções do mesmo arquivo, sem
+  // 'use client'): o JSON bruto de `financial` nunca é serializado pro
+  // navegador, então esconder os valores aqui em TypeScript já basta —
+  // não é preciso mexer na function SQL além de devolver a coluna nova.
+  const { data: hasFinancialGrant } = await supabase.rpc('has_partner_grant', {
+    p_profile_id: broadcast.profile_id,
+    p_section: 'financial_summary',
+  })
+  const canSeeExactFinancial = broadcast.financial_visibility !== 'percent_only' || !!hasFinancialGrant
 
   let projects: PublicProject[] = []
   if (broadcast.highlight_ids?.length) {
@@ -74,7 +95,7 @@ export default async function AtualizacaoPage({ params }: Props) {
           <div className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">{broadcast.body}</div>
         </div>
 
-        {financial && (
+        {financial && canSeeExactFinancial && (
           <div className="grid grid-cols-2 gap-3">
             {Object.entries(financial.incomeByCurrency).map(([currency, value]) => (
               <StatTile key={`in-${currency}`} label="Arrecadado" value={formatCurrency(value, currency)} accent={profile.accent_color} />
@@ -83,6 +104,10 @@ export default async function AtualizacaoPage({ params }: Props) {
               <StatTile key={`out-${currency}`} label="Investido na missão" value={formatCurrency(value, currency)} accent={profile.accent_color} muted />
             ))}
           </div>
+        )}
+
+        {financial && !canSeeExactFinancial && (
+          <PercentBreakdown financial={financial} displayName={profile.display_name} />
         )}
 
         {projects.length > 0 && (
@@ -98,6 +123,43 @@ export default async function AtualizacaoPage({ params }: Props) {
           Enviado com carinho por {profile.display_name} — go→guide
         </p>
       </div>
+    </div>
+  )
+}
+
+// Versão redigida da prestação de contas — mostrada quando o broadcast
+// está em modo 'percent_only' e o visitante não tem o grant
+// `financial_summary`. Só recebe percentuais já calculados (nunca os
+// valores em moeda de `financial`), na mesma moeda dominante usada pela
+// IA em describeFinancialPercentOnly (src/lib/ai/generate-partner-update.ts).
+function PercentBreakdown({ financial, displayName }: { financial: PartnerUpdateFinancial; displayName: string }) {
+  const currencies = Object.entries(financial.expenseByCurrency)
+  if (currencies.length === 0) return null
+
+  const [dominantCurrency, totalExpense] = currencies.reduce((a, b) => (b[1] > a[1] ? b : a))
+  if (totalExpense <= 0) return null
+
+  const top = financial.topExpenseCategories
+    .filter((c) => c.currency === dominantCurrency)
+    .map((c) => ({ name: c.name, pct: Math.round((c.amount / totalExpense) * 100) }))
+  const othersPct = Math.max(0, 100 - top.reduce((sum, c) => sum + c.pct, 0))
+  const rows = othersPct > 0 ? [...top, { name: 'Outras categorias', pct: othersPct }] : top
+
+  return (
+    <div className="bg-card border rounded-2xl p-4 space-y-3">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Como o dinheiro foi usado</p>
+      <div className="space-y-2.5">
+        {rows.map((r) => (
+          <div key={r.name} className="space-y-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium">{r.name}</span>
+              <span className="text-muted-foreground">{r.pct}%</span>
+            </div>
+            <Progress value={r.pct} className="h-1.5" />
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">Valores exatos disponíveis para parceiros autorizados por {displayName}.</p>
     </div>
   )
 }

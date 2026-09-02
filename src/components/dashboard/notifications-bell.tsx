@@ -28,6 +28,7 @@ const AREA_BY_TYPE: Record<string, NotificationArea> = {
   new_partner: 'partners',
   new_pledge: 'financial',
   pledge_confirmed: 'financial',
+  partner_lapsed: 'financial',
   new_comment: 'comments',
   new_post: 'content',
   highlight_update: 'content',

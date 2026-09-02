@@ -13,18 +13,21 @@ export default async function ParceirosPage() {
     getActiveProfile(),
   ])
 
-  const [, { data: partners }, { data: grants }, { data: activeHighlights }] = await Promise.all([
-    markNotificationTypesRead(supabase, user!.id, ['new_partner']),
+  const [, { data: partners }, { data: grants }, { data: activeHighlights }, { data: lapsed }] = await Promise.all([
+    markNotificationTypesRead(supabase, user!.id, ['new_partner', 'partner_lapsed']),
     supabase.from('partners').select('*').eq('profile_id', profile!.id).order('joined_at', { ascending: false }),
     supabase.from('partner_visibility_grants').select('partner_id, section').eq('profile_id', profile!.id),
     supabase.from('highlights').select('id, title, goal_amount, current_amount, currency, funding_deadline')
       .eq('profile_id', profile!.id).eq('status', 'active').is('archived_at', null).order('created_at', { ascending: false }),
+    supabase.from('recurring_pledges').select('partner_id').eq('profile_id', profile!.id).eq('status', 'active').not('lapsed_notified_at', 'is', null),
   ])
 
   const grantsByPartner: Record<string, string[]> = {}
   for (const g of grants ?? []) {
     grantsByPartner[g.partner_id] = [...(grantsByPartner[g.partner_id] ?? []), g.section]
   }
+
+  const lapsedPartnerIds = new Set((lapsed ?? []).map((rp) => rp.partner_id))
 
   return (
     <div className="space-y-6">
@@ -43,7 +46,7 @@ export default async function ParceirosPage() {
           <AddPartnerButton profileId={profile!.id} plan={profile!.plan} partnerCount={partners?.length ?? 0} />
         </div>
       </div>
-      <PartnersList partners={partners ?? []} profileId={profile!.id} grantsByPartner={grantsByPartner} />
+      <PartnersList partners={partners ?? []} profileId={profile!.id} grantsByPartner={grantsByPartner} lapsedPartnerIds={lapsedPartnerIds} />
     </div>
   )
 }

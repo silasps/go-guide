@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { AI_ACTION_COSTS } from '@/lib/ai/costs'
-import { generatePartnerUpdate, PartnerUpdateFinancial, PartnerUpdateProject } from '@/lib/ai/generate-partner-update'
+import { generatePartnerUpdate, PartnerUpdateFinancial, PartnerUpdateProject, FinancialVisibility } from '@/lib/ai/generate-partner-update'
 
 interface RequestBody {
   profileId: string
   draftText: string
   financialPeriod: { from: string; to: string; label: string } | null
+  financialVisibility?: FinancialVisibility
   highlightIds: string[]
 }
 
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'not_authenticated' }, { status: 401 })
 
-  const { profileId, draftText, financialPeriod, highlightIds } = (await req.json()) as RequestBody
+  const { profileId, draftText, financialPeriod, financialVisibility, highlightIds } = (await req.json()) as RequestBody
   if (!profileId) return NextResponse.json({ error: 'invalid_request' }, { status: 400 })
 
   const { data: newBalance, error: creditError } = await supabase.rpc('consume_ai_credits', {
@@ -81,7 +82,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await generatePartnerUpdate({ draftText: draftText ?? '', financial, projects })
+    const body = await generatePartnerUpdate({ draftText: draftText ?? '', financial, financialVisibility, projects })
     return NextResponse.json({ body, financial, remainingCredits: newBalance })
   } catch {
     return NextResponse.json({ error: 'ai_provider_error' }, { status: 502 })
