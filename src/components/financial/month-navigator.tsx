@@ -31,6 +31,13 @@ export function MonthNavigator({ points, selectedMonth, onSelectMonth, metric, o
   const selectedIndex = points.findIndex((p) => p.month === selectedMonth)
   const activeMetric = TIMELINE_METRICS.find((m) => m.value === metric)!
 
+  // "Futuro" é sempre relativo ao mês atual real (hoje), não ao mês
+  // selecionado/navegado — senão o corte sólido/tracejado anda junto com
+  // a navegação em vez de ficar fixo no mês em que estamos de fato.
+  const now = new Date()
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const currentIndex = points.findIndex((p) => p.month === currentMonth)
+
   useEffect(() => {
     selectedRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
   }, [selectedMonth])
@@ -66,13 +73,13 @@ export function MonthNavigator({ points, selectedMonth, onSelectMonth, metric, o
           <div ref={scrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide relative py-1">
             {points.map((p, i) => {
               const selected = p.month === selectedMonth
-              const future = i > selectedIndex
+              const future = i > currentIndex
               // Trecho de linha desenhado aqui liga o ponto i ao i+1 — só
               // conta como "futuro" (tracejado) a partir do próprio mês
-              // selecionado em diante; o trecho que TERMINA nele continua
-              // sólido (i < selectedIndex, não i <= ), senão a linha sólida
-              // ultrapassa a bolinha selecionada rumo ao mês seguinte.
-              const lineFuture = i >= selectedIndex
+              // atual em diante; o trecho que TERMINA nele continua
+              // sólido (i < currentIndex, não i <= ), senão a linha sólida
+              // ultrapassa a bolinha do mês atual rumo ao mês seguinte.
+              const lineFuture = i >= currentIndex
               const value = metricValue(p, metric)
               return (
                 <div key={p.month} className="relative shrink-0" style={{ width: 144 }}>
