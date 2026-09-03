@@ -35,6 +35,7 @@ export type NotificationType =
   | 'highlight_update'
   | 'new_pledge'
   | 'pledge_confirmed'
+  | 'pledge_rejected'
   | 'prayer_reply'
   | 'new_comment'
   | 'partner_lapsed'

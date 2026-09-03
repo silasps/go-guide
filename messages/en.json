@@ -955,6 +955,8 @@
     "filterAllMissionaries": "All missionaries",
     "noGivingYet": "No giving recorded yet.",
     "generalGiving": "General giving",
+    "rejectionReasonLabel": "Reason",
+    "rejectionContactHint": "If you believe this was a mistake — for example, if you have the receipt — get in touch with the missionary. Rejected offerings stay available for review for up to 2 months.",
     "status": {
       "pending": "Pending",
       "confirmed": "Confirmed",

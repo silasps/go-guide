@@ -6,11 +6,13 @@ import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { Pledge, FinancialAccount } from '@/types/database'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Loader2, Check, X, ExternalLink, MessageCircle } from 'lucide-react'
+import { Loader2, Check, X, ExternalLink, MessageCircle, Ban } from 'lucide-react'
+import { PLEDGE_ARCHIVE_DAYS, addDays } from '@/lib/financial/pledge-windows'
 
 const METHOD_LABEL: Record<string, string> = { pix: 'Pix', paypal: 'PayPal', wise: 'Wise', bank_transfer: 'Transferência', other: 'Outro' }
 const ANONYMOUS_LABEL = 'Apoiador anônimo'
@@ -41,10 +43,25 @@ export function PledgeReviewCard({ pledge, accounts, profileId, budgetCategories
   function handleConfirm() {
     const parsed = parseFloat(amount)
     if (!parsed || parsed <= 0) { toast.error('Valor inválido.'); return }
-    if (!accountId) { toast.error('Selecione uma conta para depositar.'); return }
     run('confirm', async () => {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
+
+      // 0. Sem nenhuma conta ainda: cria uma automaticamente a partir do
+      // método de pagamento da própria oferta (ex.: "Conta Pix", na moeda
+      // da oferta) — o usuário já disse "recebo por Pix" em Configurações,
+      // não faz sentido pedir esse dado de novo antes de poder confirmar.
+      let depositAccountId = accountId
+      if (!depositAccountId) {
+        const { data: newAccount, error: accountError } = await supabase.from('financial_accounts').insert({
+          profile_id: profileId,
+          name: `Conta ${METHOD_LABEL[pledge.payment_method] ?? 'Principal'}`,
+          currency_code: pledge.currency,
+          created_by_user_id: user!.id,
+        }).select('id').single()
+        if (accountError || !newAccount) { toast.error('Erro ao criar conta financeira.'); return }
+        depositAccountId = newAccount.id
+      }
 
       // 1. Encontra ou promove o parceiro
       let partnerId: string | null = pledge.partner_id
@@ -65,7 +82,7 @@ export function PledgeReviewCard({ pledge, accounts, profileId, budgetCategories
 
       // 2. Cria a transação real
       const { data: transaction, error: txError } = await supabase.from('transactions').insert({
-        account_id: accountId,
+        account_id: depositAccountId,
         profile_id: profileId,
         created_by_user_id: user!.id,
         type: 'income',
@@ -92,7 +109,7 @@ export function PledgeReviewCard({ pledge, accounts, profileId, budgetCategories
       }).eq('id', pledge.id)
 
       if (pledgeError) { toast.error('Erro ao confirmar oferta.'); return }
-      toast.success('Oferta confirmada!')
+      toast.success(accountId ? 'Oferta confirmada!' : `Conta "Conta ${METHOD_LABEL[pledge.payment_method] ?? 'Principal'}" criada e oferta confirmada!`)
       router.refresh()
     })
   }
@@ -131,6 +148,18 @@ export function PledgeReviewCard({ pledge, accounts, profileId, budgetCategories
         <p className="text-xs bg-muted rounded-lg px-2.5 py-1.5 whitespace-pre-wrap">{pledge.message}</p>
       )}
 
+      {pledge.status === 'rejected' && pledge.reviewed_at && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-1">
+          <p className="text-xs font-medium text-destructive flex items-center gap-1.5">
+            <Ban className="h-3.5 w-3.5" /> Recusada em {formatDate(pledge.reviewed_at)}
+          </p>
+          {pledge.rejection_reason && <p className="text-xs text-foreground">{pledge.rejection_reason}</p>}
+          <p className="text-xs text-muted-foreground">
+            Ainda dá pra reconsiderar e confirmar até {formatDate(addDays(pledge.reviewed_at, PLEDGE_ARCHIVE_DAYS).toISOString())}.
+          </p>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-3">
         {pledge.proof_url && (
           <a href={pledge.proof_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
@@ -153,11 +182,24 @@ export function PledgeReviewCard({ pledge, accounts, profileId, budgetCategories
           </div>
           <div className="space-y-1">
             <Label className="text-xs font-normal text-muted-foreground">Depositar em</Label>
-            <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
-              {accountOptions.map(a => <option key={a.id} value={a.id}>{a.name}{accountOptions === accounts ? ` (${a.currency_code})` : ''}</option>)}
-            </select>
+            {accounts.length > 0 ? (
+              <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
+                {accountOptions.map(a => <option key={a.id} value={a.id}>{a.name}{accountOptions === accounts ? ` (${a.currency_code})` : ''}</option>)}
+              </select>
+            ) : (
+              <p className="h-8 flex items-center rounded-lg border border-dashed px-2.5 text-xs text-muted-foreground truncate">
+                Nova: Conta {METHOD_LABEL[pledge.payment_method] ?? 'Principal'}
+              </p>
+            )}
           </div>
         </div>
+
+        {accounts.length === 0 && (
+          <p className="text-xs text-muted-foreground">
+            Você ainda não tem nenhuma conta financeira — ao confirmar, criamos uma automaticamente com base no método desta oferta ({METHOD_LABEL[pledge.payment_method] ?? 'Outro'}, {pledge.currency}).{' '}
+            <Link href="/dashboard/financeiro/contas" className="underline">Gerenciar contas</Link>
+          </p>
+        )}
 
         {budgetCategories.length > 0 && (
           <div className="space-y-1">
@@ -170,9 +212,9 @@ export function PledgeReviewCard({ pledge, accounts, profileId, budgetCategories
         )}
       </div>
 
-      {showReject ? (
+      {pledge.status === 'pending' && showReject ? (
         <div className="space-y-2">
-          <Input value={rejectReason} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRejectReason(e.target.value)} placeholder="Motivo (opcional)" className="h-8 text-sm" />
+          <Input value={rejectReason} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRejectReason(e.target.value)} placeholder="Motivo (o apoiador recebe essa observação)" className="h-8 text-sm" />
           <div className="flex gap-2">
             <Button variant="outline" size="sm" className="flex-1" onClick={() => setShowReject(false)}>Cancelar</Button>
             <Button variant="destructive" size="sm" className="flex-1" onClick={handleReject} disabled={saving === 'reject'}>
@@ -183,10 +225,12 @@ export function PledgeReviewCard({ pledge, accounts, profileId, budgetCategories
         </div>
       ) : (
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => setShowReject(true)}>
-            <X className="h-3.5 w-3.5" /> Rejeitar
-          </Button>
-          <Button size="sm" className="flex-1 gap-1.5" onClick={handleConfirm} disabled={saving === 'confirm' || !accountId}>
+          {pledge.status === 'pending' && (
+            <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => setShowReject(true)}>
+              <X className="h-3.5 w-3.5" /> Rejeitar
+            </Button>
+          )}
+          <Button size="sm" className="flex-1 gap-1.5" onClick={handleConfirm} disabled={saving === 'confirm'}>
             {saving === 'confirm' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
             Confirmar
           </Button>

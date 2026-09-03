@@ -28,6 +28,7 @@ const AREA_BY_TYPE: Record<string, NotificationArea> = {
   new_partner: 'partners',
   new_pledge: 'financial',
   pledge_confirmed: 'financial',
+  pledge_rejected: 'financial',
   partner_lapsed: 'partners',
   new_comment: 'comments',
   new_post: 'content',
@@ -87,18 +88,19 @@ function groupByArea(notifications: { id: string; type: string; created_at: stri
 }
 
 // Comentário leva direto pro post (com os comentários já abertos) em vez da
-// área genérica. `new_pledge`/`pledge_confirmed` também precisam de rota
-// própria dentro da área "financial": a primeira notifica o missionário de
-// uma oferta *pendente* (ainda não é lançamento — mora em Conciliação, não
-// em Lançamentos, senão a página abre vazia) e a segunda notifica quem
-// reportou a oferta (o parceiro, que nem tem acesso à agenda financeira do
-// missionário — vê o próprio histórico em /financeiro-parceiro).
+// área genérica. `new_pledge`/`pledge_confirmed`/`pledge_rejected` também
+// precisam de rota própria dentro da área "financial": a primeira notifica
+// o missionário de uma oferta *pendente* (ainda não é lançamento — mora em
+// Conciliação, não em Lançamentos, senão a página abre vazia); as outras
+// duas notificam quem reportou a oferta (o parceiro, que nem tem acesso à
+// agenda financeira do missionário — vê o próprio histórico, com o motivo
+// da recusa quando houver, em /financeiro-parceiro).
 function hrefForGroup(g: AreaGroup): string {
   if (g.area === 'comments' && typeof g.latestPayload.username === 'string' && typeof g.latestPayload.post_id === 'string') {
     return `/${g.latestPayload.username}?post=${g.latestPayload.post_id}&comments=1`
   }
   if (g.latestType === 'new_pledge') return '/dashboard/financeiro/conciliacao'
-  if (g.latestType === 'pledge_confirmed') return '/dashboard/financeiro-parceiro'
+  if (g.latestType === 'pledge_confirmed' || g.latestType === 'pledge_rejected') return '/dashboard/financeiro-parceiro'
   return AREA_HREF[g.area]
 }
 

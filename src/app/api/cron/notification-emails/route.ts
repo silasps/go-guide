@@ -5,7 +5,7 @@ import { formatCurrency } from '@/lib/utils'
 
 type ServiceClient = Awaited<ReturnType<typeof createServiceClient>>
 
-const EMAIL_TYPES = ['new_message', 'pledge_confirmed', 'new_pledge', 'new_partner'] as const
+const EMAIL_TYPES = ['new_message', 'pledge_confirmed', 'pledge_rejected', 'new_pledge', 'new_partner'] as const
 
 interface NotificationRow {
   id: string
@@ -127,6 +127,27 @@ async function buildEmailContent(supabase: ServiceClient, n: NotificationRow, ap
         html: wrap(
           'Oferta confirmada ✓',
           `<p style="margin:0;color:#374151;">Sua oferta de <strong>${formatCurrency(pledge.reported_amount, pledge.currency)}</strong>${highlightTitle ? ` para <strong>${highlightTitle}</strong>` : ''} foi confirmada. Obrigado pela sua parceria!</p>`,
+          `${appUrl}/dashboard/financeiro-parceiro`,
+          'Ver histórico de doações'
+        ),
+      }
+    }
+
+    case 'pledge_rejected': {
+      const pledgeId = n.payload.pledge_id as string | undefined
+      if (!pledgeId) return null
+      const { data: pledge } = await supabase.from('pledges').select('reported_amount, currency').eq('id', pledgeId).maybeSingle()
+      if (!pledge) return null
+      const highlightTitle = n.payload.highlight_title as string | undefined
+      const reason = n.payload.rejection_reason as string | undefined
+      return {
+        toName: recipientName,
+        subject: 'Sua oferta não pôde ser confirmada',
+        html: wrap(
+          'Oferta não confirmada',
+          `<p style="margin:0 0 8px;color:#374151;">Sua oferta de <strong>${formatCurrency(pledge.reported_amount, pledge.currency)}</strong>${highlightTitle ? ` para <strong>${highlightTitle}</strong>` : ''} não pôde ser confirmada.</p>
+           ${reason ? `<p style="margin:0 0 8px;color:#374151;"><strong>Motivo:</strong> ${reason}</p>` : ''}
+           <p style="margin:0;color:#374151;">Se você acredita que isso foi um engano — por exemplo, se tem o comprovante em mãos — entre em contato pra reanalisarmos.</p>`,
           `${appUrl}/dashboard/financeiro-parceiro`,
           'Ver histórico de doações'
         ),

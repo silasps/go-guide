@@ -955,6 +955,8 @@
     "filterAllMissionaries": "Todos los misioneros",
     "noGivingYet": "Aún no hay donaciones registradas.",
     "generalGiving": "Donación general",
+    "rejectionReasonLabel": "Motivo",
+    "rejectionContactHint": "Si crees que fue un error — por ejemplo, si tienes el comprobante en mano — ponte en contacto con el misionero. Las ofrendas rechazadas quedan disponibles para reanálisis hasta por 2 meses.",
     "status": {
       "pending": "Pendiente",
       "confirmed": "Confirmada",
