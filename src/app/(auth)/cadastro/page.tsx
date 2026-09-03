@@ -26,6 +26,7 @@ function CadastroForm() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [birthDate, setBirthDate] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -41,7 +42,7 @@ function CadastroForm() {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name, phone: phone.trim() || undefined } },
+      options: { data: { full_name: name, phone: phone.trim() || undefined, birth_date: birthDate || undefined } },
     })
 
     if (error) {
@@ -68,7 +69,14 @@ function CadastroForm() {
     const supabase = createClient()
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirect)}` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirect)}`,
+        // Escopo extra pra tentar puxar a data de nascimento do Google (ver
+        // /auth/callback, que busca via People API só quando esse escopo foi
+        // concedido) — o usuário ainda pode negar essa permissão no
+        // consentimento, então birth_date continua opcional.
+        scopes: 'https://www.googleapis.com/auth/user.birthday.read',
+      },
     })
   }
 
@@ -143,6 +151,21 @@ function CadastroForm() {
               onChange={(e) => setPhone(e.target.value)}
               autoComplete="tel"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="birthDate">
+              {t('birthDateLabel')} <span className="text-muted-foreground font-normal">{t('phoneOptional')}</span>
+            </Label>
+            <Input
+              id="birthDate"
+              type="date"
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+              autoComplete="bday"
+              max={new Date().toISOString().slice(0, 10)}
+            />
+            <p className="text-xs text-muted-foreground">{t('birthDateHint')}</p>
           </div>
 
           <div className="space-y-2">

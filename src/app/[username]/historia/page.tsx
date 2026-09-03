@@ -11,6 +11,8 @@ import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { getProfile, getProfileOrRedirect } from '@/lib/profile/get-profile'
 import { getProfileViewerContext } from '@/lib/profile/viewer-context'
+import { getLinkedTimelinePosts } from '@/lib/history/linked-posts'
+import type { Profile } from '@/types/database'
 import { Pencil } from 'lucide-react'
 
 interface Props { params: Promise<{ username: string }> }
@@ -57,20 +59,32 @@ export default async function HistoriaPage({ params }: Props) {
           </Link>
         )}
         <Suspense fallback={<SkList n={3} />}>
-          <HistoryBlocksAsync profileId={profile.id} visitorLocale={visitorLocale} username={username} ctaButtonLabel={t('historiaCtaButton')} />
+          <HistoryBlocksAsync
+            profile={profile}
+            visitorLocale={visitorLocale}
+            username={username}
+            ctaButtonLabel={t('historiaCtaButton')}
+            navLabels={{
+              who_we_are: t('historyNavWhoWeAre'),
+              our_calling: t('historyNavOurCalling'),
+              timeline: t('historyNavTimeline'),
+              cta: t('historyNavCta'),
+            }}
+          />
         </Suspense>
       </div>
     </div>
   )
 }
 
-async function HistoryBlocksAsync({ profileId, visitorLocale, username, ctaButtonLabel }: { profileId: string; visitorLocale: Locale; username: string; ctaButtonLabel: string }) {
+async function HistoryBlocksAsync({ profile, visitorLocale, username, ctaButtonLabel, navLabels }: { profile: Profile; visitorLocale: Locale; username: string; ctaButtonLabel: string; navLabels: { who_we_are: string; our_calling: string; timeline: string; cta: string } }) {
   const supabase = await createClient()
-  const { data: blocks } = await supabase
-    .from('history_blocks')
-    .select('*')
-    .eq('profile_id', profileId)
-    .order('order_index')
+  const [{ data: blocks }, { data: { user } }] = await Promise.all([
+    supabase.from('history_blocks').select('*').eq('profile_id', profile.id).order('order_index'),
+    supabase.auth.getUser(),
+  ])
 
-  return <HistoryView blocks={blocks ?? []} visitorLocale={visitorLocale} username={username} ctaButtonLabel={ctaButtonLabel} />
+  const linkedPosts = await getLinkedTimelinePosts(supabase, blocks ?? [], profile, user?.id)
+
+  return <HistoryView blocks={blocks ?? []} visitorLocale={visitorLocale} username={username} ctaButtonLabel={ctaButtonLabel} navLabels={navLabels} linkedPosts={linkedPosts} />
 }

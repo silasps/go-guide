@@ -200,6 +200,8 @@
     "phoneLabel": "Mobile / WhatsApp",
     "phoneOptional": "(optional)",
     "phonePlaceholder": "+1 555 123 4567",
+    "birthDateLabel": "Date of birth",
+    "birthDateHint": "This lets us wish you happy birthday and remind the missionaries you support about your birthday.",
     "passwordPlaceholder": "At least 8 characters",
     "passwordTooShort": "Password must be at least 8 characters long.",
     "signupSubmit": "Create free account",
@@ -320,9 +322,11 @@
     "pageIntro": "These 4 sections make up the \"Story\" tab on your public profile — it's where partners get to know your journey before deciding to support you. A section left blank simply won't show.",
     "whoWeAre": "Who we are",
     "whoWeAreHint": "An opening introduction of who you are — shows at the top of the page.",
-    "sectionImageLabel": "Image for this stage (optional)",
-    "sectionImageUrlPlaceholder": "Paste a photo link that tells a bit of your story at this stage",
-    "sectionImageCaptionPlaceholder": "Photo caption (optional)",
+    "sectionImageLabel": "Photos for this stage (optional)",
+    "addPhotoLabel": "Add photos ({count}/{max})",
+    "photoLimitLabel": "Limit of {max} photos reached.",
+    "photoLimitToast": "Maximum of {max} photos.",
+    "processingPhotos": "Processing...",
     "ourCalling": "Our calling",
     "ourCallingHint": "The calling/reason that brought you here.",
     "timeline": "Timeline",
@@ -335,6 +339,11 @@
     "sectionText": "Text",
     "timelineYearPlaceholder": "Year",
     "timelineEventPlaceholder": "What happened",
+    "timelineLinkPost": "Link a post",
+    "timelineAddPhoto": "Add photo",
+    "timelineRemoveMedia": "Remove",
+    "timelinePickerTitle": "Choose a post",
+    "timelinePickerEmpty": "No posts with a photo yet.",
     "addItem": "Add",
     "removeItem": "Remove",
     "dragToReorder": "Drag to reorder",
@@ -503,8 +512,9 @@
     "doneDescriptionNotified": "{name} will confirm receipt soon. You'll be notified here once confirmed.",
     "doneDescriptionGuestNamed": "{name} will confirm receipt soon. Since you contributed without being logged in, we won't be able to notify you directly — but feel free to check back anytime.",
     "doneDescriptionAnonymous": "Your contribution was recorded successfully. {name} is truly grateful!",
-    "becomePartnerPrompt": "Want to know more and be even more part of {name}'s journey?",
-    "becomePartnerCta": "I want to become a regular partner"
+    "becomePartnerPrompt": "As a regular partner, you'll stay updated on everything {name} shares on the platform — updates, prayer requests, and news from the mission.",
+    "becomePartnerCta": "I want to become a regular partner",
+    "becomePartnerNote": "This doesn't mean you have to give every month: on the next step you choose whether to support financially and how often."
   },
   "PartnershipForm": {
     "whatsappLabel": "WhatsApp/Phone",
@@ -746,7 +756,8 @@
     "locationPlaceholder": "Add location",
     "nearbyLocations": "Near you",
     "scheduleToggle": "Schedule post",
-    "schedule": "Schedule"
+    "schedule": "Schedule",
+    "postLimitReached": "You've reached the Free plan's post limit (1 per month). Upgrade to publish without limits."
   },
   "ProjectComposer": {
     "stepCover": "Cover & title",
@@ -852,7 +863,7 @@
   },
   "Superadmin": {
     "backToApp": "Back to app",
-  "viewingAs": "Viewing as:",
+    "viewingAs": "Viewing as:",
     "missionary": "Missionary",
     "partner": "Partner",
     "reset": "Back to normal",
@@ -957,6 +968,10 @@
     "historiaTitle": "{name}'s story",
     "historiaDescription": "The journey behind {name}'s mission.",
     "historiaCtaButton": "Get involved",
+    "historyNavWhoWeAre": "Who we are",
+    "historyNavOurCalling": "Our calling",
+    "historyNavTimeline": "Timeline",
+    "historyNavCta": "Invitation",
     "oracaoTitle": "Pray for {name}",
     "oracaoDescription": "Send a word of prayer and encouragement for {name}.",
     "tabProfile": "Profile",
@@ -999,7 +1014,9 @@
     "sectionLetter": "story",
     "letterImageLabel": "First image midway through the story (optional)",
     "letterImageLabel2": "Second image midway through the story (optional)",
-    "letterImageUrlPlaceholder": "Paste a photo link that tells a bit of this stage",
+    "letterImageUpload": "Add photo",
+    "letterImageChange": "Change",
+    "letterImageProcessing": "Processing...",
     "letterImageCaptionPlaceholder": "Photo caption (optional)",
     "sectionDatesStatus": "dates and status",
     "sectionGallery": "photo gallery"
@@ -1175,5 +1192,10 @@
     "reportSent": "Report sent. Thanks for helping keep the community safe.",
     "reportError": "Couldn't send the report.",
     "reportProfile": "Report profile"
+  },
+  "FinanceGate": {
+    "title": "Finance is a Pro plan feature",
+    "description": "Accounts, multi-currency transactions and pledge reconciliation are available from the Pro plan onward. Upgrade to unlock this area.",
+    "cta": "See plans"
   }
 }

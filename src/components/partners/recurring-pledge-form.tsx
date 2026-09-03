@@ -31,6 +31,7 @@ interface SessionUser {
   user_metadata?: { full_name?: string }
   phone?: string | null
   whatsappOptIn?: boolean
+  birthDate?: string | null
 }
 
 interface Props {
@@ -189,6 +190,10 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
           name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Parceiro',
           email: currentUser.email,
           phone: authorizedPhone,
+          // Puxa da conta (preenchida no cadastro ou via Google) pra que o
+          // missionário já receba o lembrete de aniversário sem precisar
+          // cadastrar a data manualmente de novo.
+          birth_date: currentUser.birthDate || null,
           type: 'financial',
         }).select('id').single()
         if (partnerError || !createdPartner) { console.error('partners insert failed:', partnerError); toast.error(t('errorSave')); return }

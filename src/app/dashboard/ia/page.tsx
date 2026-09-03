@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveProfile } from '@/lib/profile/active-profile'
 import { planLimits, formatRelativeTime, cn } from '@/lib/utils'
+import { isSuperAdmin } from '@/lib/auth/superadmin'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { buttonVariants } from '@/components/ui/button'
 import { Sparkles, Languages, ArrowRight } from 'lucide-react'
@@ -14,7 +15,7 @@ const REASON_KEYS: Record<string, string> = {
 export default async function AICopilotPage() {
   const t = await getTranslations('AICopilot')
   const supabase = await createClient()
-  const profile = await getActiveProfile()
+  const [{ data: { user } }, profile] = await Promise.all([supabase.auth.getUser(), getActiveProfile()])
 
   const { data: transactions } = await supabase
     .from('ai_credit_transactions')
@@ -24,7 +25,7 @@ export default async function AICopilotPage() {
     .limit(20)
 
   const limits = planLimits(profile!.plan)
-  const isFree = profile!.plan === 'free'
+  const isFree = profile!.plan === 'free' && !isSuperAdmin(user?.email)
 
   return (
     <div className="space-y-6">

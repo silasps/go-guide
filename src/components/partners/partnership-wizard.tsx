@@ -16,6 +16,7 @@ interface SessionUser {
   user_metadata?: { full_name?: string }
   phone?: string | null
   whatsappOptIn?: boolean
+  birthDate?: string | null
 }
 
 export interface PartnershipWizardProps {

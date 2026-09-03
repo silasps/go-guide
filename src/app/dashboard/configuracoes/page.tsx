@@ -2,10 +2,15 @@ import { createClient } from '@/lib/supabase/server'
 import { getActiveProfile } from '@/lib/profile/active-profile'
 import { SettingsTabs } from '@/components/dashboard/settings/settings-tabs'
 import { getTranslations } from 'next-intl/server'
+import { isSuperAdmin } from '@/lib/auth/superadmin'
 
 export default async function ConfiguracoesPage() {
   const supabase = await createClient()
-  const [profile, t] = await Promise.all([getActiveProfile(), getTranslations('SettingsPage')])
+  const [{ data: { user } }, profile, t] = await Promise.all([
+    supabase.auth.getUser(),
+    getActiveProfile(),
+    getTranslations('SettingsPage'),
+  ])
 
   const [{ data: managers }, { data: paymentMethods }, { data: financialAccounts }] = await Promise.all([
     supabase.from('profile_managers').select('*').eq('profile_id', profile!.id).order('created_at'),
@@ -19,7 +24,13 @@ export default async function ConfiguracoesPage() {
         <h1 className="text-xl font-semibold">{t('title')}</h1>
         <p className="text-muted-foreground text-sm mt-0.5">{t('subtitle')}</p>
       </div>
-      <SettingsTabs profile={profile!} managers={managers ?? []} paymentMethods={paymentMethods ?? []} financialAccounts={financialAccounts ?? []} />
+      <SettingsTabs
+        profile={profile!}
+        managers={managers ?? []}
+        paymentMethods={paymentMethods ?? []}
+        financialAccounts={financialAccounts ?? []}
+        isSuperAdmin={isSuperAdmin(user?.email)}
+      />
     </div>
   )
 }

@@ -6,6 +6,8 @@ import { revalidatePath } from 'next/cache'
 import type { HighlightStatus, Locale, MediaAspectRatio, PostType } from '@/types/database'
 import { getNearbyLocationsCascade, searchLocationsCascade } from '@/lib/geocoding/cascade'
 import { checkTextModeration } from '@/lib/ai/moderate-text'
+import { planLimits } from '@/lib/utils'
+import { isSuperAdmin } from '@/lib/auth/superadmin'
 
 function serviceClient() {
   return createSupabaseClient(
@@ -75,6 +77,26 @@ export async function savePost(input: {
   if (input.content.trim()) {
     const moderation = await checkTextModeration(input.content.trim())
     if (moderation.flagged) throw new Error('content_flagged')
+  }
+
+  // Limite de publicações/mês do plano (planLimits().postsPerMonth) — só se
+  // aplica a post NOVO sendo publicado de fato (rascunho não conta, edição de
+  // post existente não conta de novo). Superadmin (ver isSuperAdmin) ignora.
+  if (!input.postId && !input.isDraft && !isSuperAdmin(user.email)) {
+    const { data: profileRow } = await service.from('profiles').select('plan').eq('id', input.profileId).single()
+    const limit = planLimits(profileRow?.plan ?? 'free').postsPerMonth
+    if (limit !== Infinity) {
+      const startOfMonth = new Date()
+      startOfMonth.setDate(1)
+      startOfMonth.setHours(0, 0, 0, 0)
+      const { count } = await service
+        .from('posts')
+        .select('id', { count: 'exact', head: true })
+        .eq('profile_id', input.profileId)
+        .eq('is_draft', false)
+        .gte('created_at', startOfMonth.toISOString())
+      if ((count ?? 0) >= limit) throw new Error('post_limit_reached')
+    }
   }
 
   const translations = Object.fromEntries(

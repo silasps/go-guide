@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getActiveProfile } from '@/lib/profile/active-profile'
 import { markNotificationTypesRead } from '@/lib/notifications/mark-read'
 import { planLimits } from '@/lib/utils'
+import { isSuperAdmin } from '@/lib/auth/superadmin'
 import { PartnersList } from '@/components/partners/partners-list'
 import { AddPartnerButton } from '@/components/partners/add-partner-button'
 import { SendBroadcastButton } from '@/components/partners/send-broadcast-button'
@@ -28,6 +29,7 @@ export default async function ParceirosPage() {
   }
 
   const lapsedPartnerIds = new Set((lapsed ?? []).map((rp) => rp.partner_id))
+  const superAdmin = isSuperAdmin(user?.email)
 
   return (
     <div className="space-y-6">
@@ -41,9 +43,9 @@ export default async function ParceirosPage() {
             profileId={profile!.id}
             activeHighlights={activeHighlights ?? []}
             aiConfigured={!!process.env.ANTHROPIC_API_KEY}
-            aiPlanIncluded={planLimits(profile!.plan).aiCreditsIncluded > 0}
+            aiPlanIncluded={planLimits(profile!.plan).aiCreditsIncluded > 0 || superAdmin}
           />
-          <AddPartnerButton profileId={profile!.id} plan={profile!.plan} partnerCount={partners?.length ?? 0} />
+          <AddPartnerButton profileId={profile!.id} plan={profile!.plan} partnerCount={partners?.length ?? 0} isSuperAdmin={superAdmin} />
         </div>
       </div>
       <PartnersList partners={partners ?? []} profileId={profile!.id} grantsByPartner={grantsByPartner} lapsedPartnerIds={lapsedPartnerIds} />

@@ -17,6 +17,7 @@ interface Props {
   isMissionary: boolean
   canEdit: boolean
   ownerProfile: DrawerProfile | null
+  isLoggedIn: boolean
 }
 
 // Fluxos de ação/conversão (oração, parceria, mensagem) não fazem parte da
@@ -28,7 +29,7 @@ interface Props {
 // layout.tsx) pra nunca se sobrepor às abas — nas telas sem abas, ele volta
 // a flutuar isolado no canto, ao lado do único botão de voltar (fixo,
 // discreto) dessas telas.
-export function ProfileTabs({ username, hasTrajectory, isMissionary, canEdit, ownerProfile }: Props) {
+export function ProfileTabs({ username, hasTrajectory, isMissionary, canEdit, ownerProfile, isLoggedIn }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const t = useTranslations('PublicProfile')
@@ -94,11 +95,13 @@ export function ProfileTabs({ username, hasTrajectory, isMissionary, canEdit, ow
           WhatsApp num iPhone real). Mesma distância já usada no outro
           BackButton deste arquivo (variante de /mensagens e /oracao, acima). */}
       <div className="max-w-xl mx-auto flex items-center gap-1 pl-4">
-        {/* Sempre volta pra /explorar, nunca "de verdade" pro histórico —
-            esse botão aqui não é "voltar", é "sair do perfil" (pedido do
-            usuário), diferente do BackButton padrão usado no resto do app. */}
+        {/* Sempre volta pra /explorar ou pro feed, nunca "de verdade" pro
+            histórico — esse botão aqui não é "voltar", é "sair do perfil"
+            (pedido do usuário), diferente do BackButton padrão usado no
+            resto do app. Logado, "sair do perfil" leva pro feed
+            (/dashboard); deslogado, pra vitrine pública (/explorar). */}
         <BackButton
-          onClick={() => router.push('/explorar')}
+          onClick={() => router.push(isLoggedIn ? '/dashboard' : '/explorar')}
           label={t('backToHome')}
           className="shrink-0"
         />

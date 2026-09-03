@@ -200,6 +200,8 @@
     "phoneLabel": "Celular / WhatsApp",
     "phoneOptional": "(opcional)",
     "phonePlaceholder": "(11) 98888-7777",
+    "birthDateLabel": "Data de nascimento",
+    "birthDateHint": "Assim podemos te parabenizar e lembrar os missionários que você apoia do seu aniversário.",
     "passwordPlaceholder": "Mínimo 8 caracteres",
     "passwordTooShort": "A senha deve ter pelo menos 8 caracteres.",
     "signupSubmit": "Criar conta grátis",
@@ -320,9 +322,11 @@
     "pageIntro": "Essas 4 seções formam a aba \"História\" do seu perfil público — é ali que parceiros conhecem sua trajetória antes de decidir apoiar. Seção deixada em branco simplesmente não aparece.",
     "whoWeAre": "Quem somos",
     "whoWeAreHint": "Uma apresentação inicial de vocês — aparece no topo da página.",
-    "sectionImageLabel": "Imagem desta fase (opcional)",
-    "sectionImageUrlPlaceholder": "Cole aqui o link de uma foto que conta um pouco da sua história nessa fase",
-    "sectionImageCaptionPlaceholder": "Legenda da foto (opcional)",
+    "sectionImageLabel": "Fotos desta fase (opcional)",
+    "addPhotoLabel": "Adicionar fotos ({count}/{max})",
+    "photoLimitLabel": "Limite de {max} fotos atingido.",
+    "photoLimitToast": "Máximo de {max} fotos.",
+    "processingPhotos": "Processando...",
     "ourCalling": "Nosso chamado",
     "ourCallingHint": "O chamado/motivo que trouxe vocês até aqui.",
     "timeline": "Linha do tempo",
@@ -335,6 +339,11 @@
     "sectionText": "Texto",
     "timelineYearPlaceholder": "Ano",
     "timelineEventPlaceholder": "O que aconteceu",
+    "timelineLinkPost": "Vincular post",
+    "timelineAddPhoto": "Adicionar foto",
+    "timelineRemoveMedia": "Remover",
+    "timelinePickerTitle": "Escolher um post",
+    "timelinePickerEmpty": "Nenhum post com foto ainda.",
     "addItem": "Adicionar",
     "removeItem": "Remover",
     "dragToReorder": "Arraste para reordenar",
@@ -503,8 +512,9 @@
     "doneDescriptionNotified": "{name} vai confirmar o recebimento em breve. Você será avisado(a) por aqui assim que confirmar.",
     "doneDescriptionGuestNamed": "{name} vai confirmar o recebimento em breve. Como você contribuiu sem estar logado(a), não vamos conseguir te avisar diretamente — mas pode voltar aqui quando quiser conferir.",
     "doneDescriptionAnonymous": "Sua contribuição foi registrada com sucesso. {name} agradece de coração! 🙏",
-    "becomePartnerPrompt": "Gostaria de saber mais e participar ainda mais da caminhada de {name}?",
-    "becomePartnerCta": "Quero ser parceiro fixo"
+    "becomePartnerPrompt": "Como parceiro(a) fixo(a), você fica por dentro de tudo o que {name} publicar na plataforma — atualizações, pedidos de oração e novidades da missão.",
+    "becomePartnerCta": "Quero ser parceiro fixo",
+    "becomePartnerNote": "Isso não significa que você precisa contribuir todo mês: no próximo passo você escolhe se quer apoiar financeiramente e com que frequência."
   },
   "PartnershipForm": {
     "whatsappLabel": "WhatsApp/Telefone",
@@ -746,7 +756,8 @@
     "locationPlaceholder": "Adicionar localização",
     "nearbyLocations": "Perto de você",
     "scheduleToggle": "Agendar publicação",
-    "schedule": "Agendar"
+    "schedule": "Agendar",
+    "postLimitReached": "Você atingiu o limite de publicações do plano Free (1 por mês). Faça upgrade para publicar sem limites."
   },
   "ProjectComposer": {
     "stepCover": "Capa e título",
@@ -852,7 +863,7 @@
   },
   "Superadmin": {
     "backToApp": "Voltar ao app",
-  "viewingAs": "Visualizando como:",
+    "viewingAs": "Visualizando como:",
     "missionary": "Missionário",
     "partner": "Parceiro",
     "reset": "Voltar ao normal",
@@ -957,6 +968,10 @@
     "historiaTitle": "História de {name}",
     "historiaDescription": "A jornada por trás da missão de {name}.",
     "historiaCtaButton": "Faça parte",
+    "historyNavWhoWeAre": "Quem somos",
+    "historyNavOurCalling": "Nosso chamado",
+    "historyNavTimeline": "Linha do tempo",
+    "historyNavCta": "Convite",
     "oracaoTitle": "Ore por {name}",
     "oracaoDescription": "Envie uma palavra de oração e incentivo para {name}.",
     "tabProfile": "Perfil",
@@ -999,7 +1014,9 @@
     "sectionLetter": "história",
     "letterImageLabel": "Primeira imagem no meio da história (opcional)",
     "letterImageLabel2": "Segunda imagem no meio da história (opcional)",
-    "letterImageUrlPlaceholder": "Cole aqui o link de uma foto que conta um pouco dessa fase",
+    "letterImageUpload": "Adicionar foto",
+    "letterImageChange": "Trocar",
+    "letterImageProcessing": "Processando...",
     "letterImageCaptionPlaceholder": "Legenda da foto (opcional)",
     "sectionDatesStatus": "datas e status",
     "sectionGallery": "galeria de fotos"
@@ -1175,5 +1192,10 @@
     "reportSent": "Denúncia enviada. Obrigado por ajudar a manter a comunidade segura.",
     "reportError": "Não foi possível enviar a denúncia.",
     "reportProfile": "Denunciar perfil"
+  },
+  "FinanceGate": {
+    "title": "Financeiro é um recurso do plano Pro",
+    "description": "Contas, lançamentos multi-moeda e conciliação de ofertas ficam disponíveis a partir do plano Pro. Faça upgrade para liberar esta área.",
+    "cta": "Ver planos"
   }
 }

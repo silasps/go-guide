@@ -40,6 +40,10 @@ export async function POST(req: NextRequest) {
       customer_email: profile.stripe_customer_id ? undefined : user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       metadata: { profile_id: profile.id, type: 'manager_addon', seats: String(addon.seats) },
+      // Metadata da sessão não propaga sozinha pro objeto Subscription — os
+      // eventos customer.subscription.* do webhook (cancelamento) só recebem
+      // o Subscription, então precisa duplicar aqui via subscription_data.
+      subscription_data: { metadata: { profile_id: profile.id, type: 'manager_addon', seats: String(addon.seats) } },
       success_url: `${appUrl}/dashboard/configuracoes?checkout=success`,
       cancel_url: `${appUrl}/dashboard/configuracoes?checkout=cancelled`,
     })
@@ -58,7 +62,8 @@ export async function POST(req: NextRequest) {
     customer: profile.stripe_customer_id ?? undefined,
     customer_email: profile.stripe_customer_id ? undefined : user.email,
     line_items: [{ price: priceId, quantity: 1 }],
-    metadata: { profile_id: profile.id, plan },
+    metadata: { profile_id: profile.id, type: 'plan', plan },
+    subscription_data: { metadata: { profile_id: profile.id, type: 'plan', plan } },
     success_url: `${appUrl}/dashboard?checkout=success`,
     cancel_url: `${appUrl}/planos?checkout=cancelled`,
   })

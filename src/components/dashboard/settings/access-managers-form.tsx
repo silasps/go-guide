@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Profile, ProfileManager, ProfileManagerRole } from '@/types/database'
 import { planLimits } from '@/lib/utils'
 import { MANAGER_ADDONS } from '@/lib/pricing'
+import { inviteManagerBypass } from '@/app/dashboard/configuracoes/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,9 +16,10 @@ import { Loader2, Trash2 } from 'lucide-react'
 interface Props {
   profile: Profile
   managers: ProfileManager[]
+  isSuperAdmin: boolean
 }
 
-export function AccessManagersForm({ profile, managers: initialManagers }: Props) {
+export function AccessManagersForm({ profile, managers: initialManagers, isSuperAdmin }: Props) {
   const t = useTranslations('AccessManagersForm')
   const [managers, setManagers] = useState(initialManagers)
   const [email, setEmail] = useState('')
@@ -45,7 +47,7 @@ export function AccessManagersForm({ profile, managers: initialManagers }: Props
   }
 
   const included = planLimits(profile.plan).managersIncluded
-  const total = included + profile.extra_manager_seats
+  const total = isSuperAdmin ? Infinity : included + profile.extra_manager_seats
   const used = managers.length
   const atLimit = total !== Infinity && used >= total
 
@@ -60,15 +62,28 @@ export function AccessManagersForm({ profile, managers: initialManagers }: Props
     })
 
     if (error) {
-      if (error.message.includes('seat_limit_reached')) {
+      // Limite de assento é checado no banco (RPC), sem noção de superadmin —
+      // superadmin cai aqui e refaz o convite sem limite (ver inviteManagerBypass).
+      if (error.message.includes('seat_limit_reached') && isSuperAdmin) {
+        const result = await inviteManagerBypass(profile.id, email.trim(), role)
+        if (result.error) {
+          toast.error(result.error === 'user_not_found' ? t('userNotFound') : t('errorInvite'))
+          setInviting(false)
+          return
+        }
+      } else if (error.message.includes('seat_limit_reached')) {
         toast.error(t('seatLimitReached'))
+        setInviting(false)
+        return
       } else if (error.message.includes('user_not_found')) {
         toast.error(t('userNotFound'))
+        setInviting(false)
+        return
       } else {
         toast.error(t('errorInvite'))
+        setInviting(false)
+        return
       }
-      setInviting(false)
-      return
     }
 
     const { data } = await supabase.from('profile_managers').select('*').eq('profile_id', profile.id)

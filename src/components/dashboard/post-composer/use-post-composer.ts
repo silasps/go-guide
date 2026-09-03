@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/media/compress'
@@ -26,6 +27,7 @@ interface Options {
 
 export function usePostComposer({ post, profileId, userId, originalLocale, onSaved }: Options) {
   const router = useRouter()
+  const t = useTranslations('PostComposer')
   const { openProjectComposer } = useProjectComposer()
   const effectiveOriginalLocale: Locale = post?.original_locale ?? originalLocale
 
@@ -227,6 +229,8 @@ export function usePostComposer({ post, profileId, userId, originalLocale, onSav
           toast.error('Sua conta está em análise por denúncias e não pode publicar no momento.')
         } else if (message === 'account_suspended') {
           toast.error('Sua conta está suspensa e não pode publicar.')
+        } else if (message === 'post_limit_reached') {
+          toast.error(t('postLimitReached'))
         } else {
           toast.error('Não foi possível salvar a publicação.')
         }

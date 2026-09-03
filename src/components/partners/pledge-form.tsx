@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { Card, CardContent } from '@/components/ui/card'
 import { CheckoutHeader } from './checkout-header'
 import { toast } from 'sonner'
@@ -259,6 +260,7 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
                 <Button type="button" variant="outline" className="w-full" onClick={onBecomePartner}>
                   {t('becomePartnerCta')}
                 </Button>
+                <p className="text-xs text-muted-foreground">{t('becomePartnerNote')}</p>
               </CardContent>
             </Card>
           )}
@@ -345,7 +347,7 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
               </div>
               <div className="space-y-2">
                 <Label>{t('phoneLabel')}</Label>
-                <Input type="tel" value={phone} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)} placeholder={t('phonePlaceholder')} />
+                <PhoneInput defaultValue={phone} onChange={setPhone} />
               </div>
             </>
           )}

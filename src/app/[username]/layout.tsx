@@ -27,7 +27,7 @@ function NavSkeleton() {
 // da tela ficar em branco: antes, esses awaits bloqueavam tudo, inclusive
 // {children}, e loading.tsx só cobre page.tsx, nunca este layout.
 async function ProfileTabsAsync({ username }: { username: string }) {
-  const [profile, { canEdit }] = await Promise.all([
+  const [profile, { canEdit, viewerUserId }] = await Promise.all([
     getProfile(username),
     getProfileViewerContext(username),
   ])
@@ -51,6 +51,7 @@ async function ProfileTabsAsync({ username }: { username: string }) {
       isMissionary={profile?.user_role === 'missionary'}
       canEdit={canEdit}
       ownerProfile={profile ?? null}
+      isLoggedIn={!!viewerUserId}
     />
   )
 }
