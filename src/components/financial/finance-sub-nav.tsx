@@ -15,6 +15,7 @@ const items = [
   { href: '/dashboard/financeiro/conciliacao', label: 'Conciliação' },
   { href: '/dashboard/financeiro/cambio', label: 'Câmbio' },
   { href: '/dashboard/financeiro/relatorios', label: 'Relatórios' },
+  { href: '/dashboard/financeiro/prestacoes', label: 'Prestações' },
 ]
 
 export function FinanceSubNav() {

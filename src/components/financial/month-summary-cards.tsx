@@ -52,16 +52,14 @@ function StatCard({ accent, icon, title, subtitle, value, children }: {
   return (
     <div className="relative overflow-hidden rounded-2xl border bg-background p-4 space-y-3">
       <span aria-hidden className={cn('absolute left-0 top-4 h-9 w-1 rounded-r-full', a.bar)} />
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-xl', a.badge)}>{icon}</span>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-foreground">{title}</p>
-            <p className="truncate text-xs leading-5 text-muted-foreground">{subtitle}</p>
-          </div>
+      <div className="flex min-w-0 items-center gap-2.5">
+        <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-xl', a.badge)}>{icon}</span>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-foreground">{title}</p>
+          <p className="truncate text-xs leading-5 text-muted-foreground">{subtitle}</p>
         </div>
-        <p className={cn('min-w-0 max-w-[10rem] truncate text-right text-xl font-semibold', a.text)}>{value}</p>
       </div>
+      <p className={cn('truncate text-xl font-semibold', a.text)}>{value}</p>
       {children}
     </div>
   )

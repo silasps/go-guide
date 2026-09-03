@@ -106,3 +106,50 @@ export function aggregateByCategoryScoped(
 
   return bucketByCategory(totals, categoryName, topN)
 }
+
+export interface FrequencyBucket {
+  key: string
+  label: string
+  income: number
+  expense: number
+}
+
+export type FrequencyGrouping = 'daily' | 'weekly'
+
+// Receitas x Despesas dentro de um mês, agrupado por dia ou por semana —
+// alimenta o FrequencyChart da aba Relatórios (ver 7.24). Diferente de
+// `aggregateMonthly` (série de meses inteiros, pro TrendChart), aqui a
+// janela é sempre um mês só, subdividido.
+export function aggregateFrequency(transactions: Transaction[], month: string, grouping: FrequencyGrouping): FrequencyBucket[] {
+  const [y, m] = month.split('-').map(Number)
+  const daysInMonth = new Date(y, m, 0).getDate()
+
+  const buckets: FrequencyBucket[] = []
+  if (grouping === 'daily') {
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(y, m - 1, day)
+      buckets.push({ key: String(day).padStart(2, '0'), label: d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }), income: 0, expense: 0 })
+    }
+  } else {
+    const weeks = Math.ceil(daysInMonth / 7)
+    for (let w = 0; w < weeks; w++) {
+      const start = w * 7 + 1
+      const end = Math.min(start + 6, daysInMonth)
+      buckets.push({ key: String(w), label: start === end ? `${start}` : `${start}-${end}`, income: 0, expense: 0 })
+    }
+  }
+
+  const bucketForDay = (day: number) => grouping === 'daily' ? day - 1 : Math.floor((day - 1) / 7)
+
+  for (const t of transactions) {
+    if (t.date.slice(0, 7) !== month) continue
+    if (t.type !== 'income' && t.type !== 'expense') continue
+    const day = Number(t.date.slice(8, 10))
+    const bucket = buckets[bucketForDay(day)]
+    if (!bucket) continue
+    if (t.type === 'income') bucket.income += t.amount
+    else bucket.expense += t.amount
+  }
+
+  return buckets
+}
