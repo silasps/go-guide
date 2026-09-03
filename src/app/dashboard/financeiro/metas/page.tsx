@@ -8,11 +8,12 @@ export default async function MetasPage() {
   const profile = await getActiveProfile()
 
   const [{ data: accounts }, { data: goals }] = await Promise.all([
-    supabase.from('financial_accounts').select('currency_code').order('created_at'),
+    supabase.from('financial_accounts').select('currency_code, archived').order('created_at'),
     supabase.from('financial_goals').select('*').eq('profile_id', profile!.id).order('created_at', { ascending: false }),
   ])
 
-  const currencies = [...new Set((accounts ?? []).map((a) => a.currency_code))]
+  // Só moedas de contas ativas (ver 7.29) — mesma regra de limites/page.tsx.
+  const currencies = [...new Set((accounts ?? []).filter((a) => !a.archived).map((a) => a.currency_code))]
   if (currencies.length === 0) currencies.push('BRL')
 
   return (

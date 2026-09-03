@@ -10,8 +10,9 @@ import { TransactionCategory } from '@/types/database'
 import { CategoryForm } from './category-form'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
-import { Plus, Trash2, Loader2, Pencil, ChartPie, Search } from 'lucide-react'
+import { Plus, Trash2, Loader2, Pencil, ChartPie, ChartColumn, Search } from 'lucide-react'
 
 interface SpendingLimitLite {
   category_id: string
@@ -27,17 +28,23 @@ interface Props {
 
 const DEFAULT_COLOR = 'var(--muted-foreground)'
 
-// Estilo GranaZen (ver 7.26): cor por categoria (schema já tinha a coluna
-// `color`, nunca usada até aqui), "Limite de gasto" por categoria de topo
-// (junta com `spending_limits`, ver 7.20/7.21), busca, link direto pros
-// lançamentos daquela categoria. Deliberadamente fora desta rodada:
-// arquivar/desarquivar categoria (exigiria coluna nova + tocar todo lugar
-// que lista categorias — TransactionForm, CategoryBarChart, etc. — pra
-// filtrar arquivadas; feature grande o bastante pra ser sua própria
-// rodada) e o menu "Ações" colapsado no mobile (os botões já cabem soltos).
+// Estilo GranaZen (ver 7.26/7.27): cor por categoria (schema já tinha a
+// coluna `color`, nunca usada até aqui), "Limite de gasto" por categoria de
+// topo (junta com `spending_limits`, ver 7.20/7.21), busca, toggles de
+// filtro "Com limite de gasto"/"Com subcategoria", link direto pros
+// lançamentos daquela categoria, e botão estilizado de relatório de limite
+// de gasto. Deliberadamente fora desta rodada: arquivar/desarquivar
+// categoria (exigiria coluna nova + tocar todo lugar que lista categorias
+// — TransactionForm, CategoryBarChart, etc. — pra filtrar arquivadas;
+// feature grande o bastante pra ser sua própria rodada), o menu "Ações"
+// colapsado no mobile (os botões já cabem soltos), e a tabela ordenável de
+// desktop do GranaZen (mantemos um único layout em cards pra todas as
+// larguras de tela).
 export function CategoryTree({ profileId, categories, limits }: Props) {
   const router = useRouter()
   const [search, setSearch] = useState('')
+  const [onlyWithLimit, setOnlyWithLimit] = useState(false)
+  const [onlyWithSub, setOnlyWithSub] = useState(false)
   const [creatingTop, setCreatingTop] = useState(false)
   const [editing, setEditing] = useState<TransactionCategory | null>(null)
   const [addingSubTo, setAddingSubTo] = useState<string | null>(null)
@@ -50,7 +57,14 @@ export function CategoryTree({ profileId, categories, limits }: Props) {
   const term = search.trim().toLowerCase()
   const matches = (c: TransactionCategory) => !term || c.name.toLowerCase().includes(term)
   const childrenOf = (id: string) => categories.filter((c) => c.parent_id === id && matches(c))
-  const top = categories.filter((c) => !c.parent_id && (matches(c) || childrenOf(c.id).length > 0))
+  const hasAnySub = (id: string) => categories.some((c) => c.parent_id === id)
+  const top = categories.filter((c) => {
+    if (c.parent_id) return false
+    if (!(matches(c) || childrenOf(c.id).length > 0)) return false
+    if (onlyWithLimit && !limitByCategory.has(c.id)) return false
+    if (onlyWithSub && !hasAnySub(c.id)) return false
+    return true
+  })
 
   function removeCategory(cat: TransactionCategory) {
     if (!confirm(`Excluir a categoria "${cat.name}"?`)) return
@@ -75,14 +89,23 @@ export function CategoryTree({ profileId, categories, limits }: Props) {
         </Button>
       </div>
 
-      {limits.length > 0 && (
-        <div className="flex items-center justify-between gap-3 flex-wrap rounded-lg border bg-card px-3 py-2.5 text-sm">
-          <span className="text-muted-foreground">
-            Valor total do limite de gastos: <span className="font-semibold text-foreground">{formatCurrency(totalLimit, limitCurrency)}</span>
-          </span>
-          <Link href="/dashboard/financeiro/limites" className="text-xs text-primary hover:underline shrink-0">Ver limites de gastos</Link>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex cursor-pointer items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm">
+          <Switch checked={onlyWithLimit} onCheckedChange={setOnlyWithLimit} />
+          Com limite de gasto
+        </label>
+        <label className="flex cursor-pointer items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm">
+          <Switch checked={onlyWithSub} onCheckedChange={setOnlyWithSub} />
+          Com subcategoria
+        </label>
+        <div className="ml-auto flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm">
+          <span className="text-muted-foreground">Valor total do limite de gastos:</span>
+          <span className="font-semibold">{formatCurrency(totalLimit, limitCurrency)}</span>
         </div>
-      )}
+        <Link href="/dashboard/financeiro/limites" className={cn(buttonVariants({ size: 'sm' }), 'gap-1.5')}>
+          <ChartColumn className="h-3.5 w-3.5" /> Relatório limite de gasto
+        </Link>
+      </div>
 
       <div className="space-y-3">
         {top.map((cat) => {
@@ -135,7 +158,7 @@ export function CategoryTree({ profileId, categories, limits }: Props) {
         })}
         {top.length === 0 && (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            {term ? 'Nenhuma categoria encontrada.' : 'Nenhuma categoria ainda.'}
+            {term || onlyWithLimit || onlyWithSub ? 'Nenhuma categoria encontrada.' : 'Nenhuma categoria ainda.'}
           </p>
         )}
       </div>

@@ -43,7 +43,12 @@ const fadeUp = {
 // them"), e da seleção de mês que conecta os dois gráficos (clicar num mês
 // do fluxo de caixa re-escopa a composição por categoria).
 export function FinancialDashboard({ accounts, transactions, categories, partners, highlights }: Props) {
-  const currencies = useMemo(() => [...new Set(accounts.map((a) => a.currency_code))], [accounts])
+  // Arquivada (ver 7.29) = fora de qualquer total/composição nova, mas
+  // `accounts` (completo) continua descendo pro `MonthTransactionsPanel` —
+  // a tabela de lançamentos ali precisa achar a conta de transações antigas
+  // mesmo já arquivada; só o "novo lançamento" ali dentro usa só as ativas.
+  const activeAccounts = useMemo(() => accounts.filter((a) => !a.archived), [accounts])
+  const currencies = useMemo(() => [...new Set(activeAccounts.map((a) => a.currency_code))], [activeAccounts])
   const [currency, setCurrency] = useState(currencies[0] ?? 'BRL')
   const [monthsRange, setMonthsRange] = useState<3 | 6 | 12>(6)
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr())
@@ -54,8 +59,8 @@ export function FinancialDashboard({ accounts, transactions, categories, partner
   const monthlyData = useMemo(() => aggregateMonthly(txInCurrency, monthsRange), [txInCurrency, monthsRange])
 
   const currentBalance = useMemo(
-    () => accounts.filter((a) => a.currency_code === currency).reduce((s, a) => s + a.balance, 0),
-    [accounts, currency]
+    () => activeAccounts.filter((a) => a.currency_code === currency).reduce((s, a) => s + a.balance, 0),
+    [activeAccounts, currency]
   )
   const timelinePoints = useMemo(() => buildFinancialTimeline(txInCurrency, currentBalance, 6, 6), [txInCurrency, currentBalance])
   const selectedPoint = timelinePoints.find((p) => p.month === selectedMonth) ?? timelinePoints[6]

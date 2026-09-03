@@ -34,6 +34,10 @@ export function MonthTransactionsPanel({ transactions, month, monthLabel, accoun
   const [tab, setTab] = useState<(typeof TABS)[number]['value']>('all')
   const [search, setSearch] = useState('')
   const [quickAddType, setQuickAddType] = useState<'income' | 'expense' | null>(null)
+  // `accounts` (completo) segue pra `TransactionTable` — precisa achar a
+  // conta de lançamentos antigos mesmo já arquivada (ver 7.29). O atalho de
+  // novo lançamento abaixo só oferece conta ativa.
+  const activeAccounts = useMemo(() => accounts.filter((a) => !a.archived), [accounts])
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -62,10 +66,10 @@ export function MonthTransactionsPanel({ transactions, month, monthLabel, accoun
         </div>
 
         <div className="flex items-center gap-1.5 ml-auto">
-          <Button type="button" size="sm" className="h-7 gap-1.5 bg-success text-success-foreground hover:bg-success/90" disabled={accounts.length === 0} onClick={() => setQuickAddType('income')}>
+          <Button type="button" size="sm" className="h-7 gap-1.5 bg-success text-success-foreground hover:bg-success/90" disabled={activeAccounts.length === 0} onClick={() => setQuickAddType('income')}>
             <TrendingUp className="h-3.5 w-3.5" /> Receita
           </Button>
-          <Button type="button" size="sm" className="h-7 gap-1.5 bg-destructive text-white hover:bg-destructive/90" disabled={accounts.length === 0} onClick={() => setQuickAddType('expense')}>
+          <Button type="button" size="sm" className="h-7 gap-1.5 bg-destructive text-white hover:bg-destructive/90" disabled={activeAccounts.length === 0} onClick={() => setQuickAddType('expense')}>
             <TrendingDown className="h-3.5 w-3.5" /> Despesa
           </Button>
         </div>
@@ -93,7 +97,7 @@ export function MonthTransactionsPanel({ transactions, month, monthLabel, accoun
           open
           onOpenChange={(v) => !v && setQuickAddType(null)}
           defaultType={quickAddType}
-          accounts={accounts}
+          accounts={activeAccounts}
           categories={categories}
           partners={partners}
           highlights={highlights}

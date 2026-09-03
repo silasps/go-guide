@@ -8,6 +8,7 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { FinancialGoal } from '@/types/database'
 import { GoalForm } from './goal-form'
 import { GoalContributionDialog } from './goal-contribution-dialog'
+import { EmergencyFundCard, EmergencyFundWizard, EMERGENCY_FUND_GOAL_NAME } from './emergency-fund-wizard'
 import { DonutChart } from '@/components/ui/charts/donut-chart'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -81,8 +82,10 @@ export function GoalsList({ goals, profileId, currencies }: Props) {
   const { pendingValue: deletingId, run } = usePendingAction<string>()
   const [editing, setEditing] = useState<FinancialGoal | null>(null)
   const [contributingTo, setContributingTo] = useState<FinancialGoal | null>(null)
+  const [creatingReserve, setCreatingReserve] = useState(false)
   const colorMap = useGoalColors(goals)
   const colorOf = (id: string) => colorMap.get(id) ?? GOAL_COLOR_VARS[0]
+  const hasEmergencyFund = goals.some((g) => g.name === EMERGENCY_FUND_GOAL_NAME)
 
   function remove(goal: FinancialGoal) {
     if (!confirm(`Excluir a meta "${goal.name}"?`)) return
@@ -95,88 +98,95 @@ export function GoalsList({ goals, profileId, currencies }: Props) {
     })
   }
 
-  if (goals.length === 0) {
-    return <p className="text-sm text-muted-foreground py-8 text-center">Nenhuma meta de economia cadastrada.</p>
-  }
-
   const goalsByCurrency = new Map<string, FinancialGoal[]>()
   for (const g of goals) goalsByCurrency.set(g.currency, [...(goalsByCurrency.get(g.currency) ?? []), g])
 
   return (
     <div className="space-y-5">
-      <div className="space-y-2">
-        <div>
-          <h3 className="text-base font-semibold">Visão geral</h3>
-          <p className="text-xs text-muted-foreground">Veja o quanto já guardou para cada meta.</p>
-        </div>
-        <div className="space-y-3">
-          {[...goalsByCurrency.entries()].map(([currency, currencyGoals]) => (
-            <CurrencyOverview key={currency} goals={currencyGoals} currency={currency} colorOf={colorOf} />
-          ))}
-        </div>
-      </div>
+      {!hasEmergencyFund && <EmergencyFundCard onStart={() => setCreatingReserve(true)} />}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        {goals.map((goal) => {
-          const pct = goal.target_amount > 0 ? Math.min(100, (goal.current_amount / goal.target_amount) * 100) : 0
-          const missing = Math.max(0, goal.target_amount - goal.current_amount)
-          const achieved = !!goal.achieved_at
-          const color = colorOf(goal.id)
-          return (
-            <div key={goal.id} className="rounded-xl border bg-card p-3.5 space-y-3">
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-medium truncate flex items-center gap-1.5 min-w-0">
-                  <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
-                  {achieved && <PartyPopper className="h-3.5 w-3.5 text-chart-1 shrink-0" />}
-                  <span className="truncate">{goal.name}</span>
-                </p>
-                {achieved && <Badge variant="success" className="shrink-0">Alcançada</Badge>}
-              </div>
-
-              <div className="flex items-end justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground">Já guardado</p>
-                  <p className="truncate text-sm font-semibold">{formatCurrency(goal.current_amount, goal.currency)}</p>
-                </div>
-                <div className="min-w-0 text-right">
-                  <p className="text-xs text-muted-foreground">Valor da meta</p>
-                  <p className="truncate text-sm font-semibold">{formatCurrency(goal.target_amount, goal.currency)}</p>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="h-2 w-full overflow-hidden rounded-full bg-primary/15">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
-                </div>
-                <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                  <span className="min-w-0 truncate">{achieved ? 'Meta concluída' : `Faltam ${formatCurrency(missing, goal.currency)}`}</span>
-                  <span className="shrink-0 font-medium">{Math.round(pct)}%</span>
-                </div>
-              </div>
-
-              {goal.target_date && <p className="text-xs text-muted-foreground">Prazo: {formatDate(goal.target_date)}</p>}
-
-              <div className="flex gap-2 pt-0.5">
-                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setContributingTo(goal)}>
-                  <PlusCircle className="h-3.5 w-3.5" /> Registrar valor
-                </Button>
-                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditing(goal)}>
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="outline" size="sm" className="gap-1.5 ml-auto" onClick={() => remove(goal)} disabled={deletingId === goal.id}>
-                  {deletingId === goal.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                </Button>
-              </div>
+      {goals.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-8 text-center">Nenhuma meta de economia cadastrada.</p>
+      ) : (
+        <>
+          <div className="space-y-2">
+            <div>
+              <h3 className="text-base font-semibold">Visão geral</h3>
+              <p className="text-xs text-muted-foreground">Veja o quanto já guardou para cada meta.</p>
             </div>
-          )
-        })}
-      </div>
+            <div className="space-y-3">
+              {[...goalsByCurrency.entries()].map(([currency, currencyGoals]) => (
+                <CurrencyOverview key={currency} goals={currencyGoals} currency={currency} colorOf={colorOf} />
+              ))}
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {goals.map((goal) => {
+              const pct = goal.target_amount > 0 ? Math.min(100, (goal.current_amount / goal.target_amount) * 100) : 0
+              const missing = Math.max(0, goal.target_amount - goal.current_amount)
+              const achieved = !!goal.achieved_at
+              const color = colorOf(goal.id)
+              return (
+                <div key={goal.id} className="rounded-xl border bg-card p-3.5 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-medium truncate flex items-center gap-1.5 min-w-0">
+                      <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                      {achieved && <PartyPopper className="h-3.5 w-3.5 text-chart-1 shrink-0" />}
+                      <span className="truncate">{goal.name}</span>
+                    </p>
+                    {achieved && <Badge variant="success" className="shrink-0">Alcançada</Badge>}
+                  </div>
+
+                  <div className="flex items-end justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">Já guardado</p>
+                      <p className="truncate text-sm font-semibold">{formatCurrency(goal.current_amount, goal.currency)}</p>
+                    </div>
+                    <div className="min-w-0 text-right">
+                      <p className="text-xs text-muted-foreground">Valor da meta</p>
+                      <p className="truncate text-sm font-semibold">{formatCurrency(goal.target_amount, goal.currency)}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-primary/15">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
+                    </div>
+                    <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                      <span className="min-w-0 truncate">{achieved ? 'Meta concluída' : `Faltam ${formatCurrency(missing, goal.currency)}`}</span>
+                      <span className="shrink-0 font-medium">{Math.round(pct)}%</span>
+                    </div>
+                  </div>
+
+                  {goal.target_date && <p className="text-xs text-muted-foreground">Prazo: {formatDate(goal.target_date)}</p>}
+
+                  <div className="flex gap-2 pt-0.5">
+                    <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setContributingTo(goal)}>
+                      <PlusCircle className="h-3.5 w-3.5" /> Registrar valor
+                    </Button>
+                    <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditing(goal)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="outline" size="sm" className="gap-1.5 ml-auto" onClick={() => remove(goal)} disabled={deletingId === goal.id}>
+                      {deletingId === goal.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    </Button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
 
       {editing && (
         <GoalForm open onOpenChange={(v) => !v && setEditing(null)} goal={editing} profileId={profileId} currencies={currencies} />
       )}
       {contributingTo && (
         <GoalContributionDialog open onOpenChange={(v) => !v && setContributingTo(null)} goal={contributingTo} />
+      )}
+      {creatingReserve && (
+        <EmergencyFundWizard open onOpenChange={(v) => !v && setCreatingReserve(false)} profileId={profileId} currency={currencies[0] ?? 'BRL'} />
       )}
     </div>
   )

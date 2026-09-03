@@ -21,6 +21,10 @@ export default async function RelatoriosPage() {
     supabase.from('transactions').select('*').eq('profile_id', profile!.id).gte('date', windowStart.toISOString().slice(0, 10)),
     supabase.from('transaction_categories').select('*').eq('profile_id', profile!.id),
   ])
+  // Moedas/saldo atual do relatório vêm só de contas ativas (ver 7.29) —
+  // uma conta arquivada não deveria inflar o "saldo atual" nem oferecer
+  // moeda pro filtro.
+  const activeAccounts = (accounts ?? []).filter((a) => !a.archived)
 
-  return <ReportsAnalytics accounts={accounts ?? []} transactions={windowTransactions ?? []} categories={categories ?? []} />
+  return <ReportsAnalytics accounts={activeAccounts} transactions={windowTransactions ?? []} categories={categories ?? []} />
 }

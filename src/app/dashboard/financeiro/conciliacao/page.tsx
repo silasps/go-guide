@@ -15,6 +15,9 @@ export default async function ConciliacaoPage() {
     .order('reported_at', { ascending: false })
 
   const { data: accounts } = await supabase.from('financial_accounts').select('*').order('created_at')
+  // Confirmar uma oferta pendente é sempre uma alocação nova — conta
+  // arquivada (ver 7.29) não deve ser destino de nada novo.
+  const activeAccounts = (accounts ?? []).filter((a) => !a.archived)
 
   const highlightIds = [...new Set((pledges ?? []).map(p => p.highlight_id).filter((id): id is string => !!id))]
   const { data: categories } = highlightIds.length > 0
@@ -32,7 +35,7 @@ export default async function ConciliacaoPage() {
         {pledges?.length ?? 0} oferta(s) aguardando confirmação
       </p>
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <ReconciliationQueue pledges={(pledges ?? []) as any} accounts={accounts ?? []} profileId={profile!.id} budgetCategoriesByHighlight={budgetCategoriesByHighlight} />
+      <ReconciliationQueue pledges={(pledges ?? []) as any} accounts={activeAccounts} profileId={profile!.id} budgetCategoriesByHighlight={budgetCategoriesByHighlight} />
     </div>
   )
 }

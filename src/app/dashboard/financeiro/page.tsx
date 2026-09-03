@@ -50,7 +50,10 @@ export default async function FinanceiroPage() {
       .map((c) => ({ id: c.id, label: resolveBudgetCategoryLabel(c) })),
   }))
 
-  const hasAccounts = !!accounts && accounts.length > 0
+  // Arquivada (ver 7.29) não conta como conta "utilizável" — nem pro banner
+  // de primeira conta, nem como opção de novo lançamento.
+  const activeAccounts = (accounts ?? []).filter((a) => !a.archived)
+  const hasAccounts = activeAccounts.length > 0
 
   return (
     <div className="space-y-6">
@@ -66,7 +69,7 @@ export default async function FinanceiroPage() {
       )}
 
       <div className="flex items-center justify-end">
-        <NewTransactionButton accounts={accounts ?? []} categories={categories ?? []} partners={partners ?? []} highlights={highlightsWithBudget} />
+        <NewTransactionButton accounts={activeAccounts} categories={categories ?? []} partners={partners ?? []} highlights={highlightsWithBudget} />
       </div>
 
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}

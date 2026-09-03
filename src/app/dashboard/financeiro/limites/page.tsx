@@ -18,7 +18,9 @@ export default async function LimitesPage() {
     supabase.from('transactions').select('category_id, amount').eq('profile_id', profile!.id).eq('type', 'expense').gte('date', monthStartStr),
   ])
 
-  const currencies = [...new Set((accounts ?? []).map((a) => a.currency_code))]
+  // Só moedas de contas ativas (ver 7.29) — arquivar a única conta numa
+  // moeda não deveria deixar essa moeda selecionável pra um limite novo.
+  const currencies = [...new Set((accounts ?? []).filter((a) => !a.archived).map((a) => a.currency_code))]
   const spentByCategory: Record<string, number> = {}
   for (const t of monthExpenses ?? []) {
     if (!t.category_id) continue
