@@ -77,6 +77,7 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
       <PledgeForm
         key={choice}
         profileId={profileId}
+        username={username}
         missionaryName={missionaryName}
         highlightId={choice === 'financial_once' ? highlightId : undefined}
         highlightTitle={choice === 'financial_once' ? highlightTitle : undefined}

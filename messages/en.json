@@ -523,7 +523,10 @@
     "doneDescriptionAnonymous": "Your contribution was recorded successfully. {name} is truly grateful!",
     "becomePartnerPrompt": "As a regular partner, you'll stay updated on everything {name} shares on the platform — updates, prayer requests, and news from the mission.",
     "becomePartnerCta": "I want to become a regular partner",
-    "becomePartnerNote": "This doesn't mean you have to give every month: on the next step you choose whether to support financially and how often."
+    "becomePartnerNote": "This doesn't mean you have to give every month: on the next step you choose whether to support financially and how often.",
+    "doneDescriptionStripe": "Your payment was successfully confirmed! {name} is truly grateful!",
+    "viewProfileCta": "View {name}'s profile",
+    "redirectingIn": "Redirecting to the profile in {seconds}s..."
   },
   "PartnershipForm": {
     "whatsappLabel": "WhatsApp/Phone",

@@ -523,7 +523,10 @@
     "doneDescriptionAnonymous": "Tu contribución fue registrada con éxito. ¡{name} lo agradece de corazón!",
     "becomePartnerPrompt": "Como socio(a) fijo(a), estarás al tanto de todo lo que {name} publique en la plataforma — actualizaciones, pedidos de oración y novedades de la misión.",
     "becomePartnerCta": "Quiero ser socio fijo",
-    "becomePartnerNote": "Esto no significa que debas contribuir todos los meses: en el siguiente paso eliges si quieres apoyar económicamente y con qué frecuencia."
+    "becomePartnerNote": "Esto no significa que debas contribuir todos los meses: en el siguiente paso eliges si quieres apoyar económicamente y con qué frecuencia.",
+    "doneDescriptionStripe": "¡Tu pago fue confirmado con éxito! ¡{name} lo agradece de corazón!",
+    "viewProfileCta": "Ver perfil de {name}",
+    "redirectingIn": "Redirigiendo al perfil en {seconds}s..."
   },
   "PartnershipForm": {
     "whatsappLabel": "WhatsApp/Teléfono",

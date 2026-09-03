@@ -1,6 +1,8 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/media/compress'
@@ -30,6 +32,7 @@ type PaymentOption = { id: string; method: PledgePaymentMethod; label: string; v
 
 interface Props {
   profileId: string
+  username: string
   missionaryName: string
   highlightId?: string
   highlightTitle?: string
@@ -47,10 +50,21 @@ interface Props {
   onBecomePartner?: () => void
 }
 
-export function PledgeForm({ profileId, missionaryName, highlightId, highlightTitle, highlightGoalAmount, highlightCurrentAmount, isRecurring, defaultCurrency, paymentOptions, stripeAvailable = false, heroImageUrl = null, heroImagePosition, budgetCategories, initialCategoryId, backHref, onBecomePartner }: Props) {
+export function PledgeForm({ profileId, username, missionaryName, highlightId, highlightTitle, highlightGoalAmount, highlightCurrentAmount, isRecurring, defaultCurrency, paymentOptions, stripeAvailable = false, heroImageUrl = null, heroImagePosition, budgetCategories, initialCategoryId, backHref, onBecomePartner }: Props) {
   const t = useTranslations('PledgeForm')
-  const [done, setDone] = useState(false)
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  // Volta do Stripe Checkout é um reload completo (window.location.href),
+  // então nenhum state local sobrevive — o único jeito de saber que o
+  // pagamento foi concluído é o `stripe=success` que o success_url embute
+  // (ver checkout-once/route.ts), já presente na primeira renderização (não
+  // precisa de efeito pra isso). Não dá pra saber aqui se foi anônimo/com
+  // nome (isso ficou só no Stripe Checkout), por isso a tela de "pronto"
+  // usa uma mensagem própria pra esse caminho (doneDescriptionStripe).
+  const [doneViaStripe] = useState(() => searchParams.get('stripe') === 'success')
+  const [done, setDone] = useState(doneViaStripe)
   const [doneAsLoggedIn, setDoneAsLoggedIn] = useState(false)
+  const [redirectSeconds, setRedirectSeconds] = useState(5)
   const [saving, setSaving] = useState(false)
   const { isPending: startingCheckout, run: runCheckout } = usePendingAction()
   const [amount, setAmount] = useState('')
@@ -66,6 +80,19 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
   const [proofFile, setProofFile] = useState<File | null>(null)
   const [proofPreview, setProofPreview] = useState('')
   const amountInputRef = useRef<HTMLInputElement>(null)
+
+  // Redireciona pro perfil do missionário 5s depois de concluir, a menos
+  // que a pessoa já tenha saído da tela (ex.: clicou em "quero ser parceiro
+  // fixo", que desmonta este componente) — o cleanup abaixo cobre isso.
+  useEffect(() => {
+    if (!done) return
+    if (redirectSeconds <= 0) {
+      router.push(`/${username}`)
+      return
+    }
+    const timer = setTimeout(() => setRedirectSeconds((s) => s - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [done, redirectSeconds, router, username])
 
   const [currency, setCurrency] = useState(defaultCurrency)
   // Cartão (Stripe) entra como mais uma opção no mesmo grid de mini-cards,
@@ -249,7 +276,9 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
                     ? t('doneContributionProject', { project: highlightTitle, name: missionaryName })
                     : t('doneContributionGeneral', { name: missionaryName })}
                 </span>{' '}
-                {t(doneAsLoggedIn ? 'doneDescriptionNotified' : isAnonymous ? 'doneDescriptionAnonymous' : 'doneDescriptionGuestNamed', { name: missionaryName })}
+                {doneViaStripe
+                  ? t('doneDescriptionStripe', { name: missionaryName })
+                  : t(doneAsLoggedIn ? 'doneDescriptionNotified' : isAnonymous ? 'doneDescriptionAnonymous' : 'doneDescriptionGuestNamed', { name: missionaryName })}
               </p>
             </CardContent>
           </Card>
@@ -264,6 +293,12 @@ export function PledgeForm({ profileId, missionaryName, highlightId, highlightTi
               </CardContent>
             </Card>
           )}
+          <Link href={`/${username}`}>
+            <Button type="button" className="w-full">
+              {t('viewProfileCta', { name: missionaryName })}
+            </Button>
+          </Link>
+          <p className="text-center text-xs text-muted-foreground">{t('redirectingIn', { seconds: redirectSeconds })}</p>
         </div>
       </div>
     )
