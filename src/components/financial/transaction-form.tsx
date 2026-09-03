@@ -55,6 +55,7 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
   const [highlightId, setHighlightId] = useState(transaction?.highlight_id ?? defaultHighlightId ?? '')
   const [budgetCategoryId, setBudgetCategoryId] = useState(transaction?.budget_category_id ?? '')
   const [date, setDate] = useState(transaction?.date ?? new Date().toISOString().slice(0, 10))
+  const [isPaid, setIsPaid] = useState(transaction ? transaction.is_paid : date <= new Date().toISOString().slice(0, 10))
 
   const topCategories = categories.filter(c => !c.parent_id)
   const selectedHighlight = highlights.find(h => h.id === highlightId)
@@ -95,6 +96,7 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
         date,
         is_credit_purchase: isCreditAccount,
         fatura_date: isCreditAccount ? faturaDate : null,
+        is_paid: type === 'transfer' ? true : isPaid,
       }
 
       const { error } = transaction
@@ -164,6 +166,13 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
               <Input type="date" value={date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setDate(e.target.value); setFaturaDate(defaultFaturaDate(e.target.value, selectedAccount?.closing_day ?? null)) }} />
             </div>
           </div>
+
+          {type !== 'transfer' && (
+            <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+              <input type="checkbox" checked={isPaid} onChange={(e) => setIsPaid(e.target.checked)} className="h-4 w-4 rounded border-input" />
+              {type === 'income' ? 'Já recebi esse valor' : 'Já paguei essa despesa'}
+            </label>
+          )}
 
           {isCreditAccount && (
             <div className="space-y-2">

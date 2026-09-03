@@ -40,9 +40,26 @@ export interface CategorySlice {
   pct: number
 }
 
+function bucketByCategory(totals: Map<string, number>, categoryName: Map<string, string>, topN: number): CategorySlice[] {
+  const total = [...totals.values()].reduce((s, v) => s + v, 0)
+  if (total <= 0) return []
+
+  const sorted = [...totals.entries()]
+    .map(([id, amount]) => ({ id, name: id === '__uncategorized__' ? 'Sem categoria' : (categoryName.get(id) ?? 'Sem categoria'), amount }))
+    .sort((a, b) => b.amount - a.amount)
+
+  const top = sorted.slice(0, topN)
+  const rest = sorted.slice(topN).reduce((s, c) => s + c.amount, 0)
+
+  const slices: CategorySlice[] = top.map((c) => ({ ...c, pct: (c.amount / total) * 100 }))
+  if (rest > 0) slices.push({ id: '__other__', name: 'Outros', amount: rest, pct: (rest / total) * 100 })
+
+  return slices
+}
+
 // Composição de gastos por categoria pra um mês específico — alimenta o
-// CategoryBarChart. Top 6 + "Outros" (resto, sem matiz categórico próprio
-// — não é uma categoria de verdade, é um bucket residual).
+// CategoryBarChart na Visão Geral. Top 6 + "Outros" (resto, sem matiz
+// categórico próprio — não é uma categoria de verdade, é um bucket residual).
 export function aggregateByCategory(
   transactions: Transaction[],
   categories: TransactionCategory[],
@@ -58,18 +75,34 @@ export function aggregateByCategory(
     totals.set(key, (totals.get(key) ?? 0) + t.amount)
   }
 
-  const total = [...totals.values()].reduce((s, v) => s + v, 0)
-  if (total <= 0) return []
+  return bucketByCategory(totals, categoryName, topN)
+}
 
-  const sorted = [...totals.entries()]
-    .map(([id, amount]) => ({ id, name: id === '__uncategorized__' ? 'Sem categoria' : (categoryName.get(id) ?? 'Sem categoria'), amount }))
-    .sort((a, b) => b.amount - a.amount)
+export type CategoryScope = 'all' | 'income' | 'expense' | 'expense_unpaid'
 
-  const top = sorted.slice(0, topN)
-  const rest = sorted.slice(topN).reduce((s, c) => s + c.amount, 0)
+// Mesma composição por categoria, mas com o escopo do painel "Gráficos" da
+// Visão Geral (ver 7.20): Todas (entrada+saída somadas) / Receitas /
+// Despesas / Despesas Não Pagas.
+export function aggregateByCategoryScoped(
+  transactions: Transaction[],
+  categories: TransactionCategory[],
+  month: string,
+  scope: CategoryScope,
+  topN = 6
+): CategorySlice[] {
+  const categoryName = new Map(categories.map((c) => [c.id, c.name]))
+  const totals = new Map<string, number>()
 
-  const slices: CategorySlice[] = top.map((c) => ({ ...c, pct: (c.amount / total) * 100 }))
-  if (rest > 0) slices.push({ id: '__other__', name: 'Outros', amount: rest, pct: (rest / total) * 100 })
+  for (const t of transactions) {
+    if (t.date.slice(0, 7) !== month) continue
+    if (t.type !== 'income' && t.type !== 'expense') continue
+    if (scope === 'income' && t.type !== 'income') continue
+    if ((scope === 'expense' || scope === 'expense_unpaid') && t.type !== 'expense') continue
+    if (scope === 'expense_unpaid' && t.is_paid) continue
 
-  return slices
+    const key = t.category_id ?? '__uncategorized__'
+    totals.set(key, (totals.get(key) ?? 0) + t.amount)
+  }
+
+  return bucketByCategory(totals, categoryName, topN)
 }

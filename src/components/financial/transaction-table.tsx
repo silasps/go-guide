@@ -8,7 +8,7 @@ import { FinancialAccount, TransactionCategory, TransactionWithCategory, Partner
 import { Button } from '@/components/ui/button'
 import { TransactionForm } from './transaction-form'
 import { toast } from 'sonner'
-import { Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, ArrowLeftRight, Loader2 } from 'lucide-react'
+import { Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, ArrowLeftRight, Loader2, CheckCircle2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 interface Props {
@@ -30,6 +30,7 @@ export function TransactionTable({ transactions, accounts, categories = [], part
   const router = useRouter()
   const [editing, setEditing] = useState<TransactionWithCategory | null>(null)
   const { pendingValue: deletingId, run } = usePendingAction<string>()
+  const { pendingValue: markingPaidId, run: runMarkPaid } = usePendingAction<string>()
 
   function handleDelete(id: string) {
     if (!confirm('Excluir este lançamento? O saldo da conta será ajustado.')) return
@@ -38,6 +39,16 @@ export function TransactionTable({ transactions, accounts, categories = [], part
       const { error } = await supabase.from('transactions').delete().eq('id', id)
       if (error) { toast.error('Erro ao excluir lançamento.'); return }
       toast.success('Lançamento excluído.')
+      router.refresh()
+    })
+  }
+
+  function handleMarkPaid(t: TransactionWithCategory) {
+    runMarkPaid(t.id, async () => {
+      const supabase = createClient()
+      const { error } = await supabase.from('transactions').update({ is_paid: true }).eq('id', t.id)
+      if (error) { toast.error('Erro ao atualizar lançamento.'); return }
+      toast.success(t.type === 'income' ? 'Marcado como recebido.' : 'Marcado como pago.')
       router.refresh()
     })
   }
@@ -58,13 +69,19 @@ export function TransactionTable({ transactions, accounts, categories = [], part
                 {formatDate(t.date)}
                 {t.category?.name && ` · ${t.category.name}`}
                 {t.partner?.name && ` · ${t.partner.name}`}
+                {!t.is_paid && <span className="text-amber-600"> · {t.type === 'income' ? 'A receber' : 'Não pago'}</span>}
               </p>
             </div>
-            <p className={`text-sm font-semibold shrink-0 ${t.type === 'income' ? 'text-green-600' : t.type === 'expense' ? 'text-red-600' : ''}`}>
+            <p className={`text-sm font-semibold shrink-0 ${!t.is_paid ? 'opacity-50' : ''} ${t.type === 'income' ? 'text-green-600' : t.type === 'expense' ? 'text-red-600' : ''}`}>
               {t.type === 'expense' ? '-' : t.type === 'income' ? '+' : ''}{formatCurrency(t.amount, t.currency)}
             </p>
             {!readOnly && (
               <div className="flex items-center gap-0.5 shrink-0">
+                {!t.is_paid && (
+                  <Button variant="ghost" size="icon-sm" title={t.type === 'income' ? 'Marcar como recebido' : 'Marcar como pago'} onClick={() => handleMarkPaid(t)} disabled={markingPaidId === t.id}>
+                    {markingPaidId === t.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5 text-chart-1" />}
+                  </Button>
+                )}
                 <Button variant="ghost" size="icon-sm" onClick={() => setEditing(t)}>
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>

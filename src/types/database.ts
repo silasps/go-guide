@@ -468,6 +468,7 @@ export interface Transaction {
   due_date: string | null
   fatura_date: string | null
   fatura_paid: boolean
+  is_paid: boolean
   date: string
   highlight_id: string | null
   budget_category_id: string | null
@@ -583,6 +584,31 @@ export interface RecurringTransaction {
   category_id: string | null
   next_due_date: string
   is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface SpendingLimit {
+  id: string
+  profile_id: string
+  category_id: string
+  created_by_user_id: string | null
+  limit_amount: number
+  currency: string
+  created_at: string
+  updated_at: string
+}
+
+export interface FinancialGoal {
+  id: string
+  profile_id: string
+  created_by_user_id: string | null
+  name: string
+  target_amount: number
+  current_amount: number
+  currency: string
+  target_date: string | null
+  achieved_at: string | null
   created_at: string
   updated_at: string
 }
