@@ -8,6 +8,7 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { Pledge, FinancialAccount } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { Loader2, Check, X, ExternalLink, MessageCircle } from 'lucide-react'
 
@@ -24,7 +25,12 @@ interface Props {
 export function PledgeReviewCard({ pledge, accounts, profileId, budgetCategories }: Props) {
   const router = useRouter()
   const [amount, setAmount] = useState(String(pledge.reported_amount))
-  const [accountId, setAccountId] = useState(accounts.find(a => a.currency_code === pledge.currency)?.id ?? accounts[0]?.id ?? '')
+  // Só contas na mesma moeda da oferta aparecem no seletor — evita depositar
+  // sem querer numa conta de outra moeda. Some pra lista completa se, por
+  // algum motivo, não existir nenhuma conta ativa nessa moeda.
+  const accountsInCurrency = accounts.filter(a => a.currency_code === pledge.currency)
+  const accountOptions = accountsInCurrency.length > 0 ? accountsInCurrency : accounts
+  const [accountId, setAccountId] = useState(accountOptions[0]?.id ?? '')
   // Pré-preenchido com a categoria que o apoiador escolheu ao contribuir —
   // o missionário confirma ou corrige antes de gerar o lançamento.
   const [categoryId, setCategoryId] = useState(pledge.budget_category_id ?? '')
@@ -138,22 +144,31 @@ export function PledgeReviewCard({ pledge, accounts, profileId, budgetCategories
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <Input inputMode="decimal" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(e.target.value)} className="h-8 text-sm" />
-        <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring">
-          {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-        </select>
-      </div>
-
-      {budgetCategories.length > 0 && (
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Categoria do orçamento</label>
-          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring">
-            <option value="">Projeto geral</option>
-            {budgetCategories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-          </select>
+      <div className="rounded-lg border bg-background/60 p-3 space-y-2.5">
+        <p className="text-xs font-medium text-muted-foreground">Confirmar depósito</p>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs font-normal text-muted-foreground">Valor recebido</Label>
+            <Input inputMode="decimal" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(e.target.value)} className="h-8 text-sm" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-normal text-muted-foreground">Depositar em</Label>
+            <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
+              {accountOptions.map(a => <option key={a.id} value={a.id}>{a.name}{accountOptions === accounts ? ` (${a.currency_code})` : ''}</option>)}
+            </select>
+          </div>
         </div>
-      )}
+
+        {budgetCategories.length > 0 && (
+          <div className="space-y-1">
+            <Label className="text-xs font-normal text-muted-foreground">Categoria do orçamento</Label>
+            <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
+              <option value="">Projeto geral</option>
+              {budgetCategories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+            </select>
+          </div>
+        )}
+      </div>
 
       {showReject ? (
         <div className="space-y-2">

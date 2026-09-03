@@ -31,9 +31,10 @@ export default async function ConciliacaoPage() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        {pledges?.length ?? 0} oferta(s) aguardando confirmação
-      </p>
+      <div>
+        <p className="text-sm font-medium">{pledges?.length ?? 0} oferta(s) aguardando confirmação</p>
+        <p className="text-xs text-muted-foreground mt-0.5">Confira o valor e escolha em qual conta cada uma caiu — confirmar gera o lançamento; rejeitar descarta sem afetar seu saldo.</p>
+      </div>
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <ReconciliationQueue pledges={(pledges ?? []) as any} accounts={activeAccounts} profileId={profile!.id} budgetCategoriesByHighlight={budgetCategoriesByHighlight} />
     </div>
