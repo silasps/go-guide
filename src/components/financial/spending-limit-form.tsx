@@ -32,7 +32,7 @@ function fromMasked(masked: string) {
   return masked.replace(/\./g, '').replace(',', '.')
 }
 
-// Um limite por categoria (UNIQUE no banco, ver migration 080) — o select
+// Um limite por categoria (UNIQUE no banco, ver migration 082) — o select
 // já esconde categorias que já têm limite, exceto a própria ao editar.
 export function SpendingLimitForm({ open, onOpenChange, limit, profileId, categories, currencies, usedCategoryIds, trigger }: Props) {
   const router = useRouter()

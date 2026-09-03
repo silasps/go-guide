@@ -31,7 +31,7 @@ function fromMasked(masked: string) {
 }
 
 // Meta de economia manual (sem vínculo automático com conta/transação —
-// decisão deliberada, ver migration 081): `current_amount` só muda aqui ou
+// decisão deliberada, ver migration 083): `current_amount` só muda aqui ou
 // via "Registrar valor" no card (GoalContributionButton).
 export function GoalForm({ open, onOpenChange, goal, profileId, currencies, trigger }: Props) {
   const router = useRouter()

@@ -28,7 +28,7 @@ function fromMasked(masked: string) {
 }
 
 // Aporte manual — soma em `current_amount` (não lança em `transactions`,
-// meta não tem vínculo automático com o caixa, ver migration 081).
+// meta não tem vínculo automático com o caixa, ver migration 083).
 export function GoalContributionDialog({ open, onOpenChange, goal }: Props) {
   const router = useRouter()
   const { isPending: saving, run } = usePendingAction()
