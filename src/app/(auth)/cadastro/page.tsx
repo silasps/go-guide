@@ -9,6 +9,7 @@ import * as keyManager from '@/lib/crypto/key-manager'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
@@ -143,14 +144,7 @@ function CadastroForm() {
             <Label htmlFor="phone">
               {t('phoneLabel')} <span className="text-muted-foreground font-normal">{t('phoneOptional')}</span>
             </Label>
-            <Input
-              id="phone"
-              type="tel"
-              placeholder={t('phonePlaceholder')}
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              autoComplete="tel"
-            />
+            <PhoneInput defaultValue={phone} onChange={setPhone} />
           </div>
 
           <div className="space-y-2">

@@ -9,6 +9,7 @@ import { PledgePaymentMethod } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CheckoutHeader } from './checkout-header'
 import { toast } from 'sonner'
@@ -293,13 +294,7 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
 
               <div className="space-y-2 pt-2 border-t">
                 {!user?.phone && (
-                  <Input
-                    type="tel"
-                    placeholder={t('phonePlaceholder')}
-                    value={contactPhone}
-                    onChange={(e) => setContactPhone(e.target.value)}
-                    className="h-9 text-sm"
-                  />
+                  <PhoneInput defaultValue={contactPhone} onChange={setContactPhone} placeholder={t('phonePlaceholder')} />
                 )}
                 <label className="flex items-center gap-2 text-sm">
                   <input
