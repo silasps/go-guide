@@ -23,6 +23,7 @@ interface Props {
   partners?: Partner[]
   highlights?: HighlightOption[]
   defaultHighlightId?: string
+  defaultType?: TransactionType
   trigger?: React.ReactNode
 }
 
@@ -43,10 +44,10 @@ function defaultFaturaDate(purchaseDate: string, closingDay: number | null) {
   return `${fd.getFullYear()}-${String(fd.getMonth() + 1).padStart(2, '0')}-01`
 }
 
-export function TransactionForm({ open, onOpenChange, transaction, accounts, categories = [], partners = [], highlights = [], defaultHighlightId, trigger }: Props) {
+export function TransactionForm({ open, onOpenChange, transaction, accounts, categories = [], partners = [], highlights = [], defaultHighlightId, defaultType, trigger }: Props) {
   const router = useRouter()
   const { isPending: saving, run } = usePendingAction()
-  const [type, setType] = useState<TransactionType>(transaction?.type ?? 'income')
+  const [type, setType] = useState<TransactionType>(transaction?.type ?? defaultType ?? 'income')
   const [amount, setAmount] = useState(transaction ? toMasked(String(Math.round(transaction.amount * 100))) : '')
   const [description, setDescription] = useState(transaction?.description ?? '')
   const [accountId, setAccountId] = useState(transaction?.account_id ?? accounts[0]?.id ?? '')

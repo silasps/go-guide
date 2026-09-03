@@ -8,7 +8,7 @@ import { FinancialAccount, TransactionCategory, TransactionWithCategory, Partner
 import { Button } from '@/components/ui/button'
 import { TransactionForm } from './transaction-form'
 import { toast } from 'sonner'
-import { Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, ArrowLeftRight, Loader2, CheckCircle2 } from 'lucide-react'
+import { Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, ArrowLeftRight, Loader2, CheckCircle2, FileText } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 interface Props {
@@ -18,6 +18,8 @@ interface Props {
   partners?: Partner[]
   highlights?: { id: string; title: string; budgetCategories: { id: string; label: string }[] }[]
   readOnly?: boolean
+  emptyTitle?: string
+  emptyHint?: string
 }
 
 const TYPE_ICON = {
@@ -26,7 +28,7 @@ const TYPE_ICON = {
   transfer: <ArrowLeftRight className="h-4 w-4 text-muted-foreground shrink-0" />,
 }
 
-export function TransactionTable({ transactions, accounts, categories = [], partners = [], highlights = [], readOnly = false }: Props) {
+export function TransactionTable({ transactions, accounts, categories = [], partners = [], highlights = [], readOnly = false, emptyTitle = 'Nenhum lançamento ainda.', emptyHint }: Props) {
   const router = useRouter()
   const [editing, setEditing] = useState<TransactionWithCategory | null>(null)
   const { pendingValue: deletingId, run } = usePendingAction<string>()
@@ -54,7 +56,13 @@ export function TransactionTable({ transactions, accounts, categories = [], part
   }
 
   if (transactions.length === 0) {
-    return <p className="text-sm text-muted-foreground py-8 text-center">Nenhum lançamento ainda.</p>
+    return (
+      <div className="flex flex-col items-center gap-2 py-12 text-center">
+        <FileText className="h-8 w-8 text-muted-foreground/50" />
+        <p className="text-sm font-medium">{emptyTitle}</p>
+        {emptyHint && <p className="text-xs text-muted-foreground">{emptyHint}</p>}
+      </div>
+    )
   }
 
   return (

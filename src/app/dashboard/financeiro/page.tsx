@@ -50,27 +50,27 @@ export default async function FinanceiroPage() {
       .map((c) => ({ id: c.id, label: resolveBudgetCategoryLabel(c) })),
   }))
 
-  if (!accounts || accounts.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center space-y-3">
-          <p className="text-muted-foreground text-sm">Você ainda não tem nenhuma conta financeira.</p>
-          <Link href="/dashboard/financeiro/contas" className={cn(buttonVariants(), 'gap-2')}>
-            <Plus className="h-4 w-4" /> Criar minha primeira conta
-          </Link>
-        </CardContent>
-      </Card>
-    )
-  }
+  const hasAccounts = !!accounts && accounts.length > 0
 
   return (
     <div className="space-y-6">
+      {!hasAccounts && (
+        <Card>
+          <CardContent className="py-6 flex items-center justify-between gap-4 flex-wrap">
+            <p className="text-muted-foreground text-sm">Você ainda não tem nenhuma conta financeira — os cards abaixo ficam zerados até você criar uma.</p>
+            <Link href="/dashboard/financeiro/contas" className={cn(buttonVariants(), 'gap-2 shrink-0')}>
+              <Plus className="h-4 w-4" /> Criar minha primeira conta
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex items-center justify-end">
-        <NewTransactionButton accounts={accounts} categories={categories ?? []} partners={partners ?? []} highlights={highlightsWithBudget} />
+        <NewTransactionButton accounts={accounts ?? []} categories={categories ?? []} partners={partners ?? []} highlights={highlightsWithBudget} />
       </div>
 
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <FinancialDashboard accounts={accounts} transactions={(windowTransactions ?? []) as any} categories={categories ?? []} partners={partners ?? []} highlights={highlightsWithBudget} />
+      <FinancialDashboard accounts={accounts ?? []} transactions={(windowTransactions ?? []) as any} categories={categories ?? []} partners={partners ?? []} highlights={highlightsWithBudget} />
     </div>
   )
 }

@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useMotionValue, useSpring } from 'framer-motion'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, cn } from '@/lib/utils'
 import { TimelinePoint } from '@/lib/financial/timeline'
 import { HIDDEN_VALUE_MASK } from './month-navigator'
-import { History, TrendingUp, TrendingDown, Wallet, Info } from 'lucide-react'
+import { History, TrendingUp, TrendingDown, Wallet, Info, CircleCheck, Clock3 } from 'lucide-react'
 
 interface Props {
   point: TimelinePoint
@@ -33,12 +32,56 @@ function monthBounds(month: string) {
   return { start: new Date(y, m - 1, 1), end: new Date(y, m, 0), prevEnd: new Date(y, m - 1, 0) }
 }
 
-const fmtDate = (d: Date) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+const fmtDate = (d: Date) => d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })
+
+const ACCENT = {
+  primary: { bar: 'bg-primary', badge: 'bg-primary/10 text-primary', text: 'text-primary' },
+  success: { bar: 'bg-success', badge: 'bg-success/10 text-success', text: 'text-success' },
+  destructive: { bar: 'bg-destructive', badge: 'bg-destructive/10 text-destructive', text: 'text-destructive' },
+} as const
+
+function StatCard({ accent, icon, title, subtitle, value, children }: {
+  accent: keyof typeof ACCENT
+  icon: React.ReactNode
+  title: string
+  subtitle: string
+  value: React.ReactNode
+  children?: React.ReactNode
+}) {
+  const a = ACCENT[accent]
+  return (
+    <div className="relative overflow-hidden rounded-2xl border bg-background p-4 space-y-3">
+      <span aria-hidden className={cn('absolute left-0 top-4 h-9 w-1 rounded-r-full', a.bar)} />
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-xl', a.badge)}>{icon}</span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-foreground">{title}</p>
+            <p className="truncate text-xs leading-5 text-muted-foreground">{subtitle}</p>
+          </div>
+        </div>
+        <p className={cn('min-w-0 max-w-[10rem] truncate text-right text-xl font-semibold', a.text)}>{value}</p>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function SubRow({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: React.ReactNode; tone: 'success' | 'warning' }) {
+  return (
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-muted/25 px-2.5 py-2">
+      <div className="flex min-w-0 items-center gap-1.5">
+        {icon}
+        <span className="truncate text-xs font-medium leading-4 text-muted-foreground">{label}</span>
+      </div>
+      <p className={cn('shrink-0 truncate text-xs font-semibold leading-4', tone === 'success' ? 'text-success' : 'text-warning')}>{value}</p>
+    </div>
+  )
+}
 
 // Cards de resumo do mês selecionado — Saldo Anterior/Receitas/Despesas/
-// Saldo Disponível+Previsto, mesmo conceito do 4º card do GranaZen (ver
-// 7.19). Substitui o antigo `BalanceSummary` (que só olhava o mês corrente
-// e não tinha noção de pago/a pagar); esse componente foi removido.
+// Saldo Disponível+Previsto, mesmo conceito e paleta semântica (primary/
+// success/destructive/warning) do GranaZen (ver 7.19/7.21).
 export function MonthSummaryCards({ point, currency, hideValues }: Props) {
   const { end, prevEnd } = monthBounds(point.month)
 
@@ -49,76 +92,62 @@ export function MonthSummaryCards({ point, currency, hideValues }: Props) {
   const saldoPrevistoDisplay = useCountUp(point.saldoPrevisto)
 
   const fmt = (v: number) => hideValues ? HIDDEN_VALUE_MASK : formatCurrency(v, currency)
+  const checkIcon = <CircleCheck className="size-3.5 shrink-0 text-muted-foreground" />
+  const clockIcon = <Clock3 className="size-3.5 shrink-0 text-muted-foreground" />
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm text-muted-foreground flex items-center gap-1.5 font-normal">
-            <History className="h-4 w-4" /> Saldo Anterior
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-0.5">
-          <p className="text-lg font-semibold tabular-nums">{fmt(saldoAnteriorDisplay)}</p>
-          <p className="text-xs text-muted-foreground">Até {fmtDate(prevEnd)}</p>
-        </CardContent>
-      </Card>
+    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <StatCard
+        accent="primary"
+        icon={<History className="size-4" />}
+        title="Saldo Anterior"
+        subtitle={`Até ${fmtDate(prevEnd)}`}
+        value={fmt(saldoAnteriorDisplay)}
+      />
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm text-muted-foreground flex items-center gap-1.5 font-normal">
-            <TrendingUp className="h-4 w-4 text-chart-1" /> Receitas
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-1.5">
-          <p className="text-lg font-semibold text-chart-1 tabular-nums">{fmt(incomeDisplay)}</p>
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Recebido</span>
-            <span className="tabular-nums">{fmt(point.incomeReceived)}</span>
-          </div>
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>A receber</span>
-            <span className="tabular-nums">{fmt(point.incomePending)}</span>
-          </div>
-        </CardContent>
-      </Card>
+      <StatCard
+        accent="success"
+        icon={<TrendingUp className="size-4" />}
+        title="Receitas"
+        subtitle={`${fmtDate(monthBounds(point.month).start)} - ${fmtDate(end)}`}
+        value={fmt(incomeDisplay)}
+      >
+        <div className="grid grid-cols-1 gap-2">
+          <SubRow icon={checkIcon} label="Recebido" value={fmt(point.incomeReceived)} tone="success" />
+          <SubRow icon={clockIcon} label="A receber" value={fmt(point.incomePending)} tone="warning" />
+        </div>
+      </StatCard>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm text-muted-foreground flex items-center gap-1.5 font-normal">
-            <TrendingDown className="h-4 w-4 text-chart-2" /> Despesas
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-1.5">
-          <p className="text-lg font-semibold text-chart-2 tabular-nums">{fmt(expenseDisplay)}</p>
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Pago</span>
-            <span className="tabular-nums">{fmt(point.expensePaid)}</span>
-          </div>
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Não pago</span>
-            <span className="tabular-nums">{fmt(point.expenseUnpaid)}</span>
-          </div>
-        </CardContent>
-      </Card>
+      <StatCard
+        accent="destructive"
+        icon={<TrendingDown className="size-4" />}
+        title="Despesas"
+        subtitle={`${fmtDate(monthBounds(point.month).start)} - ${fmtDate(end)}`}
+        value={fmt(expenseDisplay)}
+      >
+        <div className="grid grid-cols-1 gap-2">
+          <SubRow icon={checkIcon} label="Pago" value={fmt(point.expensePaid)} tone="success" />
+          <SubRow icon={clockIcon} label="Não pago" value={fmt(point.expenseUnpaid)} tone="warning" />
+        </div>
+      </StatCard>
 
-      <Card>
-        <CardContent className="pt-6 space-y-3">
-          <div className="space-y-0.5">
-            <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-              <Wallet className="h-4 w-4" /> Saldo Disponível
-            </span>
-            <p className="text-lg font-semibold tabular-nums">{fmt(saldoDisponivelDisplay)}</p>
+      <StatCard
+        accent="primary"
+        icon={<Wallet className="size-4" />}
+        title="Saldo Disponível"
+        subtitle={`Até ${fmtDate(end)}`}
+        value={fmt(saldoDisponivelDisplay)}
+      >
+        <div className="grid grid-cols-1 gap-2">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-muted/25 px-2.5 py-2" title="Saldo disponível + o que ainda falta receber e pagar até o fim do mês">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <Info className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="truncate text-xs font-medium leading-4 text-muted-foreground">Saldo Previsto</span>
+            </div>
+            <p className="shrink-0 truncate text-xs font-bold leading-4 text-primary">{fmt(saldoPrevistoDisplay)}</p>
           </div>
-          <div className="space-y-0.5 border-t pt-3">
-            <span className="text-sm text-muted-foreground flex items-center gap-1.5" title="Saldo disponível + o que ainda falta receber e pagar até o fim do mês">
-              <Info className="h-3.5 w-3.5" /> Saldo Previsto
-            </span>
-            <p className="text-lg font-semibold tabular-nums text-primary">{fmt(saldoPrevistoDisplay)}</p>
-          </div>
-          <p className="text-xs text-muted-foreground">Até {fmtDate(end)}</p>
-        </CardContent>
-      </Card>
+        </div>
+      </StatCard>
     </div>
   )
 }

@@ -19,13 +19,13 @@ export interface TimelinePoint {
 
 export type TimelineMetric = 'saldo_previsto' | 'fluxo' | 'despesas' | 'despesas_fixas' | 'receitas' | 'receitas_fixas'
 
-export const TIMELINE_METRICS: { value: TimelineMetric; label: string }[] = [
-  { value: 'saldo_previsto', label: 'Saldo previsto' },
-  { value: 'fluxo', label: 'Despesas e receitas' },
-  { value: 'despesas', label: 'Despesas' },
-  { value: 'despesas_fixas', label: 'Despesas fixas' },
-  { value: 'receitas', label: 'Receitas' },
-  { value: 'receitas_fixas', label: 'Receitas fixas' },
+export const TIMELINE_METRICS: { value: TimelineMetric; label: string; description: string }[] = [
+  { value: 'saldo_previsto', label: 'Saldo previsto', description: 'Mostra quanto você deve ter ao final de cada mês, somando receitas e descontando despesas previstas.' },
+  { value: 'fluxo', label: 'Despesas e receitas', description: 'Resultado de cada mês — receitas menos despesas, pagas ou não.' },
+  { value: 'despesas', label: 'Despesas', description: 'Total de despesas em cada mês, pagas ou não, com os filtros atuais.' },
+  { value: 'despesas_fixas', label: 'Despesas fixas', description: 'Total de despesas recorrentes (aluguel, assinaturas) em cada mês.' },
+  { value: 'receitas', label: 'Receitas', description: 'Total de receitas em cada mês, recebidas ou não, com os filtros atuais.' },
+  { value: 'receitas_fixas', label: 'Receitas fixas', description: 'Total de receitas recorrentes em cada mês.' },
 ]
 
 export function metricValue(point: TimelinePoint, metric: TimelineMetric): number {

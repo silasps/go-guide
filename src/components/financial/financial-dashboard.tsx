@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { MonthSummaryCards } from './month-summary-cards'
 import { MonthNavigator } from './month-navigator'
+import { PeriodFilterBar } from './period-filter-bar'
 import { MonthTransactionsPanel } from './month-transactions-panel'
 import { CategoryPanel } from './category-panel'
 import { TrendChart } from '@/components/ui/charts/trend-chart'
@@ -64,6 +65,18 @@ export function FinancialDashboard({ accounts, transactions, categories, partner
   return (
     <motion.div className="space-y-6" initial="hidden" animate="show" transition={{ staggerChildren: 0.08 }}>
       <motion.div variants={fadeUp}>
+        <PeriodFilterBar
+          points={timelinePoints}
+          selectedMonth={selectedMonth}
+          onSelectMonth={setSelectedMonth}
+          currentMonth={currentMonthStr()}
+          monthLabel={selectedMonthLabel}
+          hideValues={hideValues}
+          onToggleHideValues={() => setHideValues((v) => !v)}
+        />
+      </motion.div>
+
+      <motion.div variants={fadeUp}>
         <MonthNavigator
           points={timelinePoints}
           selectedMonth={selectedMonth}
@@ -71,9 +84,7 @@ export function FinancialDashboard({ accounts, transactions, categories, partner
           metric={timelineMetric}
           onMetricChange={setTimelineMetric}
           currency={currency}
-          currentMonth={currentMonthStr()}
           hideValues={hideValues}
-          onToggleHideValues={() => setHideValues((v) => !v)}
         />
       </motion.div>
 
@@ -118,7 +129,7 @@ export function FinancialDashboard({ accounts, transactions, categories, partner
             <CardTitle className="text-sm font-medium">Lançamentos — {selectedMonthLabel}</CardTitle>
           </CardHeader>
           <CardContent>
-            <MonthTransactionsPanel transactions={txInCurrency} month={selectedMonth} accounts={accounts} categories={categories} partners={partners} highlights={highlights} />
+            <MonthTransactionsPanel transactions={txInCurrency} month={selectedMonth} monthLabel={selectedMonthLabel} accounts={accounts} categories={categories} partners={partners} highlights={highlights} />
           </CardContent>
         </Card>
 
