@@ -225,6 +225,8 @@
     "newPasswordSubmit": "Save new password",
     "passwordsDontMatch": "Passwords don't match.",
     "passwordUpdated": "Password updated successfully!",
+    "passwordPwnedError": "This password has appeared in known data breaches. For your security, choose a different one.",
+    "passwordRequirementsError": "Your password doesn't meet the requirements listed below the field.",
     "signupPartnerNote": "This account will be a partner/supporter account — you'll be able to follow, pray for, and support missionaries.",
     "verifyEmailPendingTitle": "Confirm your email",
     "verifyEmailPendingBody": "We've sent a confirmation link to your email. Confirm it to unlock dashboard access.",
@@ -238,6 +240,13 @@
     "verifyEmailInvalidTitle": "Invalid link",
     "verifyEmailInvalidBody": "This verification link doesn't exist or has already been used.",
     "goToDashboard": "Go to dashboard"
+  },
+  "PasswordRequirements": {
+    "length": "At least 8 characters",
+    "lowercase": "One lowercase letter (a-z)",
+    "uppercase": "One uppercase letter (A-Z)",
+    "digit": "One number (0-9)",
+    "symbol": "One special character (e.g. ! @ # $)"
   },
   "SettingsPage": {
     "title": "Settings",
@@ -617,6 +626,8 @@
     "passwordTooShort": "At least 8 characters.",
     "passwordsDontMatch": "Passwords don't match.",
     "passwordChanged": "Password changed successfully!",
+    "passwordPwnedError": "This password has appeared in known data breaches. For your security, choose a different one.",
+    "passwordRequirementsError": "Your password doesn't meet the requirements listed below the field.",
     "usernameIncorrect": "Incorrect username.",
     "errorDeleteAccount": "Error deleting account.",
     "dangerZone": "Danger zone",

@@ -225,6 +225,8 @@
     "newPasswordSubmit": "Salvar nova senha",
     "passwordsDontMatch": "As senhas não coincidem.",
     "passwordUpdated": "Senha atualizada com sucesso!",
+    "passwordPwnedError": "Essa senha já apareceu em vazamentos de dados conhecidos. Por segurança, escolha outra.",
+    "passwordRequirementsError": "Sua senha não atende aos requisitos indicados abaixo do campo.",
     "signupPartnerNote": "Essa conta será uma conta de apoiador — você vai poder seguir, orar e apoiar missionários.",
     "verifyEmailPendingTitle": "Confirme seu e-mail",
     "verifyEmailPendingBody": "Enviamos um link de confirmação para o seu e-mail. Confirme para liberar o acesso ao dashboard.",
@@ -238,6 +240,13 @@
     "verifyEmailInvalidTitle": "Link inválido",
     "verifyEmailInvalidBody": "Esse link de verificação não existe ou já foi usado.",
     "goToDashboard": "Ir para o dashboard"
+  },
+  "PasswordRequirements": {
+    "length": "Pelo menos 8 caracteres",
+    "lowercase": "Uma letra minúscula (a-z)",
+    "uppercase": "Uma letra maiúscula (A-Z)",
+    "digit": "Um número (0-9)",
+    "symbol": "Um caractere especial (ex: ! @ # $)"
   },
   "SettingsPage": {
     "title": "Configurações",
@@ -617,6 +626,8 @@
     "passwordTooShort": "Mínimo 8 caracteres.",
     "passwordsDontMatch": "Senhas não coincidem.",
     "passwordChanged": "Senha alterada com sucesso!",
+    "passwordPwnedError": "Essa senha já apareceu em vazamentos de dados conhecidos. Por segurança, escolha outra.",
+    "passwordRequirementsError": "Sua senha não atende aos requisitos indicados abaixo do campo.",
     "usernameIncorrect": "Username incorreto.",
     "errorDeleteAccount": "Erro ao excluir conta.",
     "dangerZone": "Zona de perigo",

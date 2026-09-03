@@ -225,6 +225,8 @@
     "newPasswordSubmit": "Guardar nueva contraseña",
     "passwordsDontMatch": "Las contraseñas no coinciden.",
     "passwordUpdated": "¡Contraseña actualizada con éxito!",
+    "passwordPwnedError": "Esta contraseña ya apareció en filtraciones de datos conocidas. Por seguridad, elige otra.",
+    "passwordRequirementsError": "Tu contraseña no cumple los requisitos indicados debajo del campo.",
     "signupPartnerNote": "Esta cuenta será una cuenta de apoyador — podrás seguir, orar y apoyar a misioneros.",
     "verifyEmailPendingTitle": "Confirma tu correo",
     "verifyEmailPendingBody": "Enviamos un enlace de confirmación a tu correo. Confírmalo para desbloquear el acceso al dashboard.",
@@ -238,6 +240,13 @@
     "verifyEmailInvalidTitle": "Enlace inválido",
     "verifyEmailInvalidBody": "Este enlace de verificación no existe o ya fue usado.",
     "goToDashboard": "Ir al dashboard"
+  },
+  "PasswordRequirements": {
+    "length": "Al menos 8 caracteres",
+    "lowercase": "Una letra minúscula (a-z)",
+    "uppercase": "Una letra mayúscula (A-Z)",
+    "digit": "Un número (0-9)",
+    "symbol": "Un carácter especial (ej: ! @ # $)"
   },
   "SettingsPage": {
     "title": "Configuración",
@@ -617,6 +626,8 @@
     "passwordTooShort": "Mínimo 8 caracteres.",
     "passwordsDontMatch": "Las contraseñas no coinciden.",
     "passwordChanged": "¡Contraseña cambiada con éxito!",
+    "passwordPwnedError": "Esta contraseña ya apareció en filtraciones de datos conocidas. Por seguridad, elige otra.",
+    "passwordRequirementsError": "Tu contraseña no cumple los requisitos indicados debajo del campo.",
     "usernameIncorrect": "Nombre de usuario incorrecto.",
     "errorDeleteAccount": "Error al eliminar la cuenta.",
     "dangerZone": "Zona de peligro",
