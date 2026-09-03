@@ -322,7 +322,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
 
         {(project.letter || canEdit) && (
           <ProjectStoryDialog
-            triggerLabel="Conheça a história por trás deste projeto"
+            triggerLabel={project.letter ? 'Conheça a história por trás deste projeto' : 'Adicionar a história por trás deste projeto'}
             title="A história por trás deste projeto"
             closeLabel="Fechar"
           >

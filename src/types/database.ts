@@ -79,6 +79,9 @@ export interface Profile {
   email_verified: boolean
   email_verification_token: string | null
   email_verification_token_expires_at: string | null
+  phone: string | null
+  whatsapp_contact_opt_in: boolean
+  birth_date: string | null
   created_at: string
   updated_at: string
 }

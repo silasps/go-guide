@@ -69,11 +69,22 @@ export async function getPartnershipData(username: string, { highlight_id, choic
 
   const missionStartYear = profile.mission_start_date ? new Date(profile.mission_start_date).getFullYear() : null
 
-  // Telefone/WhatsApp já salvo na conta do visitante (não do missionário) —
-  // pra não pedir de novo se ele já informou numa parceria anterior.
-  const viewerContact = user
-    ? (await supabase.from('profiles').select('phone, whatsapp_contact_opt_in').eq('user_id', user.id).maybeSingle()).data
+  // Telefone/WhatsApp e data de nascimento já salvos na conta do visitante
+  // (não do missionário) — pra não pedir de novo se ele já informou numa
+  // parceria anterior, e pra alimentar partners.birth_date automaticamente
+  // quando essa conta virar parceira fixa (ver recurring-pledge-form.tsx).
+  // Cai pro select sem birth_date se a migration 080 ainda não tiver sido
+  // aplicada no banco (coluna inexistente faz o select inteiro falhar) —
+  // sem isso, o prefill de telefone/WhatsApp (já em produção) quebraria
+  // pra todo mundo até a migration ser aplicada manualmente.
+  const viewerContactRes = user
+    ? await supabase.from('profiles').select('phone, whatsapp_contact_opt_in, birth_date').eq('user_id', user.id).maybeSingle()
     : null
+  let viewerContact: { phone: string | null; whatsapp_contact_opt_in: boolean; birth_date: string | null } | null = viewerContactRes?.data ?? null
+  if (viewerContactRes?.error) {
+    const fallback = (await supabase.from('profiles').select('phone, whatsapp_contact_opt_in').eq('user_id', user!.id).maybeSingle()).data
+    viewerContact = fallback ? { ...fallback, birth_date: null } : null
+  }
 
   return {
     profileId: profile.id,
@@ -100,6 +111,7 @@ export async function getPartnershipData(username: string, { highlight_id, choic
       user_metadata: { full_name: user.user_metadata?.full_name },
       phone: viewerContact?.phone ?? null,
       whatsappOptIn: viewerContact?.whatsapp_contact_opt_in ?? false,
+      birthDate: viewerContact?.birth_date ?? null,
     } : null,
   }
 }

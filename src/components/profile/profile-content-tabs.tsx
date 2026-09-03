@@ -17,6 +17,7 @@ interface Props {
   posts: PostWithProfile[]
   projects: Highlight[]
   historyBlocks: HistoryBlock[]
+  linkedPosts?: PostWithProfile[]
   username: string
   accentColor: string
   visitorLocale: Locale
@@ -31,7 +32,7 @@ interface Props {
  *  sem navegar — as bolinhas de destaque dos projetos continuam existindo
  *  acima disso, como outro ponto de acesso; este seletor é sobre o que
  *  aparece na "grade" principal do perfil. */
-export function ProfileContentTabs({ posts, projects, historyBlocks, username, accentColor, visitorLocale, showProjects, showHistory, canEdit, deepLinkPostId, deepLinkComments }: Props) {
+export function ProfileContentTabs({ posts, projects, historyBlocks, linkedPosts = [], username, accentColor, visitorLocale, showProjects, showHistory, canEdit, deepLinkPostId, deepLinkComments }: Props) {
   const t = useTranslations('PublicProfile')
   const { tab, setTab } = useProfileTab()
 
@@ -75,7 +76,21 @@ export function ProfileContentTabs({ posts, projects, historyBlocks, username, a
         <ProfilePostsGrid posts={posts} visitorLocale={visitorLocale} canEdit={canEdit} deepLinkPostId={deepLinkPostId} deepLinkComments={deepLinkComments} />
       ) : <EmptyState label={t('noContentYet')} />)}
       {tab === 'projects' && (projects.length ? <ProjectsGrid projects={projects} username={username} accentColor={accentColor} visitorLocale={visitorLocale} /> : <EmptyState label={t('noContentYet')} />)}
-      {tab === 'history' && (historyBlocks.length ? <HistoryView blocks={historyBlocks} visitorLocale={visitorLocale} username={username} ctaButtonLabel={t('historiaCtaButton')} /> : <EmptyState label={t('noContentYet')} />)}
+      {tab === 'history' && (historyBlocks.length ? (
+        <HistoryView
+          blocks={historyBlocks}
+          visitorLocale={visitorLocale}
+          username={username}
+          ctaButtonLabel={t('historiaCtaButton')}
+          navLabels={{
+            who_we_are: t('historyNavWhoWeAre'),
+            our_calling: t('historyNavOurCalling'),
+            timeline: t('historyNavTimeline'),
+            cta: t('historyNavCta'),
+          }}
+          linkedPosts={linkedPosts}
+        />
+      ) : <EmptyState label={t('noContentYet')} />)}
     </div>
   )
 }

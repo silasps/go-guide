@@ -13,9 +13,22 @@ const MAX_IMAGES = 10
 interface Props {
   images: GalleryImageDraft[]
   onChange: (images: GalleryImageDraft[]) => void
+  labels?: {
+    addPhoto: (count: number, max: number) => string
+    limitReached: (max: number) => string
+    processing: string
+    limitToast: (max: number) => string
+  }
 }
 
-export function GalleryEditor({ images, onChange }: Props) {
+const defaultLabels: Required<Props>['labels'] = {
+  addPhoto: (count, max) => `Adicionar fotos (${count}/${max})`,
+  limitReached: (max) => `Limite de ${max} fotos atingido.`,
+  processing: 'Processando...',
+  limitToast: (max) => `Máximo de ${max} fotos por projeto.`,
+}
+
+export function GalleryEditor({ images, onChange, labels = defaultLabels }: Props) {
   const [loading, setLoading] = useState(false)
   const atLimit = images.length >= MAX_IMAGES
 
@@ -26,7 +39,7 @@ export function GalleryEditor({ images, onChange }: Props) {
     const remaining = MAX_IMAGES - images.length
     const accepted = files.slice(0, remaining)
     if (files.length > accepted.length) {
-      toast.error(`Máximo de ${MAX_IMAGES} fotos por projeto.`)
+      toast.error(labels.limitToast(MAX_IMAGES))
     }
     if (accepted.length === 0) { e.target.value = ''; return }
 
@@ -64,11 +77,11 @@ export function GalleryEditor({ images, onChange }: Props) {
         </div>
       )}
       {atLimit ? (
-        <p className="text-xs text-muted-foreground text-center">Limite de {MAX_IMAGES} fotos atingido.</p>
+        <p className="text-xs text-muted-foreground text-center">{labels.limitReached(MAX_IMAGES)}</p>
       ) : (
         <label className="flex items-center justify-center gap-2 h-10 rounded-lg border border-dashed text-sm text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors cursor-pointer">
           <ImagePlus className="h-4 w-4" />
-          {loading ? 'Processando...' : `Adicionar fotos (${images.length}/${MAX_IMAGES})`}
+          {loading ? labels.processing : labels.addPhoto(images.length, MAX_IMAGES)}
           <input type="file" accept="image/*" multiple className="hidden" onChange={handleSelect} disabled={loading} />
         </label>
       )}

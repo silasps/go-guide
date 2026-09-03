@@ -17,9 +17,10 @@ interface Props {
   managers: ProfileManager[]
   paymentMethods: PaymentMethod[]
   financialAccounts: FinancialAccount[]
+  isSuperAdmin: boolean
 }
 
-export function SettingsTabs({ profile, managers, paymentMethods, financialAccounts }: Props) {
+export function SettingsTabs({ profile, managers, paymentMethods, financialAccounts, isSuperAdmin }: Props) {
   const t = useTranslations('SettingsPage')
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') ?? 'perfil')
@@ -59,7 +60,7 @@ export function SettingsTabs({ profile, managers, paymentMethods, financialAccou
         {activeTab === 'perfil' && <ProfileForm profile={profile} />}
         {activeTab === 'pagamentos' && <PaymentMethodsList profileId={profile.id} methods={paymentMethods} financialAccounts={financialAccounts} />}
         {activeTab === 'privacidade' && <PrivacyForm profile={profile} />}
-        {activeTab === 'acesso' && <AccessManagersForm profile={profile} managers={managers} />}
+        {activeTab === 'acesso' && <AccessManagersForm profile={profile} managers={managers} isSuperAdmin={isSuperAdmin} />}
         {activeTab === 'conta' && <AccountForm profile={profile} />}
       </div>
     </div>

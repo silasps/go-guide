@@ -53,7 +53,13 @@ function LoginForm() {
     const supabase = createClient()
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirect)}` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirect)}`,
+        // Mesmo escopo do cadastro — conta nova via Google também pode ser
+        // criada por aqui (primeiro login), então precisa do mesmo pedido de
+        // permissão pra data de nascimento (ver /auth/callback).
+        scopes: 'https://www.googleapis.com/auth/user.birthday.read',
+      },
     })
   }
 

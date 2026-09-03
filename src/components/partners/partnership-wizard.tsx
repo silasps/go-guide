@@ -16,6 +16,7 @@ interface SessionUser {
   user_metadata?: { full_name?: string }
   phone?: string | null
   whatsappOptIn?: boolean
+  birthDate?: string | null
 }
 
 export interface PartnershipWizardProps {
@@ -76,6 +77,7 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
       <PledgeForm
         key={choice}
         profileId={profileId}
+        username={username}
         missionaryName={missionaryName}
         highlightId={choice === 'financial_once' ? highlightId : undefined}
         highlightTitle={choice === 'financial_once' ? highlightTitle : undefined}

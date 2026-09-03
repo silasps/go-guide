@@ -9,7 +9,11 @@ import * as keyManager from '@/lib/crypto/key-manager'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { PasswordRequirementsList } from '@/components/auth/password-requirements-list'
+import { isPasswordValid } from '@/lib/auth/password-requirements'
+import { isAuthWeakPasswordError } from '@supabase/supabase-js'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 
@@ -26,13 +30,14 @@ function CadastroForm() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [birthDate, setBirthDate] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
-    if (password.length < 8) {
-      toast.error(t('passwordTooShort'))
+    if (!isPasswordValid(password)) {
+      toast.error(t('passwordRequirementsError'))
       return
     }
     setLoading(true)
@@ -41,11 +46,11 @@ function CadastroForm() {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name, phone: phone.trim() || undefined } },
+      options: { data: { full_name: name, phone: phone.trim() || undefined, birth_date: birthDate || undefined } },
     })
 
     if (error) {
-      toast.error(error.message)
+      toast.error(isAuthWeakPasswordError(error) && error.reasons.includes('pwned') ? t('passwordPwnedError') : error.message)
       setLoading(false)
       return
     }
@@ -68,7 +73,14 @@ function CadastroForm() {
     const supabase = createClient()
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirect)}` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirect)}`,
+        // Escopo extra pra tentar puxar a data de nascimento do Google (ver
+        // /auth/callback, que busca via People API só quando esse escopo foi
+        // concedido) — o usuário ainda pode negar essa permissão no
+        // consentimento, então birth_date continua opcional.
+        scopes: 'https://www.googleapis.com/auth/user.birthday.read',
+      },
     })
   }
 
@@ -135,14 +147,22 @@ function CadastroForm() {
             <Label htmlFor="phone">
               {t('phoneLabel')} <span className="text-muted-foreground font-normal">{t('phoneOptional')}</span>
             </Label>
+            <PhoneInput defaultValue={phone} onChange={setPhone} />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="birthDate">
+              {t('birthDateLabel')} <span className="text-muted-foreground font-normal">{t('phoneOptional')}</span>
+            </Label>
             <Input
-              id="phone"
-              type="tel"
-              placeholder={t('phonePlaceholder')}
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              autoComplete="tel"
+              id="birthDate"
+              type="date"
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+              autoComplete="bday"
+              max={new Date().toISOString().slice(0, 10)}
             />
+            <p className="text-xs text-muted-foreground">{t('birthDateHint')}</p>
           </div>
 
           <div className="space-y-2">
@@ -156,9 +176,10 @@ function CadastroForm() {
               required
               autoComplete="new-password"
             />
+            <PasswordRequirementsList password={password} />
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full" disabled={loading || !isPasswordValid(password)}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {t('signupSubmit')}
           </Button>

@@ -13,6 +13,7 @@ import { PostComposerProvider } from '@/components/dashboard/post-composer-provi
 import { ProjectComposerProvider } from '@/components/highlights/project-composer/project-composer-provider'
 import { ProfileTabProvider } from '@/components/profile/profile-tab-context'
 import { enrichWithEngagement } from '@/lib/posts/enrich-with-engagement'
+import { getLinkedTimelinePosts } from '@/lib/history/linked-posts'
 import type { PostWithProfile, Profile } from '@/types/database'
 import { SkCardGrid, SkFeedPosts } from '@/components/ui/skeleton'
 import { getProfile, getProfileOrRedirect } from '@/lib/profile/get-profile'
@@ -184,7 +185,10 @@ async function ProfileContentAsync({ profile, visitorLocale, canEdit, deepLinkPo
 
   if (!posts || posts.length === 0) return null
 
-  const engagement = await enrichWithEngagement(supabase, posts.map((p) => p.id), user?.id)
+  const [engagement, linkedPosts] = await Promise.all([
+    enrichWithEngagement(supabase, posts.map((p) => p.id), user?.id),
+    isMissionary ? getLinkedTimelinePosts(supabase, historyBlocks ?? [], profile, user?.id) : Promise.resolve([]),
+  ])
   const postsWithProfile = posts.map((post) => ({
     ...post,
     profile: { id: profile.id, username: profile.username, display_name: profile.display_name, avatar_url: profile.avatar_url, accent_color: profile.accent_color, user_role: profile.user_role },
@@ -196,6 +200,7 @@ async function ProfileContentAsync({ profile, visitorLocale, canEdit, deepLinkPo
       posts={postsWithProfile}
       projects={projects ?? []}
       historyBlocks={historyBlocks ?? []}
+      linkedPosts={linkedPosts}
       username={profile.username}
       accentColor={profile.accent_color}
       visitorLocale={visitorLocale}

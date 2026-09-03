@@ -11,6 +11,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { PasswordRequirementsList } from '@/components/auth/password-requirements-list'
+import { isPasswordValid } from '@/lib/auth/password-requirements'
+import { isAuthWeakPasswordError } from '@supabase/supabase-js'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -49,12 +52,12 @@ export function AccountForm({ profile }: Props) {
   }
 
   async function handleChangePassword() {
-    if (newPassword.length < 8) { toast.error(t('passwordTooShort')); return }
+    if (!isPasswordValid(newPassword)) { toast.error(t('passwordRequirementsError')); return }
     if (newPassword !== confirmPassword) { toast.error(t('passwordsDontMatch')); return }
     setSavingPw(true)
     const supabase = createClient()
     const { error } = await supabase.auth.updateUser({ password: newPassword })
-    if (error) toast.error(error.message)
+    if (error) toast.error(isAuthWeakPasswordError(error) && error.reasons.includes('pwned') ? t('passwordPwnedError') : error.message)
     else {
       toast.success(t('passwordChanged'))
       setNewPassword('')
@@ -128,6 +131,7 @@ export function AccountForm({ profile }: Props) {
               placeholder={t('newPasswordPlaceholder')}
               autoComplete="new-password"
             />
+            {newPassword && <PasswordRequirementsList password={newPassword} />}
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirm_password">{t('confirmNewPassword')}</Label>
@@ -140,7 +144,7 @@ export function AccountForm({ profile }: Props) {
               autoComplete="new-password"
             />
           </div>
-          <Button onClick={handleChangePassword} disabled={savingPw || !newPassword}>
+          <Button onClick={handleChangePassword} disabled={savingPw || !isPasswordValid(newPassword)}>
             {savingPw && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {t('changePassword')}
           </Button>

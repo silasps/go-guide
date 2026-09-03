@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
@@ -9,6 +9,7 @@ import type { HistoryBlock } from '@/types/history'
 import type { ContentTranslation } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { LocaleContentTabs } from '@/components/dashboard/locale-content-tabs'
 import { LOCALES, type Locale } from '@/i18n/config'
@@ -18,6 +19,13 @@ import { Loader2, Plus, Trash2, GripVertical, Languages } from 'lucide-react'
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { HistorySectionNav, type HistorySection } from '@/components/history/section-nav'
+import { GalleryEditor, type GalleryImageDraft } from '@/components/highlights/gallery-editor'
+import { uniqueFileName } from '@/components/highlights/cover-editor'
+import { TimelinePostPicker, type PickablePost } from '@/components/history/timeline-post-picker'
+import { compressImage } from '@/lib/media/compress'
+import { ImagePlus, Link2 } from 'lucide-react'
+import Image from 'next/image'
 
 const LOCALE_FLAGS: Record<Locale, string> = { pt: '🇧🇷', en: '🇺🇸', es: '🇪🇸' }
 
@@ -29,6 +37,8 @@ interface TimelineItem {
   text: string
   translations: Partial<Record<Locale, string>>
   sources: Partial<Record<Locale, TranslationSource>>
+  postId?: string
+  imageUrl?: string
 }
 
 interface Props {
@@ -70,8 +80,9 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
   const [whoText, setWhoText] = useState((findBlock('who_we_are')?.content.text as string) ?? '')
   const [whoTextTranslations, setWhoTextTranslations] = useState(() => initialTranslations(translationsOf('who_we_are', 'text')))
   const [whoTextSources, setWhoTextSources] = useState(() => initialSources(translationsOf('who_we_are', 'text')))
-  const [whoImageUrl, setWhoImageUrl] = useState((findBlock('who_we_are')?.content.image_url as string) ?? '')
-  const [whoImageCaption, setWhoImageCaption] = useState((findBlock('who_we_are')?.content.image_caption as string) ?? '')
+  const [whoImages, setWhoImages] = useState<GalleryImageDraft[]>(
+    ((findBlock('who_we_are')?.content.images as string[]) ?? []).map((url) => ({ url }))
+  )
 
   const [callingTitle, setCallingTitle] = useState((findBlock('our_calling')?.content.title as string) ?? '')
   const [callingTitleTranslations, setCallingTitleTranslations] = useState(() => initialTranslations(translationsOf('our_calling', 'title')))
@@ -79,21 +90,45 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
   const [callingText, setCallingText] = useState((findBlock('our_calling')?.content.text as string) ?? '')
   const [callingTextTranslations, setCallingTextTranslations] = useState(() => initialTranslations(translationsOf('our_calling', 'text')))
   const [callingTextSources, setCallingTextSources] = useState(() => initialSources(translationsOf('our_calling', 'text')))
-  const [callingImageUrl, setCallingImageUrl] = useState((findBlock('our_calling')?.content.image_url as string) ?? '')
-  const [callingImageCaption, setCallingImageCaption] = useState((findBlock('our_calling')?.content.image_caption as string) ?? '')
+  const [callingImages, setCallingImages] = useState<GalleryImageDraft[]>(
+    ((findBlock('our_calling')?.content.images as string[]) ?? []).map((url) => ({ url }))
+  )
 
   const [timelineTitle, setTimelineTitle] = useState((findBlock('timeline')?.content.title as string) ?? '')
   const [timelineTitleTranslations, setTimelineTitleTranslations] = useState(() => initialTranslations(translationsOf('timeline', 'title')))
   const [timelineTitleSources, setTimelineTitleSources] = useState(() => initialSources(translationsOf('timeline', 'title')))
   const [timelineItems, setTimelineItems] = useState<TimelineItem[]>(
-    ((findBlock('timeline')?.content.items as { id?: string; year: string; text: string; text_translations?: Translations }[]) ?? []).map((item) => ({
+    ((findBlock('timeline')?.content.items as { id?: string; year: string; text: string; text_translations?: Translations; post_id?: string; image_url?: string }[]) ?? []).map((item) => ({
       id: item.id ?? crypto.randomUUID(),
       year: item.year,
       text: item.text,
       translations: initialTranslations(item.text_translations),
       sources: initialSources(item.text_translations),
+      postId: item.post_id,
+      imageUrl: item.image_url,
     }))
   )
+  // Miniaturas dos posts já vinculados (carregadas na montagem) e do que for
+  // vinculado agora na sessão — só pra pré-visualização no editor, nunca
+  // persistido (o que é salvo é só o post_id).
+  const [postThumbnails, setPostThumbnails] = useState<Record<string, PickablePost>>({})
+  const [pickerForItemId, setPickerForItemId] = useState<string | null>(null)
+  const [uploadingMediaFor, setUploadingMediaFor] = useState<string | null>(null)
+
+  useEffect(() => {
+    const postIds = [...new Set(timelineItems.map((i) => i.postId).filter((id): id is string => !!id))]
+    if (postIds.length === 0) return
+    const supabase = createClient()
+    supabase.from('posts').select('id, media_urls, type').in('id', postIds).then(({ data }) => {
+      if (!data) return
+      setPostThumbnails((prev) => {
+        const next = { ...prev }
+        for (const post of data as PickablePost[]) next[post.id] = post
+        return next
+      })
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -144,6 +179,32 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
     setTimelineItems(timelineItems.filter((item) => item.id !== id))
   }
 
+  function pickPostForItem(id: string, post: PickablePost) {
+    setPostThumbnails((prev) => ({ ...prev, [post.id]: post }))
+    setTimelineItems((items) => items.map((item) => item.id === id ? { ...item, postId: post.id, imageUrl: undefined } : item))
+    setPickerForItemId(null)
+  }
+
+  async function uploadImageForItem(id: string, file: File) {
+    setUploadingMediaFor(id)
+    try {
+      const supabase = createClient()
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      const compressed = await compressImage(file)
+      const path = `${authUser!.id}/historia/${uniqueFileName('webp')}`
+      const { error } = await supabase.storage.from('media').upload(path, compressed, { upsert: true })
+      if (error) throw error
+      const url = supabase.storage.from('media').getPublicUrl(path).data.publicUrl
+      setTimelineItems((items) => items.map((item) => item.id === id ? { ...item, imageUrl: url, postId: undefined } : item))
+    } finally {
+      setUploadingMediaFor(null)
+    }
+  }
+
+  function removeItemMedia(id: string) {
+    setTimelineItems((items) => items.map((item) => item.id === id ? { ...item, postId: undefined, imageUrl: undefined } : item))
+  }
+
   function setTimelineItemTranslation(id: string, locale: Locale, value: string) {
     setTimelineItems((items) => items.map((item) => item.id === id
       ? { ...item, translations: { ...item.translations, [locale]: value }, sources: { ...item.sources, [locale]: 'human' } }
@@ -180,9 +241,27 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
     })
   }
 
+  async function uploadGalleryImages(userId: string, images: GalleryImageDraft[]) {
+    const supabase = createClient()
+    const urls: string[] = []
+    for (const img of images) {
+      if (!img.file) { urls.push(img.url); continue }
+      const path = `${userId}/historia/${uniqueFileName('webp')}`
+      const { error } = await supabase.storage.from('media').upload(path, img.file, { upsert: true })
+      if (error) throw error
+      urls.push(supabase.storage.from('media').getPublicUrl(path).data.publicUrl)
+    }
+    return urls
+  }
+
   function handleSave() {
     run(true, async () => {
       const supabase = createClient()
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      const [whoImageUrls, callingImageUrls] = await Promise.all([
+        uploadGalleryImages(authUser!.id, whoImages),
+        uploadGalleryImages(authUser!.id, callingImages),
+      ])
       const buildTranslations = (translations: Partial<Record<Locale, string>>, sources: Partial<Record<Locale, TranslationSource>>) =>
         buildTranslationsPayload(originalLocale, translations, sources)
 
@@ -196,8 +275,7 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
             title_translations: buildTranslations(whoTitleTranslations, whoTitleSources),
             text: whoText.trim(),
             text_translations: buildTranslations(whoTextTranslations, whoTextSources),
-            image_url: whoImageUrl.trim() || undefined,
-            image_caption: whoImageCaption.trim() || undefined,
+            images: whoImageUrls.length ? whoImageUrls : undefined,
           } : null,
         },
         {
@@ -207,8 +285,7 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
             title_translations: buildTranslations(callingTitleTranslations, callingTitleSources),
             text: callingText.trim(),
             text_translations: buildTranslations(callingTextTranslations, callingTextSources),
-            image_url: callingImageUrl.trim() || undefined,
-            image_caption: callingImageCaption.trim() || undefined,
+            images: callingImageUrls.length ? callingImageUrls : undefined,
           } : null,
         },
         {
@@ -216,8 +293,9 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
           content: timelineItems.length ? {
             title: timelineTitle.trim() || undefined,
             title_translations: buildTranslations(timelineTitleTranslations, timelineTitleSources),
-            items: timelineItems.map(({ id, year, text, translations, sources }) => ({
+            items: timelineItems.map(({ id, year, text, translations, sources, postId, imageUrl }) => ({
               id, year, text, text_translations: buildTranslations(translations, sources),
+              post_id: postId || undefined, image_url: imageUrl || undefined,
             })),
           } : null,
         },
@@ -251,11 +329,26 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
     })
   }
 
+  const galleryLabels = {
+    addPhoto: (count: number, max: number) => t('addPhotoLabel', { count, max }),
+    limitReached: (max: number) => t('photoLimitLabel', { max }),
+    processing: t('processingPhotos'),
+    limitToast: (max: number) => t('photoLimitToast', { max }),
+  }
+
+  const navSections: HistorySection[] = [
+    { id: 'editor-who_we_are', label: t('whoWeAre') },
+    { id: 'editor-our_calling', label: t('ourCalling') },
+    { id: 'editor-timeline', label: t('timeline') },
+    { id: 'editor-cta', label: t('cta') },
+  ]
+
   return (
     <div className="space-y-8">
       <p className="text-sm text-muted-foreground">{t('pageIntro')}</p>
+      <HistorySectionNav sections={navSections} />
 
-      <section className="space-y-3">
+      <section id="editor-who_we_are" className="space-y-3 scroll-mt-16">
         <div>
           <h2 className="font-semibold text-sm">{t('whoWeAre')}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">{t('whoWeAreHint')}</p>
@@ -289,22 +382,11 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
         </div>
         <div className="space-y-1.5 rounded-lg border border-dashed p-3">
           <Label className="text-xs text-muted-foreground">{t('sectionImageLabel')}</Label>
-          <Input
-            value={whoImageUrl}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWhoImageUrl(e.target.value)}
-            placeholder={t('sectionImageUrlPlaceholder')}
-          />
-          {whoImageUrl.trim() && (
-            <Input
-              value={whoImageCaption}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWhoImageCaption(e.target.value)}
-              placeholder={t('sectionImageCaptionPlaceholder')}
-            />
-          )}
+          <GalleryEditor images={whoImages} onChange={setWhoImages} labels={galleryLabels} />
         </div>
       </section>
 
-      <section className="space-y-3">
+      <section id="editor-our_calling" className="space-y-3 scroll-mt-16">
         <div>
           <h2 className="font-semibold text-sm">{t('ourCalling')}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">{t('ourCallingHint')}</p>
@@ -338,22 +420,11 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
         </div>
         <div className="space-y-1.5 rounded-lg border border-dashed p-3">
           <Label className="text-xs text-muted-foreground">{t('sectionImageLabel')}</Label>
-          <Input
-            value={callingImageUrl}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCallingImageUrl(e.target.value)}
-            placeholder={t('sectionImageUrlPlaceholder')}
-          />
-          {callingImageUrl.trim() && (
-            <Input
-              value={callingImageCaption}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCallingImageCaption(e.target.value)}
-              placeholder={t('sectionImageCaptionPlaceholder')}
-            />
-          )}
+          <GalleryEditor images={callingImages} onChange={setCallingImages} labels={galleryLabels} />
         </div>
       </section>
 
-      <section className="space-y-3">
+      <section id="editor-timeline" className="space-y-3 scroll-mt-16">
         <div>
           <h2 className="font-semibold text-sm">{t('timeline')}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">{t('timelineHint')}</p>
@@ -389,12 +460,29 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
                     dragLabel={t('dragToReorder')}
                     translateLabel={tLocale('translateWithAi')}
                     manualPlaceholder={tLocale('manualPlaceholder')}
+                    linkedPost={item.postId ? postThumbnails[item.postId] : undefined}
+                    uploading={uploadingMediaFor === item.id}
+                    onPickPost={() => setPickerForItemId(item.id)}
+                    onUploadImage={(file) => uploadImageForItem(item.id, file)}
+                    onRemoveMedia={() => removeItemMedia(item.id)}
+                    linkPostLabel={t('timelineLinkPost')}
+                    addPhotoLabel={t('timelineAddPhoto')}
+                    removeMediaLabel={t('timelineRemoveMedia')}
                   />
                 ))}
               </ul>
             </SortableContext>
           </DndContext>
         )}
+
+        <TimelinePostPicker
+          profileId={profileId}
+          open={pickerForItemId !== null}
+          onOpenChange={(open) => !open && setPickerForItemId(null)}
+          onSelect={(post) => pickerForItemId && pickPostForItem(pickerForItemId, post)}
+          title={t('timelinePickerTitle')}
+          emptyLabel={t('timelinePickerEmpty')}
+        />
 
         <div className="grid grid-cols-[80px_1fr_auto] gap-2">
           <Input
@@ -403,11 +491,13 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewYear(e.target.value)}
             placeholder={t('timelineYearPlaceholder')}
           />
-          <Input
+          <Textarea
             value={newEventText}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewEventText(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewEventText(e.target.value)}
             placeholder={t('timelineEventPlaceholder')}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTimelineItem() } }}
+            rows={1}
+            className="field-sizing-fixed resize-y min-h-9"
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addTimelineItem() } }}
           />
           <Button type="button" variant="outline" size="icon" onClick={addTimelineItem} aria-label={t('addItem')}>
             <Plus className="h-4 w-4" />
@@ -415,7 +505,7 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
         </div>
       </section>
 
-      <section className="space-y-3">
+      <section id="editor-cta" className="space-y-3 scroll-mt-16">
         <div>
           <h2 className="font-semibold text-sm">{t('cta')}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">{t('ctaHint')}</p>
@@ -457,7 +547,7 @@ export function HistoryEditorForm({ profileId, blocks, backPath }: Props) {
   )
 }
 
-function SortableTimelineItem({ item, originalLocale, translatingKey, onRemove, onTranslationChange, onTranslate, removeLabel, dragLabel, translateLabel, manualPlaceholder }: {
+function SortableTimelineItem({ item, originalLocale, translatingKey, onRemove, onTranslationChange, onTranslate, removeLabel, dragLabel, translateLabel, manualPlaceholder, linkedPost, uploading, onPickPost, onUploadImage, onRemoveMedia, linkPostLabel, addPhotoLabel, removeMediaLabel }: {
   item: TimelineItem
   originalLocale: Locale
   translatingKey: string | null
@@ -468,11 +558,21 @@ function SortableTimelineItem({ item, originalLocale, translatingKey, onRemove, 
   dragLabel: string
   translateLabel: string
   manualPlaceholder: string
+  linkedPost?: PickablePost
+  uploading: boolean
+  onPickPost: () => void
+  onUploadImage: (file: File) => void
+  onRemoveMedia: () => void
+  linkPostLabel: string
+  addPhotoLabel: string
+  removeMediaLabel: string
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 }
   const [expanded, setExpanded] = useState(false)
   const targetLocales = LOCALES.filter((l) => l !== originalLocale)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const thumbnailUrl = linkedPost ? linkedPost.media_urls[0] : item.imageUrl
 
   return (
     <li ref={setNodeRef} style={style} className="space-y-1.5 border rounded-lg p-2 bg-background">
@@ -487,7 +587,7 @@ function SortableTimelineItem({ item, originalLocale, translatingKey, onRemove, 
           <GripVertical className="h-3.5 w-3.5" />
         </button>
         <span className="font-semibold text-primary shrink-0">{item.year}</span>
-        <span className="flex-1 text-muted-foreground">{item.text}</span>
+        <span className="flex-1 text-muted-foreground line-clamp-2">{item.text}</span>
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
@@ -505,6 +605,47 @@ function SortableTimelineItem({ item, originalLocale, translatingKey, onRemove, 
           <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
+
+      <div className="pl-6 flex items-center gap-2">
+        {thumbnailUrl ? (
+          <>
+            <div className="relative h-10 w-10 shrink-0 rounded-md overflow-hidden bg-muted">
+              {linkedPost?.type === 'video' ? (
+                <video src={thumbnailUrl} className="h-full w-full object-cover" muted />
+              ) : (
+                <Image src={thumbnailUrl} alt="" fill sizes="2.5rem" className="object-cover" />
+              )}
+            </div>
+            <button type="button" onClick={onRemoveMedia} className="text-xs text-muted-foreground hover:text-destructive transition-colors">
+              {removeMediaLabel}
+            </button>
+          </>
+        ) : (
+          <>
+            <button type="button" onClick={onPickPost} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <Link2 className="h-3 w-3" />
+              {linkPostLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            >
+              {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImagePlus className="h-3 w-3" />}
+              {addPhotoLabel}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => { const file = e.target.files?.[0]; if (file) onUploadImage(file); e.target.value = '' }}
+            />
+          </>
+        )}
+      </div>
+
       {expanded && (
         <div className="pl-6 space-y-1.5">
           {targetLocales.map((locale) => (

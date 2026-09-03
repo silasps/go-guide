@@ -15,9 +15,10 @@ interface Props {
   profileId: string
   plan: string
   partnerCount: number
+  isSuperAdmin?: boolean
 }
 
-export function AddPartnerButton({ profileId, plan, partnerCount }: Props) {
+export function AddPartnerButton({ profileId, plan, partnerCount, isSuperAdmin = false }: Props) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [name, setName] = useState('')
@@ -28,7 +29,7 @@ export function AddPartnerButton({ profileId, plan, partnerCount }: Props) {
   const [type, setType] = useState<'financial' | 'prayer' | 'both'>('both')
 
   const limit = planLimits(plan).partners
-  const atLimit = partnerCount >= limit
+  const atLimit = !isSuperAdmin && partnerCount >= limit
 
   async function handleAdd(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
