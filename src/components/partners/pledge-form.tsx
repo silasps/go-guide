@@ -62,7 +62,8 @@ export function PledgeForm({ profileId, username, missionaryName, highlightId, h
   const [doneViaStripe] = useState(() => searchParams.get('stripe') === 'success')
   const [done, setDone] = useState(doneViaStripe)
   const [doneAsLoggedIn, setDoneAsLoggedIn] = useState(false)
-  const [redirectSeconds, setRedirectSeconds] = useState(8)
+  const [redirectSeconds, setRedirectSeconds] = useState(20)
+  const doneRef = useRef<HTMLDivElement>(null)
   const [saving, setSaving] = useState(false)
   const { isPending: startingCheckout, run: runCheckout } = usePendingAction()
   const [amount, setAmount] = useState('')
@@ -96,6 +97,15 @@ export function PledgeForm({ profileId, username, missionaryName, highlightId, h
     const timer = setTimeout(() => setRedirectSeconds((s) => s - 1), 1000)
     return () => clearTimeout(timer)
   }, [done, redirectSeconds, username])
+
+  // Dentro do modal (PartnershipModal), a tela de "pronto" troca de lugar
+  // com o formulário no mesmo container rolável (`overflow-y-auto` em
+  // partnership-modal.tsx) — sem isso, se a pessoa tiver rolado pra baixo
+  // pra preencher o formulário, essa rolagem persiste e a tela de sucesso
+  // aparece cortada/deslocada em vez de começar do topo.
+  useEffect(() => {
+    if (done) doneRef.current?.scrollIntoView({ block: 'start' })
+  }, [done])
 
   const [currency, setCurrency] = useState(defaultCurrency)
   // Cartão (Stripe) entra como mais uma opção no mesmo grid de mini-cards,
@@ -266,9 +276,9 @@ export function PledgeForm({ profileId, username, missionaryName, highlightId, h
 
   if (done) {
     return (
-      <div className="min-h-screen bg-background">
+      <div ref={doneRef} className="min-h-screen bg-background">
         <CheckoutHeader backHref={backHref} />
-        <div className="mx-auto flex min-h-[calc(100vh-56px)] max-w-md flex-col justify-center px-4 pb-8 space-y-3">
+        <div className="mx-auto max-w-md px-4 pt-[72px] pb-8 space-y-3">
           <Card>
             <CardContent className="py-12 text-center space-y-3">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
@@ -283,23 +293,23 @@ export function PledgeForm({ profileId, username, missionaryName, highlightId, h
                   ? t('doneDescriptionStripe', { name: missionaryName })
                   : t(doneAsLoggedIn ? 'doneDescriptionNotified' : isAnonymous ? 'doneDescriptionAnonymous' : 'doneDescriptionGuestNamed', { name: missionaryName })}
               </p>
+              <p className="text-xs text-muted-foreground">{t('redirectingIn', { seconds: redirectSeconds })}</p>
             </CardContent>
           </Card>
           {!isRecurring && onBecomePartner && (
-            <Card className="bg-primary/5 border-primary/20">
+            <Card className="bg-support/10 border-support/30">
               <CardContent className="py-6 text-center space-y-3">
                 <p className="text-sm">{t('becomePartnerPrompt', { name: missionaryName })}</p>
-                <Button type="button" variant="outline" className="w-full" onClick={onBecomePartner}>
+                <Button type="button" variant="support" size="lg" className="w-full" onClick={onBecomePartner}>
                   {t('becomePartnerCta')}
                 </Button>
                 <p className="text-xs text-muted-foreground">{t('becomePartnerNote')}</p>
               </CardContent>
             </Card>
           )}
-          <Button type="button" className="w-full" onClick={() => { window.location.href = `/${username}` }}>
+          <Button type="button" variant="outline" className="w-full" onClick={() => { window.location.href = `/${username}` }}>
             {t('viewProfileCta', { name: missionaryName })}
           </Button>
-          <p className="text-center text-xs text-muted-foreground">{t('redirectingIn', { seconds: redirectSeconds })}</p>
         </div>
       </div>
     )
