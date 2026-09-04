@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/media/compress'
@@ -52,7 +51,6 @@ interface Props {
 
 export function PledgeForm({ profileId, username, missionaryName, highlightId, highlightTitle, highlightGoalAmount, highlightCurrentAmount, isRecurring, defaultCurrency, paymentOptions, stripeAvailable = false, heroImageUrl = null, heroImagePosition, budgetCategories, initialCategoryId, backHref, onBecomePartner }: Props) {
   const t = useTranslations('PledgeForm')
-  const router = useRouter()
   const searchParams = useSearchParams()
   // Volta do Stripe Checkout é um reload completo (window.location.href),
   // então nenhum state local sobrevive — o único jeito de saber que o
@@ -64,7 +62,7 @@ export function PledgeForm({ profileId, username, missionaryName, highlightId, h
   const [doneViaStripe] = useState(() => searchParams.get('stripe') === 'success')
   const [done, setDone] = useState(doneViaStripe)
   const [doneAsLoggedIn, setDoneAsLoggedIn] = useState(false)
-  const [redirectSeconds, setRedirectSeconds] = useState(5)
+  const [redirectSeconds, setRedirectSeconds] = useState(8)
   const [saving, setSaving] = useState(false)
   const { isPending: startingCheckout, run: runCheckout } = usePendingAction()
   const [amount, setAmount] = useState('')
@@ -81,18 +79,23 @@ export function PledgeForm({ profileId, username, missionaryName, highlightId, h
   const [proofPreview, setProofPreview] = useState('')
   const amountInputRef = useRef<HTMLInputElement>(null)
 
-  // Redireciona pro perfil do missionário 5s depois de concluir, a menos
+  // Redireciona pro perfil do missionário 8s depois de concluir, a menos
   // que a pessoa já tenha saído da tela (ex.: clicou em "quero ser parceiro
   // fixo", que desmonta este componente) — o cleanup abaixo cobre isso.
+  // window.location.href (não router.push): esta tela às vezes está dentro
+  // do modal de "Seja Parceiro" (PartnershipModal, intercepting route) —
+  // uma navegação client-side pro perfil não fecha esse modal (ele só some
+  // quando a rota interceptada deixa de casar via navegação de verdade), o
+  // reload completo garante que a tela final não fica com o modal por cima.
   useEffect(() => {
     if (!done) return
     if (redirectSeconds <= 0) {
-      router.push(`/${username}`)
+      window.location.href = `/${username}`
       return
     }
     const timer = setTimeout(() => setRedirectSeconds((s) => s - 1), 1000)
     return () => clearTimeout(timer)
-  }, [done, redirectSeconds, router, username])
+  }, [done, redirectSeconds, username])
 
   const [currency, setCurrency] = useState(defaultCurrency)
   // Cartão (Stripe) entra como mais uma opção no mesmo grid de mini-cards,
@@ -293,11 +296,9 @@ export function PledgeForm({ profileId, username, missionaryName, highlightId, h
               </CardContent>
             </Card>
           )}
-          <Link href={`/${username}`}>
-            <Button type="button" className="w-full">
-              {t('viewProfileCta', { name: missionaryName })}
-            </Button>
-          </Link>
+          <Button type="button" className="w-full" onClick={() => { window.location.href = `/${username}` }}>
+            {t('viewProfileCta', { name: missionaryName })}
+          </Button>
           <p className="text-center text-xs text-muted-foreground">{t('redirectingIn', { seconds: redirectSeconds })}</p>
         </div>
       </div>
