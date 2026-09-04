@@ -373,6 +373,7 @@ export interface Pledge {
   reviewed_by_user_id: string | null
   reviewed_at: string | null
   rejection_reason: string | null
+  rejection_email_sent_at: string | null
   created_at: string
 }
 
