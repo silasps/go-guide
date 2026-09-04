@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/media/compress'
@@ -52,7 +51,6 @@ interface Props {
 
 export function PledgeForm({ profileId, username, missionaryName, highlightId, highlightTitle, highlightGoalAmount, highlightCurrentAmount, isRecurring, defaultCurrency, paymentOptions, stripeAvailable = false, heroImageUrl = null, heroImagePosition, budgetCategories, initialCategoryId, backHref, onBecomePartner }: Props) {
   const t = useTranslations('PledgeForm')
-  const router = useRouter()
   const searchParams = useSearchParams()
   // Volta do Stripe Checkout é um reload completo (window.location.href),
   // então nenhum state local sobrevive — o único jeito de saber que o
@@ -64,10 +62,21 @@ export function PledgeForm({ profileId, username, missionaryName, highlightId, h
   const [doneViaStripe] = useState(() => searchParams.get('stripe') === 'success')
   const [done, setDone] = useState(doneViaStripe)
   const [doneAsLoggedIn, setDoneAsLoggedIn] = useState(false)
-  const [redirectSeconds, setRedirectSeconds] = useState(5)
+  const [redirectSeconds, setRedirectSeconds] = useState(20)
+  const doneRef = useRef<HTMLDivElement>(null)
   const [saving, setSaving] = useState(false)
   const { isPending: startingCheckout, run: runCheckout } = usePendingAction()
-  const [amount, setAmount] = useState('')
+  // Chegando pelo lembrete de uma oferta agendada (scheduled_pledges — ver
+  // cron scheduled-pledge-reminders), valor/moeda vêm pré-preenchidos da
+  // URL em vez de começar em branco. toMasked espera dígitos "como se
+  // tivessem sido digitados" (últimos 2 = centavos), não um número
+  // decimal pronto — por isso a conversão pra centavos antes.
+  const [amount, setAmount] = useState(() => {
+    const prefill = searchParams.get('amount')
+    if (!prefill) return ''
+    const cents = Math.round(parseFloat(prefill) * 100)
+    return isNaN(cents) ? '' : toMasked(String(cents), searchParams.get('currency') || defaultCurrency)
+  })
   const [categoryId, setCategoryId] = useState<string | null>(initialCategoryId ?? null)
   const [optionId, setOptionId] = useState(stripeAvailable ? 'stripe' : (paymentOptions[0]?.id ?? 'other'))
   const [otherDescription, setOtherDescription] = useState('')
@@ -81,20 +90,34 @@ export function PledgeForm({ profileId, username, missionaryName, highlightId, h
   const [proofPreview, setProofPreview] = useState('')
   const amountInputRef = useRef<HTMLInputElement>(null)
 
-  // Redireciona pro perfil do missionário 5s depois de concluir, a menos
+  // Redireciona pro perfil do missionário 8s depois de concluir, a menos
   // que a pessoa já tenha saído da tela (ex.: clicou em "quero ser parceiro
   // fixo", que desmonta este componente) — o cleanup abaixo cobre isso.
+  // window.location.href (não router.push): esta tela às vezes está dentro
+  // do modal de "Seja Parceiro" (PartnershipModal, intercepting route) —
+  // uma navegação client-side pro perfil não fecha esse modal (ele só some
+  // quando a rota interceptada deixa de casar via navegação de verdade), o
+  // reload completo garante que a tela final não fica com o modal por cima.
   useEffect(() => {
     if (!done) return
     if (redirectSeconds <= 0) {
-      router.push(`/${username}`)
+      window.location.href = `/${username}`
       return
     }
     const timer = setTimeout(() => setRedirectSeconds((s) => s - 1), 1000)
     return () => clearTimeout(timer)
-  }, [done, redirectSeconds, router, username])
+  }, [done, redirectSeconds, username])
 
-  const [currency, setCurrency] = useState(defaultCurrency)
+  // Dentro do modal (PartnershipModal), a tela de "pronto" troca de lugar
+  // com o formulário no mesmo container rolável (`overflow-y-auto` em
+  // partnership-modal.tsx) — sem isso, se a pessoa tiver rolado pra baixo
+  // pra preencher o formulário, essa rolagem persiste e a tela de sucesso
+  // aparece cortada/deslocada em vez de começar do topo.
+  useEffect(() => {
+    if (done) doneRef.current?.scrollIntoView({ block: 'start' })
+  }, [done])
+
+  const [currency, setCurrency] = useState(() => searchParams.get('currency') || defaultCurrency)
   // Cartão (Stripe) entra como mais uma opção no mesmo grid de mini-cards,
   // não numa aba separada — mesma seleção pra todos os métodos, cada um
   // revela seu próprio jeito de continuar (Stripe: botão de checkout; Pix
@@ -227,6 +250,7 @@ export function PledgeForm({ profileId, username, missionaryName, highlightId, h
     // perfil ou pro próprio reporter logado — um guest anônimo/identificado
     // sem conta nunca conseguiria ler a linha de volta via RETURNING, o que
     // faria o insert (bem-sucedido) aparentar erro no cliente.
+    const scheduledPledgeId = searchParams.get('scheduled')
     const pledgeId = crypto.randomUUID()
     const { error } = await supabase.from('pledges').insert({
       id: pledgeId,
@@ -245,12 +269,21 @@ export function PledgeForm({ profileId, username, missionaryName, highlightId, h
       reported_at: new Date(date).toISOString(),
       proof_url,
       is_recurring_pledge: isRecurring,
+      scheduled_pledge_id: scheduledPledgeId || null,
     })
 
     setSaving(false)
     if (error) { console.error('pledges insert failed:', error); toast.error(t('errorSave')); return }
     setDoneAsLoggedIn(!!user)
     setDone(true)
+
+    // Chegou pelo lembrete de uma oferta agendada e completou de verdade —
+    // fecha o laço marcando o agendamento como cumprido (RLS já permite,
+    // é o próprio reporter). Best-effort: se falhar, o agendamento só fica
+    // parado em "sent" — sem tela nenhuma dependendo desse status hoje.
+    if (scheduledPledgeId) {
+      supabase.from('scheduled_pledges').update({ status: 'fulfilled' }).eq('id', scheduledPledgeId).then(() => {})
+    }
 
     // Quem se identificou mas não tem conta não recebe notificação in-app —
     // manda um e-mail de confirmação pro endereço que a pessoa preencheu.
@@ -263,9 +296,9 @@ export function PledgeForm({ profileId, username, missionaryName, highlightId, h
 
   if (done) {
     return (
-      <div className="min-h-screen bg-background">
-        <CheckoutHeader backHref={backHref} />
-        <div className="mx-auto flex min-h-[calc(100vh-56px)] max-w-md flex-col justify-center px-4 pb-8 space-y-3">
+      <div ref={doneRef} className="min-h-screen bg-background">
+        <CheckoutHeader showBack={false} />
+        <div className="mx-auto max-w-md px-4 pt-[72px] pb-8 space-y-3">
           <Card>
             <CardContent className="py-12 text-center space-y-3">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
@@ -280,25 +313,23 @@ export function PledgeForm({ profileId, username, missionaryName, highlightId, h
                   ? t('doneDescriptionStripe', { name: missionaryName })
                   : t(doneAsLoggedIn ? 'doneDescriptionNotified' : isAnonymous ? 'doneDescriptionAnonymous' : 'doneDescriptionGuestNamed', { name: missionaryName })}
               </p>
+              <p className="text-xs text-muted-foreground">{t('redirectingIn', { seconds: redirectSeconds })}</p>
             </CardContent>
           </Card>
           {!isRecurring && onBecomePartner && (
-            <Card className="bg-primary/5 border-primary/20">
+            <Card className="bg-support/10 border-support/30">
               <CardContent className="py-6 text-center space-y-3">
                 <p className="text-sm">{t('becomePartnerPrompt', { name: missionaryName })}</p>
-                <Button type="button" variant="outline" className="w-full" onClick={onBecomePartner}>
+                <Button type="button" variant="support" size="lg" className="w-full" onClick={onBecomePartner}>
                   {t('becomePartnerCta')}
                 </Button>
                 <p className="text-xs text-muted-foreground">{t('becomePartnerNote')}</p>
               </CardContent>
             </Card>
           )}
-          <Link href={`/${username}`}>
-            <Button type="button" className="w-full">
-              {t('viewProfileCta', { name: missionaryName })}
-            </Button>
-          </Link>
-          <p className="text-center text-xs text-muted-foreground">{t('redirectingIn', { seconds: redirectSeconds })}</p>
+          <Button type="button" variant="outline" className="w-full" onClick={() => { window.location.href = `/${username}` }}>
+            {t('viewProfileCta', { name: missionaryName })}
+          </Button>
         </div>
       </div>
     )

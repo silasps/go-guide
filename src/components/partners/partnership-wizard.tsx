@@ -1,14 +1,16 @@
 'use client'
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { PledgeForm } from './pledge-form'
 import { RecurringPledgeForm } from './recurring-pledge-form'
+import { ScheduledPledgeForm } from './scheduled-pledge-form'
 import { PartnershipForm } from './partnership-form'
 import { PledgePaymentMethod } from '@/types/database'
 import type { BudgetCategoryOption } from './budget-category-select'
 import { CheckoutHeader } from './checkout-header'
 
-type Choice = 'financial_once' | 'financial_once_general' | 'financial_ongoing' | 'prayer' | 'ambassador' | 'volunteer'
+type Choice = 'financial_once' | 'financial_once_general' | 'financial_ongoing' | 'financial_scheduled' | 'prayer' | 'ambassador' | 'volunteer'
 
 interface SessionUser {
   id: string
@@ -42,6 +44,7 @@ export interface PartnershipWizardProps {
 }
 
 export function PartnershipWizard({ profileId, username, initialChoice, missionaryName, missionStartYear, highlightId, highlightTitle, highlightGoalAmount, highlightCurrentAmount, defaultCurrency, paymentOptions, budgetCategories, initialCategoryId, hasFinancialOptions, stripeAvailable, profileAvatarUrl, highlightCoverUrl, highlightCoverPosition, user }: PartnershipWizardProps) {
+  const t = useTranslations('PartnershipWizard')
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -98,10 +101,10 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
   }
 
   if (choice === 'financial_ongoing') {
-    const returnPath = `/${username}/parceria${highlightId ? `?highlight_id=${highlightId}` : ''}`
     return (
       <RecurringPledgeForm
         profileId={profileId}
+        username={username}
         missionaryName={missionaryName}
         currency={defaultCurrency}
         paymentOptions={paymentOptions}
@@ -110,7 +113,6 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
         heroImagePosition={highlightId && highlightCoverUrl ? (highlightCoverPosition ?? undefined) : undefined}
         backHref={listHref}
         user={user}
-        returnPath={returnPath}
         highlightId={highlightId}
         budgetCategories={budgetCategories}
         initialCategoryId={initialCategoryId}
@@ -118,9 +120,27 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
     )
   }
 
-  // Financial_once/financial_once_general/financial_ongoing (acima) montam sua
-  // própria tela cheia (header/footer fixos) — as demais escolhas usam o cartão
-  // centralizado tradicional, envolvido aqui.
+  if (choice === 'financial_scheduled') {
+    return (
+      <ScheduledPledgeForm
+        profileId={profileId}
+        username={username}
+        missionaryName={missionaryName}
+        defaultCurrency={defaultCurrency}
+        paymentOptions={paymentOptions}
+        stripeAvailable={stripeAvailable}
+        heroImageUrl={highlightId ? (highlightCoverUrl ?? profileAvatarUrl) : profileAvatarUrl}
+        heroImagePosition={highlightId && highlightCoverUrl ? (highlightCoverPosition ?? undefined) : undefined}
+        backHref={listHref}
+        user={user}
+        highlightId={highlightId}
+      />
+    )
+  }
+
+  // Financial_once/financial_once_general/financial_ongoing/financial_scheduled
+  // (acima) montam sua própria tela cheia (header/footer fixos) — as demais
+  // escolhas usam o cartão centralizado tradicional, envolvido aqui.
   if (choice === 'prayer' || choice === 'ambassador' || choice === 'volunteer') {
     const typeMap = { prayer: 'prayer', ambassador: 'ambassador', volunteer: 'both' } as const
     return (
@@ -181,6 +201,19 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
               Faça parte do que o Senhor está fazendo através da vida de {missionaryName}
               {missionStartYear ? ` desde ${missionStartYear}` : ''}.
             </p>
+          </div>
+        </button>
+      )}
+      {hasFinancialOptions && (
+        <button
+          type="button"
+          onClick={() => goTo('financial_scheduled')}
+          className="w-full flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors text-left"
+        >
+          <span className="text-2xl shrink-0 h-10 w-10 rounded-full bg-support/10 flex items-center justify-center">📅</span>
+          <div>
+            <p className="font-medium text-sm">{t('scheduledTitle')}</p>
+            <p className="text-xs text-muted-foreground">{t('scheduledSubtitle')}</p>
           </div>
         </button>
       )}

@@ -566,6 +566,29 @@
     "errorCheckout": "Error starting the subscription. Please try again.",
     "errorSave": "Error recording. Please try again."
   },
+  "ScheduledPledge": {
+    "needsAccountTitle": "Create your account to continue",
+    "needsAccountDescription": "So we can remind you on the right date, you need an account — that's how we can reach you when the day comes.",
+    "createAccount": "Create account",
+    "alreadyHaveAccount": "I already have an account",
+    "title": "Help {name} later",
+    "intro": "Pick a future date and, optionally, a rough amount. It's not a charge — just a reminder, with no upfront payment commitment.",
+    "dateLabel": "When do you plan to help?",
+    "amountLabelPlain": "Rough amount",
+    "currencySearchPlaceholder": "Search currency...",
+    "amountOptional": "(optional)",
+    "amountPlaceholder": "0.00",
+    "note": "No payment info is requested now — we'll just notify you on the date you chose, and you decide how to continue.",
+    "submit": "Schedule reminder",
+    "doneTitle": "All set!",
+    "doneDescription": "We'll remind you to help {name} on {date}. No pressure — just a friendly nudge.",
+    "viewProfileCta": "View {name}'s profile",
+    "errorSave": "Error scheduling. Please try again."
+  },
+  "PartnershipWizard": {
+    "scheduledTitle": "I want to help, just not now",
+    "scheduledSubtitle": "Pick a future date and we'll remind you — no charge"
+  },
   "PrivacyForm": {
     "publicLabel": "Public",
     "publicDescription": "Your profile shows up on Google, with a friendly @username URL. Partners and anyone else can access it.",

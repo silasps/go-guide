@@ -7,6 +7,7 @@ import type { Locale } from '@/i18n/config'
 import { ProfileHeader } from '@/components/profile/profile-header'
 import { ProjectsSection } from '@/components/profile/projects-section'
 import { ProfileCTA } from '@/components/profile/profile-cta'
+import { ResumePartnership } from '@/components/profile/resume-partnership'
 import { ProfileOwnerActions } from '@/components/profile/profile-owner-actions'
 import { ProfileContentTabs } from '@/components/profile/profile-content-tabs'
 import { PostComposerProvider } from '@/components/dashboard/post-composer-provider'
@@ -119,6 +120,9 @@ export default async function ProfilePage({ params, searchParams }: Props) {
         ) : (
           <ProfileCTA username={profile.username} hasTrajectory={(completedCount ?? 0) > 0} />
         )}
+        <Suspense fallback={null}>
+          <ResumePartnership username={profile.username} />
+        </Suspense>
         <Suspense fallback={<SkCardGrid n={3} />}>
           <ProjectsSectionAsync profileId={profile.id} username={profile.username} accentColor={profile.accent_color} visitorLocale={visitorLocale} />
         </Suspense>

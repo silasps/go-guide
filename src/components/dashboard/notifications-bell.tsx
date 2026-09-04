@@ -30,6 +30,7 @@ const AREA_BY_TYPE: Record<string, NotificationArea> = {
   pledge_confirmed: 'financial',
   pledge_rejected: 'financial',
   partner_lapsed: 'partners',
+  scheduled_pledge_reminder: 'financial',
   new_comment: 'comments',
   new_post: 'content',
   highlight_update: 'content',
@@ -101,6 +102,16 @@ function hrefForGroup(g: AreaGroup): string {
   }
   if (g.latestType === 'new_pledge') return '/dashboard/financeiro/conciliacao'
   if (g.latestType === 'pledge_confirmed' || g.latestType === 'pledge_rejected') return '/dashboard/financeiro-parceiro'
+  if (g.latestType === 'scheduled_pledge_reminder' && typeof g.latestPayload.username === 'string') {
+    const { username, choice, scheduled_pledge_id, highlight_id, amount, currency } = g.latestPayload
+    const params = new URLSearchParams()
+    if (typeof highlight_id === 'string') params.set('highlight_id', highlight_id)
+    params.set('choice', typeof choice === 'string' ? choice : 'financial_once_general')
+    if (typeof scheduled_pledge_id === 'string') params.set('scheduled', scheduled_pledge_id)
+    if (amount != null) params.set('amount', String(amount))
+    if (typeof currency === 'string') params.set('currency', currency)
+    return `/${username}/parceria?${params.toString()}`
+  }
   return AREA_HREF[g.area]
 }
 

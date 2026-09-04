@@ -566,6 +566,29 @@
     "errorCheckout": "Error al iniciar la suscripción. Inténtalo de nuevo.",
     "errorSave": "Error al registrar. Inténtalo de nuevo."
   },
+  "ScheduledPledge": {
+    "needsAccountTitle": "Crea tu cuenta para continuar",
+    "needsAccountDescription": "Para recordarte en la fecha correcta, necesitas una cuenta — así podemos avisarte cuando llegue el día.",
+    "createAccount": "Crear cuenta",
+    "alreadyHaveAccount": "Ya tengo cuenta",
+    "title": "Ayudar a {name} más tarde",
+    "intro": "Elige una fecha futura y, opcionalmente, un monto aproximado. No es un cobro — es solo un recordatorio, sin compromiso de pago por adelantado.",
+    "dateLabel": "¿Cuándo piensas ayudar?",
+    "amountLabelPlain": "Monto aproximado",
+    "currencySearchPlaceholder": "Buscar moneda...",
+    "amountOptional": "(opcional)",
+    "amountPlaceholder": "0,00",
+    "note": "No se pide ningún dato de pago ahora — solo te avisamos en la fecha elegida, y tú decides cómo continuar.",
+    "submit": "Programar recordatorio",
+    "doneTitle": "¡Listo!",
+    "doneDescription": "Te recordaremos ayudar a {name} el {date}. Sin cobro — es solo un recordatorio cariñoso.",
+    "viewProfileCta": "Ver el perfil de {name}",
+    "errorSave": "Error al programar. Inténtalo de nuevo."
+  },
+  "PartnershipWizard": {
+    "scheduledTitle": "Quiero ayudar, pero no ahora",
+    "scheduledSubtitle": "Elige una fecha futura y te recordamos — sin cobro"
+  },
   "PrivacyForm": {
     "publicLabel": "Público",
     "publicDescription": "Tu perfil aparece en Google, con una URL amigable @username. Socios y cualquier persona pueden acceder.",

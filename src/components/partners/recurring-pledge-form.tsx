@@ -1,7 +1,6 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
@@ -10,8 +9,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PhoneInput } from '@/components/ui/phone-input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { CheckoutHeader } from './checkout-header'
+import { NeedsAccountCard } from './needs-account-card'
 import { toast } from 'sonner'
 import { Loader2, CheckCircle } from 'lucide-react'
 import { toMasked, fromMasked, CURRENCIES } from '@/lib/currency-mask'
@@ -37,6 +37,7 @@ interface SessionUser {
 
 interface Props {
   profileId: string
+  username: string
   missionaryName: string
   currency: string
   paymentOptions: PaymentOption[]
@@ -45,13 +46,12 @@ interface Props {
   heroImagePosition?: string
   backHref: string
   user: SessionUser | null
-  returnPath: string // caminho atual (com highlight_id se houver), usado no redirect de login/cadastro
   highlightId?: string
   budgetCategories?: BudgetCategoryOption[]
   initialCategoryId?: string | null
 }
 
-export function RecurringPledgeForm({ profileId, missionaryName, currency: projectCurrency, paymentOptions, stripeAvailable, heroImageUrl = null, heroImagePosition, backHref, user, returnPath, highlightId, budgetCategories, initialCategoryId }: Props) {
+export function RecurringPledgeForm({ profileId, username, missionaryName, currency: projectCurrency, paymentOptions, stripeAvailable, heroImageUrl = null, heroImagePosition, backHref, user, highlightId, budgetCategories, initialCategoryId }: Props) {
   const t = useTranslations('RecurringPledge')
   const tPledge = useTranslations('PledgeForm')
   const [done, setDone] = useState(false)
@@ -106,37 +106,29 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
     }
   }
 
-  const redirectParam = encodeURIComponent(`${returnPath}${returnPath.includes('?') ? '&' : '?'}choice=financial_ongoing`)
+  // Aponta pro perfil (não direto pro /parceria) — ResumePartnership é quem
+  // completa a navegação até o wizard, de dentro da árvore de rotas certa
+  // pro modal reabrir (ver comentário lá).
+  const redirectParam = encodeURIComponent(`/${username}?resumeChoice=financial_ongoing${highlightId ? `&resumeHighlightId=${highlightId}` : ''}`)
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-background">
-        <CheckoutHeader backHref={backHref} />
-        <div className="mx-auto flex min-h-[calc(100vh-56px)] max-w-md flex-col justify-center px-4 pb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{t('needsAccountTitle')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">{t('needsAccountDescription')}</p>
-              <Link href={`/cadastro?redirect=${redirectParam}`}>
-                <Button className="w-full">{t('createAccount')}</Button>
-              </Link>
-              <Link href={`/login?redirect=${redirectParam}`}>
-                <Button variant="outline" className="w-full">{t('alreadyHaveAccount')}</Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <NeedsAccountCard
+        backHref={backHref}
+        redirectParam={redirectParam}
+        title={t('needsAccountTitle')}
+        description={t('needsAccountDescription')}
+        createAccountLabel={t('createAccount')}
+        alreadyHaveAccountLabel={t('alreadyHaveAccount')}
+      />
     )
   }
 
   if (done) {
     return (
       <div className="min-h-screen bg-background">
-        <CheckoutHeader backHref={backHref} />
-        <div className="mx-auto flex min-h-[calc(100vh-56px)] max-w-md flex-col justify-center px-4 pb-8">
+        <CheckoutHeader showBack={false} />
+        <div className="mx-auto max-w-md px-4 pt-[72px] pb-8 space-y-3">
           <Card>
             <CardContent className="py-12 text-center space-y-3">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
@@ -144,6 +136,9 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
               <p className="text-muted-foreground text-sm">{t('doneDescription', { name: missionaryName })}</p>
             </CardContent>
           </Card>
+          <Button type="button" variant="outline" className="w-full" onClick={() => { window.location.href = `/${username}` }}>
+            {tPledge('viewProfileCta', { name: missionaryName })}
+          </Button>
         </div>
       </div>
     )

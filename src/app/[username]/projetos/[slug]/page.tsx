@@ -408,9 +408,22 @@ export default async function ProjetoPublicoPage({ params }: Props) {
                 )}
 
                 {!canEdit && (
-                  <Link href={`/${username}/parceria?highlight_id=${project.id}&choice=financial_once`} className={cn(buttonVariants({ variant: 'support', size: 'lg' }), 'w-full text-base')}>
-                    💰 Apoiar este projeto
-                  </Link>
+                  <div className="space-y-2">
+                    <Link href={`/${username}/parceria?highlight_id=${project.id}&choice=financial_once`} className={cn(buttonVariants({ variant: 'support', size: 'lg' }), 'w-full text-base')}>
+                      💰 Apoiar este projeto
+                    </Link>
+                    {/* Quem não pode ajudar agora provavelmente não clica em
+                        nenhum CTA de pagamento — esse link precisa estar na
+                        cara, antes de qualquer decisão, não escondido lá
+                        embaixo em "Outras formas de apoiar" (pedido do
+                        usuário). */}
+                    <Link
+                      href={`/${username}/parceria?highlight_id=${project.id}&choice=financial_scheduled`}
+                      className="block text-center text-sm text-muted-foreground hover:text-foreground underline underline-offset-2"
+                    >
+                      Não posso agora, mas quero ajudar depois
+                    </Link>
+                  </div>
                 )}
 
                 {budgetCategories && budgetCategories.length > 0 && (
