@@ -66,7 +66,17 @@ export function PledgeForm({ profileId, username, missionaryName, highlightId, h
   const doneRef = useRef<HTMLDivElement>(null)
   const [saving, setSaving] = useState(false)
   const { isPending: startingCheckout, run: runCheckout } = usePendingAction()
-  const [amount, setAmount] = useState('')
+  // Chegando pelo lembrete de uma oferta agendada (scheduled_pledges — ver
+  // cron scheduled-pledge-reminders), valor/moeda vêm pré-preenchidos da
+  // URL em vez de começar em branco. toMasked espera dígitos "como se
+  // tivessem sido digitados" (últimos 2 = centavos), não um número
+  // decimal pronto — por isso a conversão pra centavos antes.
+  const [amount, setAmount] = useState(() => {
+    const prefill = searchParams.get('amount')
+    if (!prefill) return ''
+    const cents = Math.round(parseFloat(prefill) * 100)
+    return isNaN(cents) ? '' : toMasked(String(cents), searchParams.get('currency') || defaultCurrency)
+  })
   const [categoryId, setCategoryId] = useState<string | null>(initialCategoryId ?? null)
   const [optionId, setOptionId] = useState(stripeAvailable ? 'stripe' : (paymentOptions[0]?.id ?? 'other'))
   const [otherDescription, setOtherDescription] = useState('')
@@ -107,7 +117,7 @@ export function PledgeForm({ profileId, username, missionaryName, highlightId, h
     if (done) doneRef.current?.scrollIntoView({ block: 'start' })
   }, [done])
 
-  const [currency, setCurrency] = useState(defaultCurrency)
+  const [currency, setCurrency] = useState(() => searchParams.get('currency') || defaultCurrency)
   // Cartão (Stripe) entra como mais uma opção no mesmo grid de mini-cards,
   // não numa aba separada — mesma seleção pra todos os métodos, cada um
   // revela seu próprio jeito de continuar (Stripe: botão de checkout; Pix
@@ -240,6 +250,7 @@ export function PledgeForm({ profileId, username, missionaryName, highlightId, h
     // perfil ou pro próprio reporter logado — um guest anônimo/identificado
     // sem conta nunca conseguiria ler a linha de volta via RETURNING, o que
     // faria o insert (bem-sucedido) aparentar erro no cliente.
+    const scheduledPledgeId = searchParams.get('scheduled')
     const pledgeId = crypto.randomUUID()
     const { error } = await supabase.from('pledges').insert({
       id: pledgeId,
@@ -258,12 +269,21 @@ export function PledgeForm({ profileId, username, missionaryName, highlightId, h
       reported_at: new Date(date).toISOString(),
       proof_url,
       is_recurring_pledge: isRecurring,
+      scheduled_pledge_id: scheduledPledgeId || null,
     })
 
     setSaving(false)
     if (error) { console.error('pledges insert failed:', error); toast.error(t('errorSave')); return }
     setDoneAsLoggedIn(!!user)
     setDone(true)
+
+    // Chegou pelo lembrete de uma oferta agendada e completou de verdade —
+    // fecha o laço marcando o agendamento como cumprido (RLS já permite,
+    // é o próprio reporter). Best-effort: se falhar, o agendamento só fica
+    // parado em "sent" — sem tela nenhuma dependendo desse status hoje.
+    if (scheduledPledgeId) {
+      supabase.from('scheduled_pledges').update({ status: 'fulfilled' }).eq('id', scheduledPledgeId).then(() => {})
+    }
 
     // Quem se identificou mas não tem conta não recebe notificação in-app —
     // manda um e-mail de confirmação pro endereço que a pessoa preencheu.

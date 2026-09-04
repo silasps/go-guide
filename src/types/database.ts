@@ -39,6 +39,7 @@ export type NotificationType =
   | 'prayer_reply'
   | 'new_comment'
   | 'partner_lapsed'
+  | 'scheduled_pledge_reminder'
 
 export type BudgetCategoryType =
   | 'airfare' | 'bus' | 'boat' | 'ferry' | 'rideshare' | 'lodging'
@@ -368,6 +369,7 @@ export interface Pledge {
   proof_url: string | null
   is_recurring_pledge: boolean
   recurring_pledge_id: string | null
+  scheduled_pledge_id: string | null
   status: PledgeStatus
   confirmed_transaction_id: string | null
   reviewed_by_user_id: string | null
@@ -393,6 +395,22 @@ export interface RecurringPledge {
   stripe_subscription_id: string | null
   status: RecurringPledgeStatus
   lapsed_notified_at: string | null
+  created_at: string
+}
+
+export type ScheduledPledgeStatus = 'pending' | 'sent' | 'fulfilled' | 'cancelled'
+
+export interface ScheduledPledge {
+  id: string
+  profile_id: string
+  partner_id: string
+  reporter_user_id: string
+  amount: number | null
+  currency: string | null
+  highlight_id: string | null
+  scheduled_date: string
+  status: ScheduledPledgeStatus
+  reminded_at: string | null
   created_at: string
 }
 

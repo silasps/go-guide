@@ -1,7 +1,6 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
@@ -10,8 +9,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PhoneInput } from '@/components/ui/phone-input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { CheckoutHeader } from './checkout-header'
+import { NeedsAccountCard } from './needs-account-card'
 import { toast } from 'sonner'
 import { Loader2, CheckCircle } from 'lucide-react'
 import { toMasked, fromMasked, CURRENCIES } from '@/lib/currency-mask'
@@ -110,25 +110,14 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-background">
-        <CheckoutHeader backHref={backHref} />
-        <div className="mx-auto flex min-h-[calc(100vh-56px)] max-w-md flex-col justify-center px-4 pb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{t('needsAccountTitle')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">{t('needsAccountDescription')}</p>
-              <Link href={`/cadastro?redirect=${redirectParam}`}>
-                <Button className="w-full">{t('createAccount')}</Button>
-              </Link>
-              <Link href={`/login?redirect=${redirectParam}`}>
-                <Button variant="outline" className="w-full">{t('alreadyHaveAccount')}</Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <NeedsAccountCard
+        backHref={backHref}
+        redirectParam={redirectParam}
+        title={t('needsAccountTitle')}
+        description={t('needsAccountDescription')}
+        createAccountLabel={t('createAccount')}
+        alreadyHaveAccountLabel={t('alreadyHaveAccount')}
+      />
     )
   }
 
