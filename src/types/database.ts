@@ -7,7 +7,8 @@ export type MediaAspectRatio = 'original' | '1:1' | '4:5' | '1.91:1' | '21:9'
 export type PartnerType = 'financial' | 'prayer' | 'both' | 'ambassador'
 export type AccountType = 'checking' | 'savings' | 'credit'
 export type TransactionType = 'income' | 'expense' | 'transfer'
-export type TransactionSource = 'manual' | 'whatsapp' | 'api' | 'recurring'
+export type TransactionSource = 'manual' | 'whatsapp' | 'api' | 'recurring' | 'open_finance' | 'import'
+export type OpenFinanceItemStatus = 'UPDATED' | 'UPDATING' | 'WAITING_USER_INPUT' | 'LOGIN_ERROR' | 'OUTDATED'
 export type RequesterType = 'missionary' | 'partner'
 export type AccountMemberRole = 'owner' | 'viewer'
 export type HighlightStatus = 'active' | 'hidden' | 'completed'
@@ -452,8 +453,32 @@ export interface FinancialAccount {
   due_day: number | null
   card_brand: string | null
   archived: boolean
+  is_open_finance: boolean
   created_at: string
   updated_at: string
+}
+
+export interface OpenFinanceItem {
+  id: string
+  profile_id: string
+  created_by_user_id: string | null
+  pluggy_item_id: string
+  connector_id: number | null
+  connector_name: string
+  connector_image_url: string | null
+  status: OpenFinanceItemStatus
+  last_synced_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface OpenFinanceAccount {
+  id: string
+  item_id: string
+  financial_account_id: string
+  pluggy_account_id: string
+  pluggy_type: string
+  created_at: string
 }
 
 export interface AccountMember {
@@ -495,6 +520,8 @@ export interface Transaction {
   date: string
   highlight_id: string | null
   budget_category_id: string | null
+  pluggy_transaction_id: string | null
+  import_uid: string | null
   created_at: string
 }
 

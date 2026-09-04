@@ -48,7 +48,10 @@ export function AccountCard({ account, profileId, members, currentBill = 0 }: Pr
               {TYPE_LABEL[account.account_type]} · {account.currency_code}{account.card_brand ? ` · ${account.card_brand}` : ''}
             </p>
           </div>
-          {account.is_shared && <Badge variant="secondary">Compartilhada</Badge>}
+          <div className="flex shrink-0 gap-1.5">
+            {account.is_open_finance && <Badge variant="outline">Open Finance</Badge>}
+            {account.is_shared && <Badge variant="secondary">Compartilhada</Badge>}
+          </div>
         </div>
 
         {isCredit ? (

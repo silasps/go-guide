@@ -4,6 +4,11 @@ import { AccountsList } from '@/components/financial/accounts-list'
 import { Button } from '@/components/ui/button'
 import { Landmark, Settings2 } from 'lucide-react'
 
+// Botão "Gerenciar Open Finance" desativado de propósito (custo do agregador
+// Pluggy inviável nesta fase do produto — decisão do usuário, ver
+// system.architecture.md 7.33). A integração inteira (schema, rotas, sync,
+// widget — seção 7.32) continua no repo, pronta pra reativar bastando trocar
+// este botão de volta pelo <OpenFinanceManageDialog>.
 export default async function ContasPage() {
   const supabase = await createClient()
   const profile = await getActiveProfile()
