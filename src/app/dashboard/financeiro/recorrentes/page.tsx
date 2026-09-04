@@ -12,12 +12,15 @@ export default async function RecorrentesPage() {
     supabase.from('transaction_categories').select('*').eq('profile_id', profile!.id).order('name'),
     supabase.from('recurring_transactions').select('*').eq('profile_id', profile!.id).order('next_due_date'),
   ])
+  // Arquivada (ver 7.29) some do seletor de conta pra nova recorrência, mas
+  // continua disponível pra exibir/editar recorrências já existentes nela.
+  const activeAccounts = (accounts ?? []).filter((a) => !a.archived)
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <p className="text-sm text-muted-foreground">Aluguel, assinaturas, mensalidades — lançados sozinhos todo mês.</p>
-        <NewRecurringTransactionButton accounts={accounts ?? []} categories={categories ?? []} />
+        <NewRecurringTransactionButton accounts={activeAccounts} categories={categories ?? []} />
       </div>
       <RecurringTransactionsList recurring={recurring ?? []} accounts={accounts ?? []} categories={categories ?? []} />
     </div>

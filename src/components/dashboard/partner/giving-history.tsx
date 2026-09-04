@@ -71,15 +71,27 @@ export function GivingHistory({ pledges }: { pledges: PledgeWithContext[] }) {
       ) : (
         <div className="space-y-2">
           {filtered.map((p) => (
-            <div key={p.id} className="p-3 rounded-xl border bg-card flex items-center gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium truncate">{p.profile.display_name}</p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {p.highlight?.title ?? t('generalGiving')} · {formatDate(p.reported_at)}
-                </p>
+            <div key={p.id} className="p-3 rounded-xl border bg-card space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">{p.profile.display_name}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {p.highlight?.title ?? t('generalGiving')} · {formatDate(p.reported_at)}
+                  </p>
+                </div>
+                <Badge variant={STATUS_VARIANT[p.status]} className="shrink-0">{t(`status.${p.status}`)}</Badge>
+                <p className="text-sm font-medium shrink-0 w-24 text-right">{formatCurrency(p.reported_amount, p.currency)}</p>
               </div>
-              <Badge variant={STATUS_VARIANT[p.status]} className="shrink-0">{t(`status.${p.status}`)}</Badge>
-              <p className="text-sm font-medium shrink-0 w-24 text-right">{formatCurrency(p.reported_amount, p.currency)}</p>
+              {p.status === 'rejected' && (
+                <div className="rounded-lg bg-destructive/5 border border-destructive/20 px-2.5 py-2 space-y-1">
+                  {p.rejection_reason && (
+                    <p className="text-xs text-foreground">
+                      <span className="font-medium">{t('rejectionReasonLabel')}:</span> {p.rejection_reason}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">{t('rejectionContactHint')}</p>
+                </div>
+              )}
             </div>
           ))}
         </div>

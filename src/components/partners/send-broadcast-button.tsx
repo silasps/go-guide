@@ -56,7 +56,7 @@ interface ActiveHighlight {
 interface Props {
   profileId: string
   /** 'campaign' (default) = compositor completo, usado em /dashboard/parceiros.
-   *  'report' = atalho da aba Relatórios (/dashboard/financeiro/relatorios):
+   *  'report' = atalho da aba Prestações (/dashboard/financeiro/prestacoes):
    *  bloco financeiro sempre ligado (sem checkbox), sem bloco de projetos,
    *  assunto pré-preenchido, não manda e-mail por padrão. */
   mode?: 'campaign' | 'report'

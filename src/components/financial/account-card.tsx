@@ -1,9 +1,15 @@
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { usePendingAction } from '@/hooks/use-pending-action'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
 import { FinancialAccount } from '@/types/database'
 import { AccountForm } from './account-form'
 import { ManageMembersDialog } from './manage-members-dialog'
+import { toast } from 'sonner'
+import { Archive, ArchiveRestore, Loader2 } from 'lucide-react'
 
 const TYPE_LABEL: Record<string, string> = { checking: 'Conta corrente', savings: 'Poupança', credit: 'Cartão de crédito' }
 
@@ -15,10 +21,22 @@ interface Props {
 }
 
 export function AccountCard({ account, profileId, members, currentBill = 0 }: Props) {
+  const router = useRouter()
+  const { isPending: archiving, run } = usePendingAction()
   const isCredit = account.account_type === 'credit'
   const bill = Math.max(0, currentBill)
   const available = account.credit_limit != null ? account.credit_limit - bill : null
   const usedPct = account.credit_limit ? Math.min((bill / account.credit_limit) * 100, 100) : 0
+
+  function toggleArchived() {
+    run(true, async () => {
+      const supabase = createClient()
+      const { error } = await supabase.from('financial_accounts').update({ archived: !account.archived }).eq('id', account.id)
+      if (error) { toast.error('Erro ao atualizar conta.'); return }
+      toast.success(account.archived ? 'Conta reativada.' : 'Conta arquivada.')
+      router.refresh()
+    })
+  }
 
   return (
     <Card>
@@ -65,6 +83,9 @@ export function AccountCard({ account, profileId, members, currentBill = 0 }: Pr
         <div className="flex gap-2 pt-1">
           <AccountForm profileId={profileId} account={account} />
           {account.is_shared && <ManageMembersDialog accountId={account.id} members={members} />}
+          <Button variant="outline" size="sm" className="gap-1.5 ml-auto" onClick={toggleArchived} disabled={archiving} title={account.archived ? 'Reativar conta' : 'Arquivar conta'}>
+            {archiving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : account.archived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+          </Button>
         </div>
       </CardContent>
     </Card>

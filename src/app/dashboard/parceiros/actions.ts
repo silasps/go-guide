@@ -78,7 +78,7 @@ export async function createBroadcast(
   }
 
   revalidatePath('/dashboard/parceiros')
-  revalidatePath('/dashboard/financeiro/relatorios')
+  revalidatePath('/dashboard/financeiro/prestacoes')
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
   return { recipientCount: partners.length, shareUrl: `${appUrl}/${profile.username}/atualizacoes/${broadcast.id}` }
 }

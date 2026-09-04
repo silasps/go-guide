@@ -955,6 +955,8 @@
     "filterAllMissionaries": "Todos os missionários",
     "noGivingYet": "Nenhuma doação registrada ainda.",
     "generalGiving": "Doação geral",
+    "rejectionReasonLabel": "Motivo",
+    "rejectionContactHint": "Se você acredita que isso foi um engano — por exemplo, se tem o comprovante em mãos — entre em contato com o missionário. Ofertas recusadas ficam disponíveis para reanálise por até 2 meses.",
     "status": {
       "pending": "Pendente",
       "confirmed": "Confirmada",

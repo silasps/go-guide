@@ -19,6 +19,9 @@ export default async function LancamentosPage({ searchParams }: Props) {
   await markNotificationTypesRead(supabase, user!.id, ['new_pledge', 'pledge_confirmed'])
 
   const { data: accounts } = await supabase.from('financial_accounts').select('*').order('created_at')
+  // Arquivada (ver 7.29) continua listável/filtrável (lançamentos antigos
+  // podem estar nela) mas some do seletor de conta pra lançamento novo.
+  const activeAccounts = (accounts ?? []).filter((a) => !a.archived)
   const { data: categories } = await supabase.from('transaction_categories').select('*').eq('profile_id', profile!.id).order('name')
   const { data: partners } = await supabase.from('partners').select('*').eq('profile_id', profile!.id).order('name')
   const { data: highlights } = await supabase.from('highlights').select('id, title').eq('profile_id', profile!.id).order('title')
@@ -51,7 +54,7 @@ export default async function LancamentosPage({ searchParams }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <TransactionFilters accounts={accounts ?? []} categories={categories ?? []} />
-        <NewTransactionButton accounts={accounts ?? []} categories={categories ?? []} partners={partners ?? []} highlights={highlightsWithBudget} />
+        <NewTransactionButton accounts={activeAccounts} categories={categories ?? []} partners={partners ?? []} highlights={highlightsWithBudget} />
       </div>
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <TransactionTable transactions={(transactions ?? []) as any} accounts={accounts ?? []} categories={categories ?? []} partners={partners ?? []} highlights={highlightsWithBudget} />

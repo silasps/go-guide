@@ -2,18 +2,24 @@
 
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { BalanceSummary } from './balance-summary'
+import { MonthSummaryCards } from './month-summary-cards'
+import { MonthNavigator } from './month-navigator'
+import { PeriodFilterBar } from './period-filter-bar'
+import { MonthTransactionsPanel } from './month-transactions-panel'
+import { CategoryPanel } from './category-panel'
 import { TrendChart } from '@/components/ui/charts/trend-chart'
-import { CategoryBarChart } from '@/components/ui/charts/category-bar-chart'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { aggregateMonthly, aggregateByCategory } from '@/lib/financial/dashboard-aggregation'
-import { FinancialAccount, Transaction, TransactionCategory } from '@/types/database'
+import { aggregateMonthly } from '@/lib/financial/dashboard-aggregation'
+import { buildFinancialTimeline, TimelineMetric } from '@/lib/financial/timeline'
+import { FinancialAccount, TransactionWithCategory, TransactionCategory, Partner } from '@/types/database'
 import { cn } from '@/lib/utils'
 
 interface Props {
   accounts: FinancialAccount[]
-  transactions: Transaction[] // últimos 12 meses, todos os tipos
+  transactions: TransactionWithCategory[] // janela ampla, todos os tipos
   categories: TransactionCategory[]
+  partners: Partner[]
+  highlights: { id: string; title: string; budgetCategories: { id: string; label: string }[] }[]
 }
 
 const RANGE_OPTIONS = [
@@ -36,27 +42,59 @@ const fadeUp = {
 // escopa tudo abaixo (dataviz skill — "filters scope everything below
 // them"), e da seleção de mês que conecta os dois gráficos (clicar num mês
 // do fluxo de caixa re-escopa a composição por categoria).
-export function FinancialDashboard({ accounts, transactions, categories }: Props) {
-  const currencies = useMemo(() => [...new Set(accounts.map((a) => a.currency_code))], [accounts])
+export function FinancialDashboard({ accounts, transactions, categories, partners, highlights }: Props) {
+  // Arquivada (ver 7.29) = fora de qualquer total/composição nova, mas
+  // `accounts` (completo) continua descendo pro `MonthTransactionsPanel` —
+  // a tabela de lançamentos ali precisa achar a conta de transações antigas
+  // mesmo já arquivada; só o "novo lançamento" ali dentro usa só as ativas.
+  const activeAccounts = useMemo(() => accounts.filter((a) => !a.archived), [accounts])
+  const currencies = useMemo(() => [...new Set(activeAccounts.map((a) => a.currency_code))], [activeAccounts])
   const [currency, setCurrency] = useState(currencies[0] ?? 'BRL')
   const [monthsRange, setMonthsRange] = useState<3 | 6 | 12>(6)
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr())
+  const [timelineMetric, setTimelineMetric] = useState<TimelineMetric>('saldo_previsto')
+  const [hideValues, setHideValues] = useState(false)
 
   const txInCurrency = useMemo(() => transactions.filter((t) => t.currency === currency), [transactions, currency])
   const monthlyData = useMemo(() => aggregateMonthly(txInCurrency, monthsRange), [txInCurrency, monthsRange])
-  const categoryData = useMemo(() => aggregateByCategory(txInCurrency, categories, selectedMonth), [txInCurrency, categories, selectedMonth])
 
-  const monthTransactionsForSummary = useMemo(() => {
-    const now = currentMonthStr()
-    return transactions.filter((t) => t.date.slice(0, 7) === now)
-  }, [transactions])
+  const currentBalance = useMemo(
+    () => activeAccounts.filter((a) => a.currency_code === currency).reduce((s, a) => s + a.balance, 0),
+    [activeAccounts, currency]
+  )
+  const timelinePoints = useMemo(() => buildFinancialTimeline(txInCurrency, currentBalance, 6, 6), [txInCurrency, currentBalance])
+  const selectedPoint = timelinePoints.find((p) => p.month === selectedMonth) ?? timelinePoints[6]
 
-  const selectedMonthLabel = monthlyData.find((p) => p.month === selectedMonth)?.monthLabel ?? selectedMonth
+  const selectedMonthLabel = selectedPoint?.monthLabel ?? selectedMonth
 
   return (
     <motion.div className="space-y-6" initial="hidden" animate="show" transition={{ staggerChildren: 0.08 }}>
       <motion.div variants={fadeUp}>
-        <BalanceSummary accounts={accounts} monthTransactions={monthTransactionsForSummary} />
+        <PeriodFilterBar
+          points={timelinePoints}
+          selectedMonth={selectedMonth}
+          onSelectMonth={setSelectedMonth}
+          currentMonth={currentMonthStr()}
+          monthLabel={selectedMonthLabel}
+          hideValues={hideValues}
+          onToggleHideValues={() => setHideValues((v) => !v)}
+        />
+      </motion.div>
+
+      <motion.div variants={fadeUp}>
+        <MonthNavigator
+          points={timelinePoints}
+          selectedMonth={selectedMonth}
+          onSelectMonth={setSelectedMonth}
+          metric={timelineMetric}
+          onMetricChange={setTimelineMetric}
+          currency={currency}
+          hideValues={hideValues}
+        />
+      </motion.div>
+
+      <motion.div variants={fadeUp}>
+        <MonthSummaryCards point={selectedPoint} currency={currency} hideValues={hideValues} />
       </motion.div>
 
       <motion.div variants={fadeUp} className="flex items-center gap-2 flex-wrap">
@@ -90,13 +128,22 @@ export function FinancialDashboard({ accounts, transactions, categories }: Props
         </Card>
       </motion.div>
 
-      <motion.div variants={fadeUp}>
+      <motion.div variants={fadeUp} className="grid gap-4 lg:grid-cols-2 items-start">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Por categoria — {selectedMonthLabel}</CardTitle>
+            <CardTitle className="text-sm font-medium">Lançamentos — {selectedMonthLabel}</CardTitle>
           </CardHeader>
           <CardContent>
-            <CategoryBarChart data={categoryData} currency={currency} monthLabel={selectedMonthLabel} />
+            <MonthTransactionsPanel transactions={txInCurrency} month={selectedMonth} monthLabel={selectedMonthLabel} accounts={accounts} categories={categories} partners={partners} highlights={highlights} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Gráficos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CategoryPanel transactions={txInCurrency} categories={categories} month={selectedMonth} monthLabel={selectedMonthLabel} currency={currency} />
           </CardContent>
         </Card>
       </motion.div>

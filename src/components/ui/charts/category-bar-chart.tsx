@@ -11,6 +11,7 @@ interface Props {
   data: CategorySlice[]
   currency: string
   monthLabel: string
+  emptyLabel?: (monthLabel: string) => string
 }
 
 // chart-1/chart-2 são entrada/saída (TrendChart) — categorias começam no
@@ -24,12 +25,18 @@ const OTHER_COLOR_VAR = 'var(--muted-foreground)'
 // (dataviz skill desaconselha pizza pra esse job, principalmente com nomes
 // longos). Cada barra já É o alvo de clique/hover (não crosshair — regra
 // da skill pra bar/cell): navega pro lançamento filtrado por categoria.
-export function CategoryBarChart({ data, currency, monthLabel }: Props) {
+export function CategoryBarChart({ data, currency, monthLabel, emptyLabel }: Props) {
   const router = useRouter()
   const [showTable, setShowTable] = useState(false)
 
   if (data.length === 0) {
-    return <p className="text-sm text-muted-foreground py-12 text-center">Nenhuma despesa categorizada em {monthLabel.toLowerCase()}.</p>
+    const label = emptyLabel ? emptyLabel(monthLabel.toLowerCase()) : `Nenhuma despesa categorizada em ${monthLabel.toLowerCase()}.`
+    return (
+      <div className="flex flex-col items-center gap-2 py-12 text-center">
+        <BarChart3 className="h-8 w-8 text-muted-foreground/50" />
+        <p className="text-sm text-muted-foreground">{label}</p>
+      </div>
+    )
   }
 
   function goToCategory(id: string) {
