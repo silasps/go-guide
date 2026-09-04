@@ -17,16 +17,20 @@ export function PaymentMethodsList({ profileId, methods, financialAccounts }: Pr
   const manualMethods = methods.filter(m => m.type !== 'stripe')
   const stripeMethod = methods.find(m => m.type === 'stripe') ?? null
   const nextSortOrder = manualMethods.reduce((max, m) => Math.max(max, m.sort_order), -1) + 1
+  // Uma conta arquivada saiu da lista ativa do Financeiro por decisão do dono — não
+  // deve ser oferecida como destino pra um novo vínculo (Stripe ou Pix), só continua
+  // valendo pra quem já estava linkado antes de ser arquivada.
+  const linkableAccounts = financialAccounts.filter(a => !a.archived)
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">{t('intro')}</p>
 
-      <StripeConnectCard stripeMethod={stripeMethod} financialAccounts={financialAccounts} />
+      <StripeConnectCard stripeMethod={stripeMethod} financialAccounts={linkableAccounts} />
 
       <div className="flex items-center justify-between pt-2">
         <p className="text-sm text-muted-foreground">{t('methodCount', { count: manualMethods.length })}</p>
-        <PaymentMethodForm profileId={profileId} nextSortOrder={nextSortOrder} />
+        <PaymentMethodForm profileId={profileId} nextSortOrder={nextSortOrder} financialAccounts={linkableAccounts} />
       </div>
       {manualMethods.length === 0 ? (
         <p className="rounded-lg border border-dashed border-input px-4 py-8 text-center text-sm text-muted-foreground">
@@ -35,7 +39,7 @@ export function PaymentMethodsList({ profileId, methods, financialAccounts }: Pr
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {manualMethods.map(m => (
-            <PaymentMethodCard key={m.id} method={m} profileId={profileId} />
+            <PaymentMethodCard key={m.id} method={m} profileId={profileId} financialAccounts={linkableAccounts} />
           ))}
         </div>
       )}

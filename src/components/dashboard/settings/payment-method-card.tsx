@@ -4,21 +4,22 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
-import { PaymentMethod } from '@/types/database'
+import { PaymentMethod, FinancialAccount } from '@/types/database'
 import { getPaymentMethodEntry } from '@/lib/payment-methods/catalog'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { PaymentMethodForm } from './payment-method-form'
 import { toast } from 'sonner'
-import { Trash2, Copy } from 'lucide-react'
+import { Trash2, Copy, AlertTriangle } from 'lucide-react'
 
 interface Props {
   method: PaymentMethod
   profileId: string
+  financialAccounts: FinancialAccount[]
 }
 
-export function PaymentMethodCard({ method, profileId }: Props) {
+export function PaymentMethodCard({ method, profileId, financialAccounts }: Props) {
   const t = useTranslations('PaymentMethods')
   const router = useRouter()
   const { isPending: deleting, run } = usePendingAction()
@@ -59,8 +60,14 @@ export function PaymentMethodCard({ method, profileId }: Props) {
           <span className="truncate flex-1 font-mono">{method.value}</span>
           <Copy className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         </button>
+        {method.type === 'pix' && !method.linked_account_id && (
+          <div className="flex items-start gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/5 px-2.5 py-1.5 text-xs text-amber-700 dark:text-amber-400">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <span>{t('pixUnlinkedWarning')}</span>
+          </div>
+        )}
         <div className="flex gap-2 pt-1">
-          <PaymentMethodForm profileId={profileId} method={method} />
+          <PaymentMethodForm profileId={profileId} method={method} financialAccounts={financialAccounts} />
           <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={handleDelete} disabled={deleting}>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
