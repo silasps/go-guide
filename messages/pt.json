@@ -574,13 +574,15 @@
     "title": "Ajudar {name} mais tarde",
     "intro": "Escolha uma data futura e, opcionalmente, um valor aproximado. Não é uma cobrança — é só um lembrete, sem compromisso de pagamento antecipado.",
     "dateLabel": "Quando você pretende ajudar?",
-    "amountLabel": "Valor aproximado ({currency})",
+    "amountLabelPlain": "Valor aproximado",
+    "currencySearchPlaceholder": "Buscar moeda...",
     "amountOptional": "(opcional)",
     "amountPlaceholder": "0,00",
     "note": "Nenhum dado de pagamento é pedido agora — só avisamos você na data escolhida, e você decide como continuar.",
     "submit": "Programar lembrete",
     "doneTitle": "Combinado!",
     "doneDescription": "Vamos te lembrar de ajudar {name} em {date}. Sem cobrança — é só um lembrete carinhoso.",
+    "viewProfileCta": "Ver perfil de {name}",
     "errorSave": "Erro ao agendar. Tente novamente."
   },
   "PartnershipWizard": {

@@ -297,7 +297,7 @@ export function PledgeForm({ profileId, username, missionaryName, highlightId, h
   if (done) {
     return (
       <div ref={doneRef} className="min-h-screen bg-background">
-        <CheckoutHeader backHref={backHref} />
+        <CheckoutHeader showBack={false} />
         <div className="mx-auto max-w-md px-4 pt-[72px] pb-8 space-y-3">
           <Card>
             <CardContent className="py-12 text-center space-y-3">

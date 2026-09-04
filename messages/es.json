@@ -574,13 +574,15 @@
     "title": "Ayudar a {name} más tarde",
     "intro": "Elige una fecha futura y, opcionalmente, un monto aproximado. No es un cobro — es solo un recordatorio, sin compromiso de pago por adelantado.",
     "dateLabel": "¿Cuándo piensas ayudar?",
-    "amountLabel": "Monto aproximado ({currency})",
+    "amountLabelPlain": "Monto aproximado",
+    "currencySearchPlaceholder": "Buscar moneda...",
     "amountOptional": "(opcional)",
     "amountPlaceholder": "0,00",
     "note": "No se pide ningún dato de pago ahora — solo te avisamos en la fecha elegida, y tú decides cómo continuar.",
     "submit": "Programar recordatorio",
     "doneTitle": "¡Listo!",
     "doneDescription": "Te recordaremos ayudar a {name} el {date}. Sin cobro — es solo un recordatorio cariñoso.",
+    "viewProfileCta": "Ver el perfil de {name}",
     "errorSave": "Error al programar. Inténtalo de nuevo."
   },
   "PartnershipWizard": {

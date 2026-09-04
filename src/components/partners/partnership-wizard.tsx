@@ -101,10 +101,10 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
   }
 
   if (choice === 'financial_ongoing') {
-    const returnPath = `/${username}/parceria${highlightId ? `?highlight_id=${highlightId}` : ''}`
     return (
       <RecurringPledgeForm
         profileId={profileId}
+        username={username}
         missionaryName={missionaryName}
         currency={defaultCurrency}
         paymentOptions={paymentOptions}
@@ -113,7 +113,6 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
         heroImagePosition={highlightId && highlightCoverUrl ? (highlightCoverPosition ?? undefined) : undefined}
         backHref={listHref}
         user={user}
-        returnPath={returnPath}
         highlightId={highlightId}
         budgetCategories={budgetCategories}
         initialCategoryId={initialCategoryId}
@@ -122,17 +121,18 @@ export function PartnershipWizard({ profileId, username, initialChoice, missiona
   }
 
   if (choice === 'financial_scheduled') {
-    const returnPath = `/${username}/parceria${highlightId ? `?highlight_id=${highlightId}` : ''}`
     return (
       <ScheduledPledgeForm
         profileId={profileId}
+        username={username}
         missionaryName={missionaryName}
-        currency={defaultCurrency}
+        defaultCurrency={defaultCurrency}
+        paymentOptions={paymentOptions}
+        stripeAvailable={stripeAvailable}
         heroImageUrl={highlightId ? (highlightCoverUrl ?? profileAvatarUrl) : profileAvatarUrl}
         heroImagePosition={highlightId && highlightCoverUrl ? (highlightCoverPosition ?? undefined) : undefined}
         backHref={listHref}
         user={user}
-        returnPath={returnPath}
         highlightId={highlightId}
       />
     )

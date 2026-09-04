@@ -11,9 +11,12 @@ import { Card, CardContent } from '@/components/ui/card'
 import { CheckoutHeader } from './checkout-header'
 import { NeedsAccountCard } from './needs-account-card'
 import { DonationHero } from './donation-hero'
+import { CurrencySelect } from './currency-select'
+import { AmountChips } from './amount-chips'
 import { toast } from 'sonner'
 import { Loader2, CalendarClock } from 'lucide-react'
-import { toMasked, fromMasked } from '@/lib/currency-mask'
+import { toMasked, fromMasked, CURRENCIES } from '@/lib/currency-mask'
+import { PledgePaymentMethod } from '@/types/database'
 
 interface SessionUser {
   id: string
@@ -26,13 +29,15 @@ interface SessionUser {
 
 interface Props {
   profileId: string
+  username: string
   missionaryName: string
-  currency: string
+  defaultCurrency: string
+  paymentOptions: { id: string; method: PledgePaymentMethod; label: string; value: string; details: string | null; currency: string }[]
+  stripeAvailable?: boolean
   heroImageUrl?: string | null
   heroImagePosition?: string
   backHref: string
   user: SessionUser | null
-  returnPath: string
   highlightId?: string
 }
 
@@ -45,14 +50,25 @@ function tomorrow() {
  *  é pedido de verdade quando a pessoa volta pelo link do lembrete, direto
  *  no PledgeForm). Não é recorrente — pra isso já existe "Ser parceiro
  *  fixo" (RecurringPledgeForm). Ver cron scheduled-pledge-reminders. */
-export function ScheduledPledgeForm({ profileId, missionaryName, currency, heroImageUrl = null, heroImagePosition, backHref, user, returnPath, highlightId }: Props) {
+export function ScheduledPledgeForm({ profileId, username, missionaryName, defaultCurrency, paymentOptions, stripeAvailable = false, heroImageUrl = null, heroImagePosition, backHref, user, highlightId }: Props) {
   const t = useTranslations('ScheduledPledge')
   const [done, setDone] = useState(false)
   const [date, setDate] = useState(tomorrow())
   const [amount, setAmount] = useState('')
+  const [currency, setCurrency] = useState(defaultCurrency)
   const { isPending: saving, run } = usePendingAction()
 
-  const redirectParam = encodeURIComponent(`${returnPath}${returnPath.includes('?') ? '&' : '?'}choice=financial_scheduled`)
+  // Mesma regra de PledgeForm: com Stripe conectado, qualquer moeda
+  // suportada vale (price_data dinâmico); sem Stripe, só as moedas que o
+  // missionário já tem forma de receber.
+  const dropdownCurrencies = stripeAvailable
+    ? CURRENCIES
+    : (paymentOptions.length > 0 ? Array.from(new Set(paymentOptions.map(o => o.currency))) : CURRENCIES)
+
+  // Aponta pro perfil (não direto pro /parceria) — ResumePartnership é quem
+  // completa a navegação até o wizard, de dentro da árvore de rotas certa
+  // pro modal reabrir (ver comentário lá).
+  const redirectParam = encodeURIComponent(`/${username}?resumeChoice=financial_scheduled${highlightId ? `&resumeHighlightId=${highlightId}` : ''}`)
 
   if (!user) {
     return (
@@ -70,8 +86,8 @@ export function ScheduledPledgeForm({ profileId, missionaryName, currency, heroI
   if (done) {
     return (
       <div className="min-h-screen bg-background">
-        <CheckoutHeader backHref={backHref} />
-        <div className="mx-auto flex min-h-[calc(100vh-56px)] max-w-md flex-col justify-center px-4 pb-8">
+        <CheckoutHeader showBack={false} />
+        <div className="mx-auto max-w-md px-4 pt-[72px] pb-8 space-y-3">
           <Card>
             <CardContent className="py-12 text-center space-y-3">
               <CalendarClock className="h-12 w-12 text-support mx-auto" />
@@ -81,6 +97,13 @@ export function ScheduledPledgeForm({ profileId, missionaryName, currency, heroI
               </p>
             </CardContent>
           </Card>
+          {/* Sem seta de "voltar" fazendo esse papel — CheckoutHeader.backHref
+              usa router.back(), que pode devolver pra qualquer tela do meio
+              do fluxo (login/cadastro, formulário). Esse botão é a única
+              saída clara e garantida de volta pro perfil. */}
+          <Button type="button" variant="outline" className="w-full" onClick={() => { window.location.href = `/${username}` }}>
+            {t('viewProfileCta', { name: missionaryName })}
+          </Button>
         </div>
       </div>
     )
@@ -148,7 +171,11 @@ export function ScheduledPledgeForm({ profileId, missionaryName, currency, heroI
           </div>
 
           <div className="space-y-2">
-            <Label>{t('amountLabel', { currency })} <span className="text-muted-foreground font-normal">{t('amountOptional')}</span></Label>
+            <div className="flex items-center gap-1.5">
+              <Label>{t('amountLabelPlain')} <span className="text-muted-foreground font-normal">{t('amountOptional')}</span></Label>
+              <CurrencySelect currencies={dropdownCurrencies} value={currency} onChange={setCurrency} searchPlaceholder={t('currencySearchPlaceholder')} />
+            </div>
+            <AmountChips currency={currency} selectedMasked={amount} onSelect={setAmount} />
             <Input inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, currency))} placeholder={t('amountPlaceholder')} />
           </div>
 

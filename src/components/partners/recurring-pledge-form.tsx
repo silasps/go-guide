@@ -37,6 +37,7 @@ interface SessionUser {
 
 interface Props {
   profileId: string
+  username: string
   missionaryName: string
   currency: string
   paymentOptions: PaymentOption[]
@@ -45,13 +46,12 @@ interface Props {
   heroImagePosition?: string
   backHref: string
   user: SessionUser | null
-  returnPath: string // caminho atual (com highlight_id se houver), usado no redirect de login/cadastro
   highlightId?: string
   budgetCategories?: BudgetCategoryOption[]
   initialCategoryId?: string | null
 }
 
-export function RecurringPledgeForm({ profileId, missionaryName, currency: projectCurrency, paymentOptions, stripeAvailable, heroImageUrl = null, heroImagePosition, backHref, user, returnPath, highlightId, budgetCategories, initialCategoryId }: Props) {
+export function RecurringPledgeForm({ profileId, username, missionaryName, currency: projectCurrency, paymentOptions, stripeAvailable, heroImageUrl = null, heroImagePosition, backHref, user, highlightId, budgetCategories, initialCategoryId }: Props) {
   const t = useTranslations('RecurringPledge')
   const tPledge = useTranslations('PledgeForm')
   const [done, setDone] = useState(false)
@@ -106,7 +106,10 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
     }
   }
 
-  const redirectParam = encodeURIComponent(`${returnPath}${returnPath.includes('?') ? '&' : '?'}choice=financial_ongoing`)
+  // Aponta pro perfil (não direto pro /parceria) — ResumePartnership é quem
+  // completa a navegação até o wizard, de dentro da árvore de rotas certa
+  // pro modal reabrir (ver comentário lá).
+  const redirectParam = encodeURIComponent(`/${username}?resumeChoice=financial_ongoing${highlightId ? `&resumeHighlightId=${highlightId}` : ''}`)
 
   if (!user) {
     return (
@@ -124,8 +127,8 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
   if (done) {
     return (
       <div className="min-h-screen bg-background">
-        <CheckoutHeader backHref={backHref} />
-        <div className="mx-auto flex min-h-[calc(100vh-56px)] max-w-md flex-col justify-center px-4 pb-8">
+        <CheckoutHeader showBack={false} />
+        <div className="mx-auto max-w-md px-4 pt-[72px] pb-8 space-y-3">
           <Card>
             <CardContent className="py-12 text-center space-y-3">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
@@ -133,6 +136,9 @@ export function RecurringPledgeForm({ profileId, missionaryName, currency: proje
               <p className="text-muted-foreground text-sm">{t('doneDescription', { name: missionaryName })}</p>
             </CardContent>
           </Card>
+          <Button type="button" variant="outline" className="w-full" onClick={() => { window.location.href = `/${username}` }}>
+            {tPledge('viewProfileCta', { name: missionaryName })}
+          </Button>
         </div>
       </div>
     )

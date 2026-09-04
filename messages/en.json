@@ -574,13 +574,15 @@
     "title": "Help {name} later",
     "intro": "Pick a future date and, optionally, a rough amount. It's not a charge — just a reminder, with no upfront payment commitment.",
     "dateLabel": "When do you plan to help?",
-    "amountLabel": "Rough amount ({currency})",
+    "amountLabelPlain": "Rough amount",
+    "currencySearchPlaceholder": "Search currency...",
     "amountOptional": "(optional)",
     "amountPlaceholder": "0.00",
     "note": "No payment info is requested now — we'll just notify you on the date you chose, and you decide how to continue.",
     "submit": "Schedule reminder",
     "doneTitle": "All set!",
     "doneDescription": "We'll remind you to help {name} on {date}. No pressure — just a friendly nudge.",
+    "viewProfileCta": "View {name}'s profile",
     "errorSave": "Error scheduling. Please try again."
   },
   "PartnershipWizard": {
