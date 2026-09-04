@@ -26,14 +26,20 @@ export function NeedsAccountCard({ backHref, redirectParam, title, description, 
           <CardHeader>
             <CardTitle className="text-base">{title}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">{description}</p>
-            <Link href={`/cadastro?redirect=${redirectParam}`}>
-              <Button className="w-full">{createAccountLabel}</Button>
-            </Link>
-            <Link href={`/login?redirect=${redirectParam}`}>
-              <Button variant="outline" className="w-full">{alreadyHaveAccountLabel}</Button>
-            </Link>
+            <div className="space-y-3">
+              {/* Link é `inline` por padrão — sem `block`, a margem vertical
+                  do space-y não é respeitada de verdade (só o line-height
+                  cria um respiro mínimo), fazendo os dois botões parecerem
+                  colados mesmo com espaçamento "aplicado". */}
+              <Link href={`/cadastro?redirect=${redirectParam}`} className="block">
+                <Button className="w-full">{createAccountLabel}</Button>
+              </Link>
+              <Link href={`/login?redirect=${redirectParam}`} className="block">
+                <Button variant="outline" className="w-full">{alreadyHaveAccountLabel}</Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </div>
