@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
 import { formatCurrency, cn } from '@/lib/utils'
 import { toMasked, fromMasked, reformatMasked, CURRENCIES } from '@/lib/currency-mask'
-import { AccountType } from '@/types/database'
+import { AccountType, FinancialAccount } from '@/types/database'
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,6 +24,7 @@ interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
   profileId: string
+  onCreated?: (account: FinancialAccount) => void
 }
 
 type AccountKind = 'automatic' | 'manual'
@@ -88,7 +89,7 @@ function ChoiceCard({ selected, disabled, onClick, icon, iconClassName, title, s
 // pergunta neste fluxo: tipo de conta (corrente/poupança/cartão, com os
 // campos de cartão condicionais) e moeda+compartilhada. Confirmado com o
 // usuário antes de implementar.
-export function AccountWizard({ open, onOpenChange, profileId }: Props) {
+export function AccountWizard({ open, onOpenChange, profileId, onCreated }: Props) {
   const router = useRouter()
   const { isPending: saving, run } = usePendingAction()
   const [step, setStep] = useState(1)
@@ -125,7 +126,7 @@ export function AccountWizard({ open, onOpenChange, profileId }: Props) {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
 
-      const { error } = await supabase.from('financial_accounts').insert({
+      const { data, error } = await supabase.from('financial_accounts').insert({
         profile_id: profileId,
         name: name.trim(),
         currency_code: currencyCode,
@@ -137,10 +138,11 @@ export function AccountWizard({ open, onOpenChange, profileId }: Props) {
         closing_day: isCredit && closingDay ? parseInt(closingDay, 10) : null,
         due_day: isCredit && dueDay ? parseInt(dueDay, 10) : null,
         card_brand: isCredit ? (cardBrand || null) : null,
-      })
-      if (error) { toast.error('Erro ao criar conta.'); return }
+      }).select('*').single()
+      if (error || !data) { toast.error('Erro ao criar conta.'); return }
       toast.success('Conta criada.')
       onOpenChange(false)
+      onCreated?.(data)
       router.refresh()
     })
   }

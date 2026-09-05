@@ -9,10 +9,12 @@ interface PaymentMethodCatalogEntry {
   group: PaymentMethodGroup
   icon: LucideIcon
   hasDetails: boolean
+  /** Quando definida, o método só faz sentido nessa moeda (ex.: Pix é exclusivo do Brasil). */
+  currency?: string
 }
 
 export const PAYMENT_METHOD_CATALOG: PaymentMethodCatalogEntry[] = [
-  { type: 'pix', group: 'popular', icon: QrCode, hasDetails: false },
+  { type: 'pix', group: 'popular', icon: QrCode, hasDetails: false, currency: 'BRL' },
   { type: 'mercadopago', group: 'popular', icon: Landmark, hasDetails: false },
   { type: 'paypal', group: 'international', icon: CreditCard, hasDetails: false },
   { type: 'wise', group: 'international', icon: Globe, hasDetails: false },

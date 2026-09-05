@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Loader2, Check, X, ExternalLink, MessageCircle, Ban } from 'lucide-react'
+import { Loader2, Check, X, ExternalLink, MessageCircle, Ban, RotateCcw } from 'lucide-react'
 import { PLEDGE_ARCHIVE_DAYS, addDays } from '@/lib/financial/pledge-windows'
 
 const METHOD_LABEL: Record<string, string> = { pix: 'Pix', paypal: 'PayPal', wise: 'Wise', bank_transfer: 'Transferência', other: 'Outro' }
@@ -39,6 +39,11 @@ export function PledgeReviewCard({ pledge, accounts, profileId, budgetCategories
   const { pendingValue: saving, run } = usePendingAction<'confirm' | 'reject'>()
   const [rejectReason, setRejectReason] = useState('')
   const [showReject, setShowReject] = useState(false)
+  // Oferta já recusada não abre o formulário de depósito de cara — precisa
+  // de um clique consciente em "Reanalisar" primeiro, senão toda oferta
+  // recusada aparecia com um botão Confirmar já pronto pra clicar.
+  const [reanalyzing, setReanalyzing] = useState(false)
+  const showDepositBox = pledge.status === 'pending' || reanalyzing
 
   function handleConfirm() {
     const parsed = parseFloat(amount)
@@ -173,46 +178,62 @@ export function PledgeReviewCard({ pledge, accounts, profileId, budgetCategories
         )}
       </div>
 
-      <div className="rounded-lg border bg-background/60 p-3 space-y-2.5">
-        <p className="text-xs font-medium text-muted-foreground">Confirmar depósito</p>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="space-y-1">
-            <Label className="text-xs font-normal text-muted-foreground">Valor recebido</Label>
-            <Input inputMode="decimal" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(e.target.value)} className="h-8 text-sm" />
+      {showDepositBox && (
+        <div className="rounded-lg border bg-background/60 p-3 space-y-2.5">
+          <p className="text-xs font-medium text-muted-foreground">Confirmar depósito</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs font-normal text-muted-foreground">Valor recebido</Label>
+              <Input inputMode="decimal" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(e.target.value)} className="h-8 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-normal text-muted-foreground">Depositar em</Label>
+              {accounts.length > 0 ? (
+                <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
+                  {accountOptions.map(a => <option key={a.id} value={a.id}>{a.name}{accountOptions === accounts ? ` (${a.currency_code})` : ''}</option>)}
+                </select>
+              ) : (
+                <p className="h-8 flex items-center rounded-lg border border-dashed px-2.5 text-xs text-muted-foreground truncate">
+                  Nova: Conta {METHOD_LABEL[pledge.payment_method] ?? 'Principal'}
+                </p>
+              )}
+            </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs font-normal text-muted-foreground">Depositar em</Label>
-            {accounts.length > 0 ? (
-              <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
-                {accountOptions.map(a => <option key={a.id} value={a.id}>{a.name}{accountOptions === accounts ? ` (${a.currency_code})` : ''}</option>)}
+
+          {accounts.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              Você ainda não tem nenhuma conta financeira — ao confirmar, criamos uma automaticamente com base no método desta oferta ({METHOD_LABEL[pledge.payment_method] ?? 'Outro'}, {pledge.currency}).{' '}
+              <Link href="/dashboard/financeiro/contas" className="underline">Gerenciar contas</Link>
+            </p>
+          )}
+
+          {budgetCategories.length > 0 && (
+            <div className="space-y-1">
+              <Label className="text-xs font-normal text-muted-foreground">Categoria do orçamento</Label>
+              <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
+                <option value="">Projeto geral</option>
+                {budgetCategories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
               </select>
-            ) : (
-              <p className="h-8 flex items-center rounded-lg border border-dashed px-2.5 text-xs text-muted-foreground truncate">
-                Nova: Conta {METHOD_LABEL[pledge.payment_method] ?? 'Principal'}
-              </p>
-            )}
-          </div>
+            </div>
+          )}
         </div>
+      )}
 
-        {accounts.length === 0 && (
-          <p className="text-xs text-muted-foreground">
-            Você ainda não tem nenhuma conta financeira — ao confirmar, criamos uma automaticamente com base no método desta oferta ({METHOD_LABEL[pledge.payment_method] ?? 'Outro'}, {pledge.currency}).{' '}
-            <Link href="/dashboard/financeiro/contas" className="underline">Gerenciar contas</Link>
-          </p>
-        )}
-
-        {budgetCategories.length > 0 && (
-          <div className="space-y-1">
-            <Label className="text-xs font-normal text-muted-foreground">Categoria do orçamento</Label>
-            <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
-              <option value="">Projeto geral</option>
-              {budgetCategories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-            </select>
+      {pledge.status === 'rejected' ? (
+        reanalyzing ? (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => setReanalyzing(false)}>Cancelar</Button>
+            <Button size="sm" className="flex-1 gap-1.5" onClick={handleConfirm} disabled={saving === 'confirm'}>
+              {saving === 'confirm' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+              Confirmar
+            </Button>
           </div>
-        )}
-      </div>
-
-      {pledge.status === 'pending' && showReject ? (
+        ) : (
+          <Button variant="outline" size="sm" className="w-full gap-1.5" onClick={() => setReanalyzing(true)}>
+            <RotateCcw className="h-3.5 w-3.5" /> Reanalisar
+          </Button>
+        )
+      ) : showReject ? (
         <div className="space-y-2">
           <Input value={rejectReason} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRejectReason(e.target.value)} placeholder="Motivo (o apoiador recebe essa observação)" className="h-8 text-sm" />
           <div className="flex gap-2">
@@ -225,11 +246,9 @@ export function PledgeReviewCard({ pledge, accounts, profileId, budgetCategories
         </div>
       ) : (
         <div className="flex gap-2">
-          {pledge.status === 'pending' && (
-            <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => setShowReject(true)}>
-              <X className="h-3.5 w-3.5" /> Rejeitar
-            </Button>
-          )}
+          <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => setShowReject(true)}>
+            <X className="h-3.5 w-3.5" /> Rejeitar
+          </Button>
           <Button size="sm" className="flex-1 gap-1.5" onClick={handleConfirm} disabled={saving === 'confirm'}>
             {saving === 'confirm' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
             Confirmar

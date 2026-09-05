@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { FinancialAccount } from '@/types/database'
 import { AccountCard } from './account-card'
 import { AccountWizard } from './account-wizard'
+import { ImportStatementDialog } from './import-statement-dialog'
 import { Button } from '@/components/ui/button'
 import { Landmark, Archive, Wallet, Plus } from 'lucide-react'
 
@@ -33,9 +34,12 @@ export function AccountsList({ profileId, accounts, members, currentBills }: Pro
 
   return (
     <div className="space-y-4">
-      <Button onClick={() => setCreating(true)} className="w-fit gap-2">
-        <Plus className="h-4 w-4" /> Adicionar conta
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={() => setCreating(true)} className="w-fit gap-2">
+          <Plus className="h-4 w-4" /> Adicionar conta
+        </Button>
+        {accounts.length > 0 && <ImportStatementDialog profileId={profileId} accounts={accounts} />}
+      </div>
 
       <div className="inline-flex h-9 items-center rounded-lg bg-muted/60 p-1 text-muted-foreground">
         {TABS.map((t) => (
