@@ -1,6 +1,7 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useEffect, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { PartnershipWizard, type PartnershipWizardProps } from './partnership-wizard'
 
@@ -26,6 +27,19 @@ import { PartnershipWizard, type PartnershipWizardProps } from './partnership-wi
  *  interno (`flex-1 min-h-0 overflow-y-auto`), não a caixa em si. */
 export function PartnershipModal(props: PartnershipWizardProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Trocar de tela dentro do modal (lista -> forma escolhida, forma -> lista
+  // no "voltar" etc.) é navegação client-side dentro do mesmo container
+  // rolável — sem isso, a rolagem da tela anterior persiste e a próxima
+  // tela já aparece deslocada/cortada em vez de começar do topo. `choice`
+  // (goTo em partnership-wizard.tsx) é o que muda a cada troca de tela, daí
+  // observar os searchParams inteiros.
+  const searchParamsKey = searchParams.toString()
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 })
+  }, [searchParamsKey])
 
   return (
     <Dialog open onOpenChange={(next) => { if (!next) router.back() }}>
@@ -34,7 +48,7 @@ export function PartnershipModal(props: PartnershipWizardProps) {
         className="max-w-[calc(100%-1.5rem)] max-h-[85vh] sm:max-w-xl sm:max-h-[88vh] lg:max-w-2xl lg:max-h-[90vh] flex flex-col gap-0 overflow-hidden rounded-2xl p-0"
       >
         <DialogTitle className="sr-only">Seja parceiro</DialogTitle>
-        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+        <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
           <PartnershipWizard {...props} />
         </div>
       </DialogContent>

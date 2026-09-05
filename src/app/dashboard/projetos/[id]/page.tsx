@@ -45,6 +45,12 @@ export default async function EditarProjetoPage({ params }: Props) {
     .eq('highlight_id', id)
     .order('order_index')
 
+  const { data: prayerPoints } = await supabase
+    .from('project_prayer_points')
+    .select('*')
+    .eq('highlight_id', id)
+    .order('order_index')
+
   const publicSlug = highlight.slug ?? highlight.id
 
   return (
@@ -72,7 +78,7 @@ export default async function EditarProjetoPage({ params }: Props) {
       {budgetProgress && budgetProgress.length > 0 && (
         <BudgetBreakdown categories={budgetProgress} currency={highlight.currency} showSpent heading="Financeiro do projeto" />
       )}
-      <HighlightForm highlight={{ ...highlight, milestones: milestones ?? [], budgetCategories: budgetCategories ?? [], galleryImages: galleryImages ?? [] }} profileId={profile.id} backPath={`/${profile.username}/projetos`} />
+      <HighlightForm highlight={{ ...highlight, milestones: milestones ?? [], budgetCategories: budgetCategories ?? [], galleryImages: galleryImages ?? [], prayerPoints: prayerPoints ?? [] }} profileId={profile.id} backPath={`/${profile.username}/projetos`} />
     </div>
   )
 }

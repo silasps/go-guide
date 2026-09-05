@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { resolveBudgetCategoryLabel } from '@/lib/highlights/budget-category-labels'
+import type { BudgetCategoryType } from '@/types/database'
 
 function slugify(text: string) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
@@ -76,7 +78,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { highlightId, profileId, title, description, goalTypes, category, goalAmount, currentAmount,
     currency, coverUrl, coverPosition, coverMediaType, coverStatus, coverBunnyVideoId, tripStartDate, fundingDeadline, scripture, letter, status, milestones, budgetCategories,
-    galleryImages, originalLocale, titleTranslations, descriptionTranslations, scriptureTranslations, letterTranslations,
+    prayerPoints, galleryImages, originalLocale, titleTranslations, descriptionTranslations, scriptureTranslations, letterTranslations,
     letterImageUrl, letterImageCaption, letterImageUrl2, letterImageCaption2 } = body
 
   try {
@@ -161,8 +163,9 @@ export async function POST(req: NextRequest) {
       }
 
       await dbDelete(`project_budget_categories?highlight_id=eq.${hId}`)
+      let createdBudgetCategories: { id: string }[] = []
       if (Array.isArray(budgetCategories) && budgetCategories.length > 0) {
-        await dbPost('project_budget_categories', budgetCategories.map((b: { category_type: string; custom_label: string | null; description: string | null; target_amount: number }, i: number) => ({
+        createdBudgetCategories = await dbPost('project_budget_categories', budgetCategories.map((b: { category_type: string; custom_label: string | null; description: string | null; target_amount: number }, i: number) => ({
           highlight_id: hId,
           category_type: b.category_type,
           custom_label: b.custom_label,
@@ -170,6 +173,32 @@ export async function POST(req: NextRequest) {
           target_amount: b.target_amount,
           order_index: i,
         })))
+      }
+
+      // Pontos de oração: os "soltos" (prayerPoints) e os vinculados a uma
+      // necessidade financeira (budgetCategories[i].prayerPoint) viram a
+      // mesma tabela — o vínculo usa o id recém-gerado de
+      // createdBudgetCategories (o delete-e-reinsere acima troca os ids a
+      // cada save, então só dá pra linkar depois do insert de verdade).
+      await dbDelete(`project_prayer_points?highlight_id=eq.${hId}`)
+      type BudgetCategoryInput = { category_type: BudgetCategoryType; custom_label: string | null; prayerPoint?: string | null }
+      const standalonePrayerPoints = Array.isArray(prayerPoints) ? prayerPoints : []
+      const linkedPrayerPoints = (Array.isArray(budgetCategories) ? (budgetCategories as BudgetCategoryInput[]) : [])
+        .map((b, i) => ({ b, category: createdBudgetCategories[i] }))
+        .filter((x): x is { b: BudgetCategoryInput; category: { id: string } } => Boolean(x.b.prayerPoint) && Boolean(x.category))
+        .map(({ b, category }) => ({
+          budget_category_id: category.id,
+          title: resolveBudgetCategoryLabel({ category_type: b.category_type, custom_label: b.custom_label }),
+          description: b.prayerPoint,
+        }))
+      const allPrayerPoints = [
+        ...standalonePrayerPoints.map((p: { title: string; description: string | null; is_completed: boolean }) => ({
+          title: p.title, description: p.description, is_completed: p.is_completed, completed_at: p.is_completed ? new Date().toISOString() : null,
+        })),
+        ...linkedPrayerPoints,
+      ]
+      if (allPrayerPoints.length > 0) {
+        await dbPost('project_prayer_points', allPrayerPoints.map((p, i) => ({ ...p, highlight_id: hId, order_index: i })))
       }
 
       await dbDelete(`project_gallery_images?highlight_id=eq.${hId}`)

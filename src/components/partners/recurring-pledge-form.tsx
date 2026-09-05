@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
@@ -62,8 +62,17 @@ export function RecurringPledgeForm({ profileId, username, missionaryName, curre
   const [contactPhone, setContactPhone] = useState(user?.phone ?? '')
   const [whatsappOptIn, setWhatsappOptIn] = useState(user?.whatsappOptIn ?? false)
   const amountInputRef = useRef<HTMLInputElement>(null)
+  const doneRef = useRef<HTMLDivElement>(null)
   const { isPending: startingCheckout, run: runCheckout } = usePendingAction()
   const { isPending: savingManual, run: runManual } = usePendingAction()
+
+  // Mesma lógica de PledgeForm/ScheduledPledgeForm: dentro do modal, a tela
+  // de "pronto" troca de lugar com o formulário no mesmo container rolável
+  // — sem isso, a rolagem de quem preencheu o formulário até o fim persiste
+  // e a tela de sucesso aparece cortada/deslocada em vez de começar do topo.
+  useEffect(() => {
+    if (done) doneRef.current?.scrollIntoView({ block: 'start' })
+  }, [done])
 
   // Igual ao PledgeForm (avulso): checkout-recurring/route.ts já monta a
   // subscription com price_data dinâmico, então Cartão aceita qualquer
@@ -126,7 +135,7 @@ export function RecurringPledgeForm({ profileId, username, missionaryName, curre
 
   if (done) {
     return (
-      <div className="min-h-screen bg-background">
+      <div ref={doneRef} className="min-h-screen bg-background">
         <CheckoutHeader showBack={false} />
         <div className="mx-auto max-w-md px-4 pt-[72px] pb-8 space-y-3">
           <Card>

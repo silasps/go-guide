@@ -2,8 +2,9 @@ import Link from 'next/link'
 import { Progress } from '@/components/ui/progress'
 import { buttonVariants } from '@/components/ui/button'
 import { formatCurrency, cn } from '@/lib/utils'
-import { ProjectBudgetProgress } from '@/types/database'
+import { ProjectBudgetProgress, ProjectPrayerPoint } from '@/types/database'
 import { resolveBudgetCategoryLabel } from '@/lib/highlights/budget-category-labels'
+import { PrayForPointModal } from '@/components/prayer/pray-for-point-modal'
 
 interface Props {
   categories: ProjectBudgetProgress[]
@@ -19,9 +20,16 @@ interface Props {
    *  padrão pra não mudar a página pública de doação, que só precisa de
    *  meta/arrecadado pra quem tá decidindo contribuir. */
   showSpent?: boolean
+  /** Pontos de oração vinculados a cada categoria (budget_category_id →
+   *  ponto), pra mostrar o botãozinho 🙏 ao lado de "Contribuir". Ausente
+   *  = nenhum botão de orar (contexto de edição, ou projeto sem oração). */
+  linkedPrayerPoints?: Record<string, ProjectPrayerPoint>
+  profileId?: string
+  highlightId?: string
+  missionaryName?: string
 }
 
-export function BudgetBreakdown({ categories, currency, contributeBaseHref, contributeLabel, heading, missingLabel, showSpent }: Props) {
+export function BudgetBreakdown({ categories, currency, contributeBaseHref, contributeLabel, heading, missingLabel, showSpent, linkedPrayerPoints, profileId, highlightId, missionaryName }: Props) {
   if (categories.length === 0) return null
 
   // No modo "contribuir" (perfil público, contributeBaseHref presente), o
@@ -74,14 +82,26 @@ export function BudgetBreakdown({ categories, currency, contributeBaseHref, cont
                     {isFunded ? '🎉' : (missingLabel ? missingLabel(formatCurrency(missing, currency)) : `Faltam ${formatCurrency(missing, currency)}`)}
                   </p>
                 ) : <span />}
-                {contributeBaseHref && (
-                  <Link
-                    href={`${contributeBaseHref}&category=${c.id}`}
-                    className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'h-7 text-xs px-2.5 shrink-0 border-support text-support hover:bg-support/10 hover:text-support')}
-                  >
-                    {contributeLabel ?? 'Contribuir'}
-                  </Link>
-                )}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {linkedPrayerPoints?.[c.id] && profileId && highlightId && missionaryName && (
+                    <PrayForPointModal
+                      profileId={profileId}
+                      highlightId={highlightId}
+                      prayerPointId={linkedPrayerPoints[c.id].id}
+                      missionaryName={missionaryName}
+                      triggerLabel=""
+                      triggerClassName={cn(buttonVariants({ variant: 'outline', size: 'icon-sm' }), 'shrink-0 border-support text-support hover:bg-support/10 hover:text-support')}
+                    />
+                  )}
+                  {contributeBaseHref && (
+                    <Link
+                      href={`${contributeBaseHref}&category=${c.id}`}
+                      className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'h-7 text-xs px-2.5 shrink-0 border-support text-support hover:bg-support/10 hover:text-support')}
+                    >
+                      {contributeLabel ?? 'Contribuir'}
+                    </Link>
+                  )}
+                </div>
               </div>
             </div>
           )

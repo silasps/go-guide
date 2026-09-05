@@ -14,7 +14,7 @@ export default async function OracoesPage() {
 
   const [, { data: requests }] = await Promise.all([
     markNotificationTypesRead(supabase, user!.id, ['new_prayer_request', 'prayer_reply', 'prayer_answered']),
-    supabase.from('prayer_requests').select('*').eq('profile_id', profile!.id).order('created_at', { ascending: false }),
+    supabase.from('prayer_requests').select('*, highlights(title, slug), project_prayer_points(title)').eq('profile_id', profile!.id).order('created_at', { ascending: false }),
   ])
 
   const hasPrivate = (requests ?? []).some(r => r.is_private)

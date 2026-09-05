@@ -583,7 +583,8 @@
     "doneTitle": "All set!",
     "doneDescription": "We'll remind you to help {name} on {date}. No pressure — just a friendly nudge.",
     "viewProfileCta": "View {name}'s profile",
-    "errorSave": "Error scheduling. Please try again."
+    "errorSave": "Error scheduling. Please try again.",
+    "errorDuplicateDate": "You already have a reminder scheduled for that day with {name}. Pick another date."
   },
   "PartnershipWizard": {
     "scheduledTitle": "I want to help, just not now",

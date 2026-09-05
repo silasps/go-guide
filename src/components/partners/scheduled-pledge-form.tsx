@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
@@ -57,6 +57,16 @@ export function ScheduledPledgeForm({ profileId, username, missionaryName, defau
   const [amount, setAmount] = useState('')
   const [currency, setCurrency] = useState(defaultCurrency)
   const { isPending: saving, run } = usePendingAction()
+  const doneRef = useRef<HTMLDivElement>(null)
+
+  // Mesma lógica de PledgeForm: dentro do modal, a tela de "pronto" troca de
+  // lugar com o formulário no mesmo container rolável — sem isso, se a
+  // pessoa tiver rolado pra baixo preenchendo o formulário, essa rolagem
+  // persiste e a tela de sucesso aparece cortada/deslocada em vez de
+  // começar do topo.
+  useEffect(() => {
+    if (done) doneRef.current?.scrollIntoView({ block: 'start' })
+  }, [done])
 
   // Mesma regra de PledgeForm: com Stripe conectado, qualquer moeda
   // suportada vale (price_data dinâmico); sem Stripe, só as moedas que o
@@ -85,7 +95,7 @@ export function ScheduledPledgeForm({ profileId, username, missionaryName, defau
 
   if (done) {
     return (
-      <div className="min-h-screen bg-background">
+      <div ref={doneRef} className="min-h-screen bg-background">
         <CheckoutHeader showBack={false} />
         <div className="mx-auto max-w-md px-4 pt-[72px] pb-8 space-y-3">
           <Card>
@@ -117,6 +127,21 @@ export function ScheduledPledgeForm({ profileId, username, missionaryName, defau
 
     run(true, async () => {
       const supabase = createClient()
+
+      // Evita duas ofertas agendadas pendentes pro mesmo dia com o mesmo
+      // missionário — fácil de esbarrar nisso reabrindo o formulário sem
+      // lembrar que já tinha agendado. Índice único em 088 cobre o caso de
+      // corrida (duas abas/duplo clique); esta checagem é só pra dar um
+      // aviso amigável no caminho comum, sem esperar o erro do banco.
+      const { data: existingScheduled } = await supabase
+        .from('scheduled_pledges')
+        .select('id')
+        .eq('profile_id', profileId)
+        .eq('reporter_user_id', currentUser.id)
+        .eq('scheduled_date', date)
+        .eq('status', 'pending')
+        .maybeSingle()
+      if (existingScheduled) { toast.error(t('errorDuplicateDate', { name: missionaryName })); return }
 
       // Mesmo bloco de find-or-create de RecurringPledgeForm — todo caminho
       // financeiro (imediato, recorrente ou agendado) alimenta o mesmo CRM
@@ -150,7 +175,11 @@ export function ScheduledPledgeForm({ profileId, username, missionaryName, defau
         status: 'pending',
       })
 
-      if (error) { console.error('scheduled_pledges insert failed:', error); toast.error(t('errorSave')); return }
+      if (error) {
+        console.error('scheduled_pledges insert failed:', error)
+        toast.error(error.code === '23505' ? t('errorDuplicateDate', { name: missionaryName }) : t('errorSave'))
+        return
+      }
       setDone(true)
     })
   }

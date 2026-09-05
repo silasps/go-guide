@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
-import { Highlight, Milestone, ProjectBudgetCategory, ProjectGalleryImage, MediaAspectRatio } from '@/types/database'
+import { Highlight, Milestone, ProjectBudgetCategory, ProjectGalleryImage, ProjectPrayerPoint, MediaAspectRatio } from '@/types/database'
 import type { Locale } from '@/i18n/config'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,6 +22,7 @@ import { compressImage, getMediaType } from '@/lib/media/compress'
 import { uploadVideoToBunny } from '@/lib/media/upload-bunny-video'
 import { MilestonesEditor, type MilestoneDraft } from './milestones-editor'
 import { BudgetCategoriesEditor, type BudgetCategoryDraft } from './budget-categories-editor'
+import { PrayerPointsEditor, type PrayerPointDraft } from './prayer-points-editor'
 import { GalleryEditor, type GalleryImageDraft } from './gallery-editor'
 import { DeleteProjectDialog } from './delete-project-dialog'
 import { SupportTypesPicker } from './support-types-picker'
@@ -30,7 +31,7 @@ import { PROJECT_CATEGORIES } from '@/lib/highlights/project-categories'
 import { initialTranslations, initialSources, buildTranslationsPayload, translateContent } from '@/lib/i18n/content-translations'
 
 interface Props {
-  highlight?: Highlight & { milestones?: Milestone[]; budgetCategories?: ProjectBudgetCategory[]; galleryImages?: ProjectGalleryImage[] }
+  highlight?: Highlight & { milestones?: Milestone[]; budgetCategories?: ProjectBudgetCategory[]; galleryImages?: ProjectGalleryImage[]; prayerPoints?: ProjectPrayerPoint[] }
   profileId: string
   backPath?: string
 }
@@ -121,9 +122,20 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
       custom_label: b.custom_label ?? '',
       description: b.description ?? '',
       target_amount: toMasked(String(Math.round(b.target_amount * 100)), initialCurrency),
+      prayerPoint: (highlight?.prayerPoints ?? []).find(p => p.budget_category_id === b.id)?.description ?? '',
     }))
   )
   const budgetTotal = budgetCategories.reduce((sum, b) => sum + (parseFloat(fromMasked(b.target_amount, currency)) || 0), 0)
+
+  // Só os pontos "soltos" (sem budget_category_id) ficam aqui — os
+  // vinculados a uma necessidade financeira são editados inline em
+  // BudgetCategoriesEditor (campo prayerPoint) e recriados a cada save a
+  // partir de lá, não fazem parte desta lista.
+  const [prayerPoints, setPrayerPoints] = useState<PrayerPointDraft[]>(
+    (highlight?.prayerPoints ?? [])
+      .filter(p => !p.budget_category_id)
+      .map(p => ({ id: p.id, title: p.title, description: p.description ?? '', is_completed: p.is_completed }))
+  )
 
   const [galleryImages, setGalleryImages] = useState<GalleryImageDraft[]>(
     (highlight?.galleryImages ?? []).map(g => ({ url: g.image_url }))
@@ -234,7 +246,14 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
                     custom_label: b.category_type === 'other' ? (b.custom_label.trim() || 'Outros') : null,
                     description: b.description.trim() || null,
                     target_amount: parseFloat(fromMasked(b.target_amount, currency)),
+                    prayerPoint: b.prayerPoint?.trim() || null,
                   }))
+              : [],
+            // Pontos "soltos" (sem necessidade financeira vinculada) — só
+            // fazem sentido salvar quando "Apoio de oração" está habilitado;
+            // os vinculados vêm junto de cada budgetCategories[i].prayerPoint.
+            prayerPoints: goalTypes.includes('prayer')
+              ? prayerPoints.filter(p => p.title.trim()).map(p => ({ title: p.title.trim(), description: p.description.trim() || null, is_completed: p.is_completed }))
               : [],
             galleryImages: galleryUrls,
           }),
@@ -440,6 +459,14 @@ export function HighlightForm({ highlight, profileId, backPath = '/dashboard/pro
                 categories={budgetCategories}
                 onChange={setBudgetCategories}
               />
+            </div>
+          )}
+
+          {goalTypes.includes('prayer') && (
+            <div className="space-y-2">
+              <Label>Pontos de oração</Label>
+              <p className="text-xs text-muted-foreground">Opcional — ajuda parceiros a orar por algo específico, em vez de só “orar pelo projeto”.</p>
+              <PrayerPointsEditor points={prayerPoints} onChange={setPrayerPoints} />
             </div>
           )}
         </div>

@@ -9,19 +9,31 @@ import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
 import * as keyManager from '@/lib/crypto/key-manager'
 import { toast } from 'sonner'
-import { CheckCircle, Circle, User, Heart, Lock, Loader2 } from 'lucide-react'
+import { CheckCircle, Circle, User, Heart, Lock, Loader2, FolderKanban } from 'lucide-react'
 
 const TABS = ['Todos', 'Meus pedidos', 'De parceiros', 'Respondidos'] as const
 type Tab = (typeof TABS)[number]
 
 interface Reply { id: string; author_user_id: string; text: string; created_at: string }
 
-function PrayerCard({ request, myUserId, onMarkAnswered }: { request: PrayerRequest; myUserId: string; onMarkAnswered: (id: string, current: boolean) => void }) {
+// prayer_requests.highlight_id/prayer_point_id são opcionais (a maioria das
+// orações ainda é geral, sem projeto nenhum) — quando vêm de
+// PrayForPointModal (ver [slug]/page.tsx), a query já embute o nome do
+// projeto/ponto via Postgrest (select aninhado), sem query extra por card.
+type PrayerRequestWithContext = PrayerRequest & {
+  highlights?: { title: string; slug: string | null } | { title: string; slug: string | null }[] | null
+  project_prayer_points?: { title: string } | { title: string }[] | null
+}
+
+function PrayerCard({ request, myUserId, onMarkAnswered }: { request: PrayerRequestWithContext; myUserId: string; onMarkAnswered: (id: string, current: boolean) => void }) {
   const [content, setContent] = useState(request.is_private ? '🔒 Decifrando...' : request.content)
   const [replies, setReplies] = useState<Reply[]>([])
   const [replyText, setReplyText] = useState('')
   const [sending, setSending] = useState(false)
   const [showReplies, setShowReplies] = useState(false)
+
+  const highlight = Array.isArray(request.highlights) ? request.highlights[0] : request.highlights
+  const prayerPoint = Array.isArray(request.project_prayer_points) ? request.project_prayer_points[0] : request.project_prayer_points
 
   useEffect(() => {
     if (!request.is_private || !request.nonce) return
@@ -88,6 +100,11 @@ function PrayerCard({ request, myUserId, onMarkAnswered }: { request: PrayerRequ
             {request.is_private && <Lock className="h-3 w-3 text-muted-foreground" />}
             <span className="text-xs text-muted-foreground">{formatRelativeTime(request.created_at)}</span>
           </div>
+          {highlight && (
+            <p className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+              <FolderKanban className="h-3 w-3" /> {highlight.title}{prayerPoint ? ` — ${prayerPoint.title}` : ''}
+            </p>
+          )}
           <p className="text-sm leading-relaxed">{content}</p>
           <button onClick={handleToggleReplies} className="text-xs text-primary hover:underline mt-2">
             {showReplies ? 'Ocultar respostas' : 'Ver/responder'}
@@ -124,7 +141,7 @@ function PrayerCard({ request, myUserId, onMarkAnswered }: { request: PrayerRequ
   )
 }
 
-export function PrayerInbox({ requests: initial, myUserId }: { requests: PrayerRequest[]; myUserId: string }) {
+export function PrayerInbox({ requests: initial, myUserId }: { requests: PrayerRequestWithContext[]; myUserId: string }) {
   const [requests, setRequests] = useState(initial)
   const [tab, setTab] = useState<Tab>('Todos')
 

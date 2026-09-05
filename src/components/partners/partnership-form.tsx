@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -30,6 +30,11 @@ export function PartnershipForm({ profileId, missionaryName, defaultType }: Prop
   // tela "Como deseja se envolver?" parecia ignorar o que a pessoa acabou
   // de escolher.
   const suffix = defaultType ? `_${defaultType}` : ''
+  const doneRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (done) doneRef.current?.scrollIntoView({ block: 'start' })
+  }, [done])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -57,15 +62,17 @@ export function PartnershipForm({ profileId, missionaryName, defaultType }: Prop
 
   if (done) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center space-y-3">
-          <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
-          <h2 className="text-xl font-semibold">Obrigado, {name.split(' ')[0]}!</h2>
-          <p className="text-muted-foreground text-sm">
-            {missionaryName} será notificado(a). Você começará a receber atualizações em breve.
-          </p>
-        </CardContent>
-      </Card>
+      <div ref={doneRef}>
+        <Card>
+          <CardContent className="py-12 text-center space-y-3">
+            <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+            <h2 className="text-xl font-semibold">Obrigado, {name.split(' ')[0]}!</h2>
+            <p className="text-muted-foreground text-sm">
+              {missionaryName} será notificado(a). Você começará a receber atualizações em breve.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 

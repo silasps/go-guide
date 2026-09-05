@@ -242,6 +242,21 @@ export interface PrayerRequest {
   answered_at: string | null
   is_private: boolean
   nonce: string | null
+  highlight_id: string | null
+  prayer_point_id: string | null
+  created_at: string
+}
+
+export interface ProjectPrayerPoint {
+  id: string
+  highlight_id: string
+  budget_category_id: string | null
+  title: string
+  description: string | null
+  prayer_count: number
+  is_completed: boolean
+  completed_at: string | null
+  order_index: number
   created_at: string
 }
 

@@ -583,7 +583,8 @@
     "doneTitle": "Combinado!",
     "doneDescription": "Vamos te lembrar de ajudar {name} em {date}. Sem cobrança — é só um lembrete carinhoso.",
     "viewProfileCta": "Ver perfil de {name}",
-    "errorSave": "Erro ao agendar. Tente novamente."
+    "errorSave": "Erro ao agendar. Tente novamente.",
+    "errorDuplicateDate": "Você já tem um lembrete agendado pra esse dia com {name}. Escolha outra data."
   },
   "PartnershipWizard": {
     "scheduledTitle": "Quero ajudar, mas não agora",

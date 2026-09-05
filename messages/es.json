@@ -583,7 +583,8 @@
     "doneTitle": "¡Listo!",
     "doneDescription": "Te recordaremos ayudar a {name} el {date}. Sin cobro — es solo un recordatorio cariñoso.",
     "viewProfileCta": "Ver el perfil de {name}",
-    "errorSave": "Error al programar. Inténtalo de nuevo."
+    "errorSave": "Error al programar. Inténtalo de nuevo.",
+    "errorDuplicateDate": "Ya tienes un recordatorio programado para ese día con {name}. Elige otra fecha."
   },
   "PartnershipWizard": {
     "scheduledTitle": "Quiero ayudar, pero no ahora",

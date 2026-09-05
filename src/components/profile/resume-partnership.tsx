@@ -23,6 +23,12 @@ export function ResumePartnership({ username }: { username: string }) {
   useEffect(() => {
     if (!resumeChoice) return
     const query = resumeHighlightId ? `?choice=${resumeChoice}&highlight_id=${resumeHighlightId}` : `?choice=${resumeChoice}`
+    // Limpa resumeChoice da entrada de histórico ANTES de empilhar o modal
+    // por cima (replace, não push) — senão ela continua existindo por
+    // baixo do modal com o parâmetro intacto, e qualquer "voltar" (clique
+    // fora do modal, botão voltar do navegador) cai de novo nela, o efeito
+    // dispara de novo e reabre o modal num loop infinito de abrir/fechar.
+    router.replace(`/${username}`)
     router.push(`/${username}/parceria${query}`)
   }, [resumeChoice, resumeHighlightId, username, router])
 

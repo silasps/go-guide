@@ -16,7 +16,9 @@ import type { Locale } from '@/i18n/config'
 import { CheckCircle2, Circle, QrCode, Users } from 'lucide-react'
 import { BudgetBreakdown } from '@/components/highlights/budget-breakdown'
 import { FundingProjectionCard } from '@/components/highlights/funding-projection-card'
-import type { PaymentMethodType, PostWithProfile } from '@/types/database'
+import type { PaymentMethodType, PostWithProfile, ProjectPrayerPoint } from '@/types/database'
+import { PrayerPointsBreakdown } from '@/components/highlights/prayer-points-breakdown'
+import { SupportSectionTabs } from '@/components/highlights/support-section-tabs'
 import { enrichWithEngagement } from '@/lib/posts/enrich-with-engagement'
 import { ProfilePostsGrid } from '@/components/shared/profile-posts-grid'
 import { PostComposerProvider } from '@/components/dashboard/post-composer-provider'
@@ -171,7 +173,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
   const localizedScripture = resolveLocalizedText(project.scripture, project.original_locale, project.scripture_translations, visitorLocale).text
   const localizedLetter = resolveLocalizedText(project.letter, project.original_locale, project.letter_translations, visitorLocale).text
 
-  const [{ data: milestones }, { data: updates }, { data: budgetCategories }, { data: galleryImages }, { data: pastProjects }, { count: supporterCount }] = await Promise.all([
+  const [{ data: milestones }, { data: updates }, { data: budgetCategories }, { data: galleryImages }, { data: pastProjects }, { count: supporterCount }, { data: prayerPoints }] = await Promise.all([
     supabase.from('milestones').select('*').eq('highlight_id', project.id).order('order_index'),
     supabase.from('posts').select('*')
       .eq('profile_id', profile.id).eq('project_id', project.id).eq('is_draft', false).neq('moderation_status', 'removed')
@@ -183,6 +185,7 @@ export default async function ProjetoPublicoPage({ params }: Props) {
       .order('completed_at', { ascending: false }).limit(3),
     supabase.from('pledges').select('reporter_user_id, reporter_email', { count: 'exact', head: true })
       .eq('highlight_id', project.id).eq('status', 'confirmed'),
+    supabase.from('project_prayer_points').select('*').eq('highlight_id', project.id).order('order_index'),
   ])
 
   // Posts vinculados a este projeto (`project_id`) já tinham o caminho de ida
@@ -205,7 +208,24 @@ export default async function ProjetoPublicoPage({ params }: Props) {
     : null
 
   const donationLink = linkMethod?.value || null
-  const hasFinancial = types.includes('financial')
+  // "Apoio financeiro" habilitado (goal_type) não é o mesmo que ter dado
+  // financeiro de verdade configurado — um projeto podia marcar o tipo e
+  // nunca preencher nada, e mesmo assim mostrar publicamente um botão
+  // "Apoiar este projeto" funcionando sem nada por trás (bug real, corrigido
+  // aqui). O dono sempre vê a seção (pra poder preencher); o público só
+  // quando há meta, categoria ou alguma forma de receber configurada.
+  const financialTypeEnabled = types.includes('financial')
+  const hasFinancialData = project.goal_amount != null || (budgetCategories?.length ?? 0) > 0 || pixMethods.length > 0 || !!donationLink
+  const hasFinancial = financialTypeEnabled && (canEdit || hasFinancialData)
+  // Oração não tem esse mesmo problema: o botão geral "Orar por este
+  // projeto" não depende de nenhuma configuração prévia pra funcionar, então
+  // só o tipo habilitado já é conteúdo real (com ou sem pontos específicos).
+  const hasPrayerContent = types.includes('prayer')
+  const prayerPointsByCategory: Record<string, ProjectPrayerPoint> = {}
+  for (const p of prayerPoints ?? []) {
+    if (p.budget_category_id) prayerPointsByCategory[p.budget_category_id] = p
+  }
+  const standalonePrayerPoints = (prayerPoints ?? []).filter(p => !p.budget_category_id)
   const completedCount = milestones?.filter(m => m.is_completed).length ?? 0
   const totalMilestones = milestones?.length ?? 0
   const localizedMilestones = (milestones ?? []).map(m => ({
@@ -216,6 +236,10 @@ export default async function ProjetoPublicoPage({ params }: Props) {
   const activeSupportTypes = SUPPORT_TYPES.filter(t => {
     if (!types.includes(t.key)) return false
     if (t.key === 'financial' && !donationLink && !pixMethods.length) return false
+    // O card genérico "Comprometer-me em oração" (sem contexto nenhum do
+    // projeto) fica redundante agora que existe a aba de oração de verdade
+    // — evita duplicar o mesmo convite de dois jeitos diferentes.
+    if (t.key === 'prayer' && hasPrayerContent) return false
     return true
   })
 
@@ -382,96 +406,135 @@ export default async function ProjetoPublicoPage({ params }: Props) {
             Hierarquia: progresso geral em destaque → CTA geral → (se
             houver) apoio por área específica, cada uma com seu próprio
             "faltam" e botão de contribuir — pedido direto do usuário pra
-            deixar isso mais organizado e fácil de agir. */}
-        {hasFinancial && (
-          <div id="financial-card" className="rounded-2xl border bg-card p-5 space-y-5">
-            <FinancialEditSection {...sectionProps}>
-              <>
-                {project.goal_amount && pct !== null && (
-                  <div className="space-y-2">
-                    <div className="flex items-end justify-between gap-3">
-                      <div>
-                        <p className="text-2xl md:text-3xl font-bold tracking-tight leading-none">{formatCurrency(project.current_amount, project.currency)}</p>
-                        <p className="text-xs text-muted-foreground mt-1">arrecadados</p>
+            deixar isso mais organizado e fácil de agir. Quando o projeto
+            também tem oração com conteúdo real, os dois viram abas em vez
+            de dois blocos empilhados. */}
+        {(() => {
+          const financialBlock = hasFinancial && (
+            <div id="financial-card" className="rounded-2xl border bg-card p-5 space-y-5">
+              <FinancialEditSection {...sectionProps}>
+                <>
+                  {project.goal_amount && pct !== null && (
+                    <div className="space-y-2">
+                      <div className="flex items-end justify-between gap-3">
+                        <div>
+                          <p className="text-2xl md:text-3xl font-bold tracking-tight leading-none">{formatCurrency(project.current_amount, project.currency)}</p>
+                          <p className="text-xs text-muted-foreground mt-1">arrecadados</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-xs text-muted-foreground">Meta</p>
+                          <p className="text-sm font-semibold">{formatCurrency(project.goal_amount, project.currency)}</p>
+                        </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-xs text-muted-foreground">Meta</p>
-                        <p className="text-sm font-semibold">{formatCurrency(project.goal_amount, project.currency)}</p>
+                      <Progress value={pct} className="h-2.5" />
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-muted-foreground">{pct.toFixed(0)}% da meta atingida</p>
+                        {pct >= 100 && <Badge variant="success" className="text-xs">Meta atingida 🎉</Badge>}
                       </div>
                     </div>
-                    <Progress value={pct} className="h-2.5" />
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs text-muted-foreground">{pct.toFixed(0)}% da meta atingida</p>
-                      {pct >= 100 && <Badge variant="success" className="text-xs">Meta atingida 🎉</Badge>}
+                  )}
+
+                  {!canEdit && hasFinancialData && (
+                    <div className="space-y-2">
+                      <Link href={`/${username}/parceria?highlight_id=${project.id}&choice=financial_once`} className={cn(buttonVariants({ variant: 'support', size: 'lg' }), 'w-full text-base')}>
+                        💰 Apoiar este projeto
+                      </Link>
+                      {/* Quem não pode ajudar agora provavelmente não clica em
+                          nenhum CTA de pagamento — esse link precisa estar na
+                          cara, antes de qualquer decisão, não escondido lá
+                          embaixo em "Outras formas de apoiar" (pedido do
+                          usuário). */}
+                      <Link
+                        href={`/${username}/parceria?highlight_id=${project.id}&choice=financial_scheduled`}
+                        className="block text-center text-sm text-muted-foreground hover:text-foreground underline underline-offset-2"
+                      >
+                        Não posso agora, mas quero ajudar depois
+                      </Link>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {!canEdit && (
-                  <div className="space-y-2">
-                    <Link href={`/${username}/parceria?highlight_id=${project.id}&choice=financial_once`} className={cn(buttonVariants({ variant: 'support', size: 'lg' }), 'w-full text-base')}>
-                      💰 Apoiar este projeto
-                    </Link>
-                    {/* Quem não pode ajudar agora provavelmente não clica em
-                        nenhum CTA de pagamento — esse link precisa estar na
-                        cara, antes de qualquer decisão, não escondido lá
-                        embaixo em "Outras formas de apoiar" (pedido do
-                        usuário). */}
-                    <Link
-                      href={`/${username}/parceria?highlight_id=${project.id}&choice=financial_scheduled`}
-                      className="block text-center text-sm text-muted-foreground hover:text-foreground underline underline-offset-2"
-                    >
-                      Não posso agora, mas quero ajudar depois
-                    </Link>
-                  </div>
-                )}
+                  {canEdit && !hasFinancialData && (
+                    <p className="text-sm text-muted-foreground italic">Adicione uma meta, categorias ou uma forma de receber (Pix, etc.) pra esta seção aparecer publicamente.</p>
+                  )}
 
-                {budgetCategories && budgetCategories.length > 0 && (
-                  <BudgetBreakdown
-                    categories={budgetCategories}
-                    currency={project.currency}
-                    heading="Ou apoie uma área específica"
-                    contributeBaseHref={canEdit ? undefined : `/${username}/parceria?highlight_id=${project.id}&choice=financial_once`}
-                    contributeLabel="Contribuir"
-                    missingLabel={(amount) => `Faltam ${amount}`}
-                  />
-                )}
-              </>
-            </FinancialEditSection>
+                  {budgetCategories && budgetCategories.length > 0 && (
+                    <BudgetBreakdown
+                      categories={budgetCategories}
+                      currency={project.currency}
+                      heading="Ou apoie uma área específica"
+                      contributeBaseHref={canEdit ? undefined : `/${username}/parceria?highlight_id=${project.id}&choice=financial_once`}
+                      contributeLabel="Contribuir"
+                      missingLabel={(amount) => `Faltam ${amount}`}
+                      linkedPrayerPoints={prayerPointsByCategory}
+                      profileId={profile.id}
+                      highlightId={project.id}
+                      missionaryName={profile.display_name}
+                    />
+                  )}
+                </>
+              </FinancialEditSection>
 
-            {pixMethods.length > 0 && (
-              <div className="rounded-xl border border-support/40 bg-support/10 p-3 space-y-3">
-                <p className="text-xs font-medium text-support text-center flex items-center justify-center gap-1.5">
-                  <QrCode className="h-3.5 w-3.5" /> {pixMethods.length > 1 ? 'Chaves PIX para transferência direta' : 'Chave PIX para transferência direta'}
-                </p>
-                {pixMethods.map((pix) => (
-                  <div key={pix.id} className={cn('space-y-1.5', pixMethods.length > 1 && 'pt-2 border-t border-support/20 first:pt-0 first:border-0')}>
-                    {pix.label && (
-                      <p className="text-xs text-center text-muted-foreground">
-                        Em nome de <span className="font-medium text-foreground">{pix.label}</span>
-                      </p>
-                    )}
-                    <CopyableValue value={pix.value} emphasized />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+              {pixMethods.length > 0 && (
+                <div className="rounded-xl border border-support/40 bg-support/10 p-3 space-y-3">
+                  <p className="text-xs font-medium text-support text-center flex items-center justify-center gap-1.5">
+                    <QrCode className="h-3.5 w-3.5" /> {pixMethods.length > 1 ? 'Chaves PIX para transferência direta' : 'Chave PIX para transferência direta'}
+                  </p>
+                  {pixMethods.map((pix) => (
+                    <div key={pix.id} className={cn('space-y-1.5', pixMethods.length > 1 && 'pt-2 border-t border-support/20 first:pt-0 first:border-0')}>
+                      {pix.label && (
+                        <p className="text-xs text-center text-muted-foreground">
+                          Em nome de <span className="font-medium text-foreground">{pix.label}</span>
+                        </p>
+                      )}
+                      <CopyableValue value={pix.value} emphasized />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {project.status === 'active' && (
+                <FundingProjectionCard
+                  raisedAmount={project.current_amount}
+                  goalAmount={project.goal_amount}
+                  currency={project.currency}
+                  createdAt={project.created_at}
+                  fundingDeadline={project.funding_deadline}
+                  tripStartDate={project.trip_start_date}
+                  contributeHref={canEdit ? undefined : `/${username}/parceria?highlight_id=${project.id}&choice=financial_once`}
+                />
+              )}
+            </div>
+          )
+
+          const prayerBlock = hasPrayerContent && (
+            <div className="rounded-2xl border bg-card p-5 space-y-4">
+              <PrayerPointsBreakdown
+                profileId={profile.id}
+                highlightId={project.id}
+                missionaryName={profile.display_name}
+                points={standalonePrayerPoints}
+                canPray={!canEdit}
+              />
+              {canEdit && (
+                <p className="text-xs text-muted-foreground italic">Pontos de oração são editados no formulário do projeto, no painel.</p>
+              )}
+            </div>
+          )
+
+          if (hasFinancial && hasPrayerContent) {
+            return (
+              <SupportSectionTabs
+                financialLabel="💰 Apoio financeiro"
+                prayerLabel="🙏 Apoio de oração"
+                financialContent={financialBlock}
+                prayerContent={prayerBlock}
+              />
+            )
+          }
+          return <>{financialBlock}{prayerBlock}</>
+        })()}
 
         {hasFinancial && !canEdit && <FloatingSupportCta targetId="financial-card" />}
-
-        {hasFinancial && project.status === 'active' && (
-          <FundingProjectionCard
-            raisedAmount={project.current_amount}
-            goalAmount={project.goal_amount}
-            currency={project.currency}
-            createdAt={project.created_at}
-            fundingDeadline={project.funding_deadline}
-            tripStartDate={project.trip_start_date}
-            contributeHref={canEdit ? undefined : `/${username}/parceria?highlight_id=${project.id}&choice=financial_once`}
-          />
-        )}
 
         {/* Outras formas de apoio */}
         {activeSupportTypes.filter(t => t.key !== 'financial').length > 0 && (

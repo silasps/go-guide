@@ -4,13 +4,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, HandHeart } from 'lucide-react'
 import type { BudgetCategoryType } from '@/types/database'
 import { toMasked, fromMasked } from '@/lib/currency-mask'
 import { BUDGET_CATEGORY_LABELS } from '@/lib/highlights/budget-category-labels'
 import { useState } from 'react'
 
-export interface BudgetCategoryDraft { category_type: BudgetCategoryType; custom_label: string; description: string; target_amount: string }
+export interface BudgetCategoryDraft { category_type: BudgetCategoryType; custom_label: string; description: string; target_amount: string; prayerPoint?: string }
 
 interface Props {
   currency: string
@@ -23,9 +23,14 @@ interface Props {
 export function BudgetCategoriesEditor({ currency, mode, onModeChange, categories, onChange }: Props) {
   const [newType, setNewType] = useState<BudgetCategoryType>('airfare')
   const [newCustomLabel, setNewCustomLabel] = useState('')
+  // Índices com o campo de ponto de oração já expandido — só controla
+  // visibilidade do textarea, o dado de verdade fica em b.prayerPoint. Se
+  // uma linha for removida, o índice pode "vazar" pra outra (cosmético,
+  // sem risco de dado errado, já que o valor em si segue por linha).
+  const [expandedPrayer, setExpandedPrayer] = useState<Set<number>>(new Set())
 
   function addCategory() {
-    onChange([...categories, { category_type: newType, custom_label: newCustomLabel, description: '', target_amount: '' }])
+    onChange([...categories, { category_type: newType, custom_label: newCustomLabel, description: '', target_amount: '', prayerPoint: '' }])
     setNewCustomLabel('')
   }
   function removeCategory(idx: number) {
@@ -90,6 +95,23 @@ export function BudgetCategoriesEditor({ currency, mode, onModeChange, categorie
                 className="min-h-8 text-xs py-1.5"
                 rows={2}
               />
+              {expandedPrayer.has(i) || b.prayerPoint ? (
+                <Textarea
+                  value={b.prayerPoint ?? ''}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updateCategory(i, { prayerPoint: e.target.value })}
+                  placeholder="Ponto de oração relacionado (o que orar por essa necessidade)"
+                  className="min-h-8 text-xs py-1.5 border-support/40"
+                  rows={2}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setExpandedPrayer((prev) => new Set(prev).add(i))}
+                  className="flex items-center gap-1 text-xs text-support hover:underline"
+                >
+                  <HandHeart className="h-3 w-3" /> Adicionar um ponto de oração relacionado
+                </button>
+              )}
             </div>
           ))}
           <div className="flex gap-2 pt-1">
