@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -25,6 +26,7 @@ interface Props {
  *  escopado a um projeto/ponto — sem a opção de oração privada/cifrada do
  *  formulário genérico, pra manter o modal leve. */
 export function PrayForPointModal({ profileId, highlightId, prayerPointId, missionaryName, triggerLabel, triggerClassName }: Props) {
+  const t = useTranslations('PrayerPoints')
   const [open, setOpen] = useState(false)
   const [content, setContent] = useState('')
   const [saving, setSaving] = useState(false)
@@ -39,7 +41,7 @@ export function PrayForPointModal({ profileId, highlightId, prayerPointId, missi
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-      toast.error('Faça login para enviar uma oração.')
+      toast.error(t('loginRequired'))
       setSaving(false)
       return
     }
@@ -54,7 +56,7 @@ export function PrayForPointModal({ profileId, highlightId, prayerPointId, missi
     })
 
     setSaving(false)
-    if (error) { toast.error('Erro ao enviar. Tente novamente.'); return }
+    if (error) { toast.error(t('error')); return }
     setDone(true)
   }
 
@@ -73,27 +75,27 @@ export function PrayForPointModal({ profileId, highlightId, prayerPointId, missi
         <HandHeart className="h-3.5 w-3.5" /> {triggerLabel}
       </button>
       <DialogContent className="max-w-sm">
-        <DialogTitle>{done ? 'Oração enviada!' : 'Orar por este projeto'}</DialogTitle>
-        {!done && <DialogDescription>Escreva uma oração de apoio — {missionaryName} vai receber.</DialogDescription>}
+        <DialogTitle>{done ? t('dialogTitleDone') : t('dialogTitle')}</DialogTitle>
+        {!done && <DialogDescription>{t('dialogDescription', { name: missionaryName })}</DialogDescription>}
         {done ? (
           <div className="py-6 text-center space-y-3">
             <CheckCircle className="h-10 w-10 text-green-500 mx-auto" />
-            <p className="text-sm text-muted-foreground">Obrigado por orar. {missionaryName} vai ver sua mensagem.</p>
-            <Button type="button" variant="outline" className="w-full" onClick={() => handleOpenChange(false)}>Fechar</Button>
+            <p className="text-sm text-muted-foreground">{t('thanks', { name: missionaryName })}</p>
+            <Button type="button" variant="outline" className="w-full" onClick={() => handleOpenChange(false)}>{t('close')}</Button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-3">
             <Textarea
               value={content}
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setContent(e.target.value)}
-              placeholder="Escreva uma oração de apoio e incentivo..."
+              placeholder={t('placeholder')}
               rows={4}
               required
               autoFocus
             />
             <Button type="submit" className="w-full" disabled={saving}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Enviar oração
+              {t('submit')}
             </Button>
           </form>
         )}

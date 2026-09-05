@@ -191,11 +191,19 @@ export async function POST(req: NextRequest) {
           title: resolveBudgetCategoryLabel({ category_type: b.category_type, custom_label: b.custom_label }),
           description: b.prayerPoint,
         }))
+      // Postgrest exige que todos os objetos de um insert em lote tenham
+      // exatamente as mesmas chaves (PGRST102 "All object keys must match")
+      // — por isso os dois grupos abaixo preenchem os mesmos campos, mesmo
+      // quando o valor é só o default (null/false).
       const allPrayerPoints = [
         ...standalonePrayerPoints.map((p: { title: string; description: string | null; is_completed: boolean }) => ({
-          title: p.title, description: p.description, is_completed: p.is_completed, completed_at: p.is_completed ? new Date().toISOString() : null,
+          budget_category_id: null as string | null,
+          title: p.title,
+          description: p.description,
+          is_completed: p.is_completed,
+          completed_at: p.is_completed ? new Date().toISOString() : null,
         })),
-        ...linkedPrayerPoints,
+        ...linkedPrayerPoints.map((p) => ({ ...p, is_completed: false, completed_at: null as string | null })),
       ]
       if (allPrayerPoints.length > 0) {
         await dbPost('project_prayer_points', allPrayerPoints.map((p, i) => ({ ...p, highlight_id: hId, order_index: i })))

@@ -1069,6 +1069,21 @@
     "sectionDatesStatus": "fechas y estado",
     "sectionGallery": "galería de fotos"
   },
+  "PrayerPoints": {
+    "prayForProject": "Orar por este proyecto",
+    "prayForThis": "Orar por esto",
+    "dialogTitle": "Orar por este proyecto",
+    "dialogTitleDone": "¡Oración enviada!",
+    "dialogDescription": "Escribe una oración de apoyo — {name} la recibirá.",
+    "placeholder": "Escribe una oración de apoyo y aliento...",
+    "submit": "Enviar oración",
+    "thanks": "Gracias por orar. {name} verá tu mensaje.",
+    "close": "Cerrar",
+    "loginRequired": "Inicia sesión para enviar una oración.",
+    "error": "Error al enviar. Inténtalo de nuevo.",
+    "countActive": "{count, plural, =0 {Sé la primera persona en orar por esto} one {# persona está orando por esto} other {# personas están orando por esto}}",
+    "countCompleted": "{count, plural, =0 {Nadie ha orado por este desafío todavía} one {# persona oró por este desafío} other {# personas oraron por este desafío}}"
+  },
   "PrayerRequestForm": {
     "becomePartnerPrompt": "¿Te gustaría orar regularmente por {name}, no solo esta vez?",
     "becomePartnerCta": "Quiero ser compañero de oración"

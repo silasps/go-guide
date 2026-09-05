@@ -1069,6 +1069,21 @@
     "sectionDatesStatus": "dates and status",
     "sectionGallery": "photo gallery"
   },
+  "PrayerPoints": {
+    "prayForProject": "Pray for this project",
+    "prayForThis": "Pray for this",
+    "dialogTitle": "Pray for this project",
+    "dialogTitleDone": "Prayer sent!",
+    "dialogDescription": "Write a prayer of support — {name} will receive it.",
+    "placeholder": "Write a prayer of support and encouragement...",
+    "submit": "Send prayer",
+    "thanks": "Thank you for praying. {name} will see your message.",
+    "close": "Close",
+    "loginRequired": "Log in to send a prayer.",
+    "error": "Error sending. Please try again.",
+    "countActive": "{count, plural, =0 {Be the first person to pray for this} one {# person is praying for this} other {# people are praying for this}}",
+    "countCompleted": "{count, plural, =0 {No one has prayed for this challenge yet} one {# person prayed for this challenge} other {# people prayed for this challenge}}"
+  },
   "PrayerRequestForm": {
     "becomePartnerPrompt": "Would you like to pray regularly for {name}, not just this once?",
     "becomePartnerCta": "I want to be a prayer partner"

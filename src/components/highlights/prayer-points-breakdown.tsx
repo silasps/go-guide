@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server'
 import { ProjectPrayerPoint } from '@/types/database'
 import { PrayForPointModal } from '@/components/prayer/pray-for-point-modal'
 import { buttonVariants } from '@/components/ui/button'
@@ -13,16 +14,9 @@ interface Props {
   canPray?: boolean
 }
 
-function prayerCountLabel(point: ProjectPrayerPoint): string {
-  const count = point.prayer_count
-  if (count === 0) return point.is_completed ? 'Ninguém orou por este desafio ainda' : 'Seja a primeira pessoa a orar por isso'
-  const people = count === 1 ? 'pessoa' : 'pessoas'
-  return point.is_completed
-    ? `${count} ${people} oraram por esse desafio`
-    : `${count} ${people} ${count === 1 ? 'está' : 'estão'} orando por isso`
-}
+export async function PrayerPointsBreakdown({ profileId, highlightId, missionaryName, points, canPray = true }: Props) {
+  const t = await getTranslations('PrayerPoints')
 
-export function PrayerPointsBreakdown({ profileId, highlightId, missionaryName, points, canPray = true }: Props) {
   return (
     <div className="space-y-3">
       {canPray && (
@@ -30,7 +24,7 @@ export function PrayerPointsBreakdown({ profileId, highlightId, missionaryName, 
           profileId={profileId}
           highlightId={highlightId}
           missionaryName={missionaryName}
-          triggerLabel="Orar por este projeto"
+          triggerLabel={t('prayForProject')}
           triggerClassName={cn(buttonVariants({ variant: 'support', size: 'lg' }), 'w-full text-base gap-2')}
         />
       )}
@@ -46,7 +40,7 @@ export function PrayerPointsBreakdown({ profileId, highlightId, missionaryName, 
               {p.description && <p className="text-xs text-muted-foreground">{p.description}</p>}
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-medium text-support flex items-center gap-1">
-                  <HandHeart className="h-3 w-3" /> {prayerCountLabel(p)}
+                  <HandHeart className="h-3 w-3" /> {t(p.is_completed ? 'countCompleted' : 'countActive', { count: p.prayer_count })}
                 </p>
                 {canPray && (
                   <PrayForPointModal
@@ -54,7 +48,7 @@ export function PrayerPointsBreakdown({ profileId, highlightId, missionaryName, 
                     highlightId={highlightId}
                     prayerPointId={p.id}
                     missionaryName={missionaryName}
-                    triggerLabel="Orar por isso"
+                    triggerLabel={t('prayForThis')}
                     triggerClassName={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'h-7 text-xs px-2.5 shrink-0 border-support text-support hover:bg-support/10 hover:text-support gap-1')}
                   />
                 )}
