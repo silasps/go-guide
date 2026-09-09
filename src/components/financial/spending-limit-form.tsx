@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Trash2 } from 'lucide-react'
 
 interface Props {
   open: boolean
@@ -21,6 +21,7 @@ interface Props {
   currencies: string[]
   usedCategoryIds: string[]
   trigger?: React.ReactNode
+  initialCategoryId?: string
 }
 
 function toMasked(raw: string) {
@@ -34,13 +35,15 @@ function fromMasked(masked: string) {
 
 // Um limite por categoria (UNIQUE no banco, ver migration 082) — o select
 // já esconde categorias que já têm limite, exceto a própria ao editar.
-export function SpendingLimitForm({ open, onOpenChange, limit, profileId, categories, currencies, usedCategoryIds, trigger }: Props) {
+export function SpendingLimitForm({ open, onOpenChange, limit, profileId, categories, currencies, usedCategoryIds, trigger, initialCategoryId }: Props) {
   const router = useRouter()
-  const { isPending: saving, run } = usePendingAction()
+  const { pendingValue, run } = usePendingAction<'save' | 'delete'>()
+  const saving = pendingValue === 'save'
+  const deleting = pendingValue === 'delete'
   const topCategories = categories.filter((c) => !c.parent_id)
   const availableCategories = topCategories.filter((c) => c.id === limit?.category_id || !usedCategoryIds.includes(c.id))
 
-  const [categoryId, setCategoryId] = useState(limit?.category_id ?? availableCategories[0]?.id ?? '')
+  const [categoryId, setCategoryId] = useState(limit?.category_id ?? initialCategoryId ?? availableCategories[0]?.id ?? '')
   const [amount, setAmount] = useState(limit ? toMasked(String(Math.round(limit.limit_amount * 100))) : '')
   const [currency, setCurrency] = useState(limit?.currency ?? currencies[0] ?? 'BRL')
 
@@ -50,7 +53,7 @@ export function SpendingLimitForm({ open, onOpenChange, limit, profileId, catego
     if (!parsedAmount || parsedAmount <= 0) { toast.error('Informe um valor válido.'); return }
     if (!categoryId) { toast.error('Selecione uma categoria.'); return }
 
-    run(true, async () => {
+    run('save', async () => {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
 
@@ -62,6 +65,19 @@ export function SpendingLimitForm({ open, onOpenChange, limit, profileId, catego
 
       if (error) { toast.error(error.code === '23505' ? 'Essa categoria já tem um limite.' : 'Erro ao salvar limite.'); return }
       toast.success(limit ? 'Limite atualizado.' : 'Limite criado.')
+      onOpenChange(false)
+      router.refresh()
+    })
+  }
+
+  function handleDelete() {
+    if (!limit) return
+    if (!confirm('Excluir este limite de gastos?')) return
+    run('delete', async () => {
+      const supabase = createClient()
+      const { error } = await supabase.from('spending_limits').delete().eq('id', limit.id)
+      if (error) { toast.error('Erro ao excluir limite.'); return }
+      toast.success('Limite excluído.')
       onOpenChange(false)
       router.refresh()
     })
@@ -100,8 +116,13 @@ export function SpendingLimitForm({ open, onOpenChange, limit, profileId, catego
           <p className="text-xs text-muted-foreground -mt-2">Compara com o total de despesas da categoria no mês corrente.</p>
 
           <div className="flex gap-2 pt-1">
+            {limit && (
+              <Button type="button" variant="outline" size="icon" onClick={handleDelete} disabled={saving || deleting} title="Excluir limite">
+                {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              </Button>
+            )}
             <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" className="flex-1" disabled={saving || (!limit && availableCategories.length === 0)}>
+            <Button type="submit" className="flex-1" disabled={saving || deleting || (!limit && availableCategories.length === 0)}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {limit ? 'Salvar' : 'Criar'}
             </Button>

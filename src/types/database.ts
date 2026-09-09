@@ -671,6 +671,22 @@ export interface SpendingLimit {
   updated_at: string
 }
 
+export type GeneralSpendingLimitMode = 'manual' | 'sum_categories'
+
+export interface GeneralSpendingLimit {
+  id: string
+  profile_id: string
+  created_by_user_id: string | null
+  enabled: boolean
+  mode: GeneralSpendingLimitMode
+  manual_amount: number | null
+  currency: string
+  notify_enabled: boolean
+  notify_threshold_pct: number
+  created_at: string
+  updated_at: string
+}
+
 export interface FinancialGoal {
   id: string
   profile_id: string
