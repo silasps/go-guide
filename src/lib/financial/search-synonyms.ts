@@ -8,26 +8,69 @@
 // Cada grupo é um conjunto de palavras que se relacionam entre si —
 // buscar QUALQUER uma encontra as outras do mesmo grupo (bidirecional:
 // buscar "netflix" também acha "filme"/"streaming", não só o contrário).
-// Cobertura deliberadamente enxuta (categorias comuns de gasto pessoal),
-// não é uma ampliação tão rica quanto a IA ancorada nos dados reais do
-// usuário — é o "menos pior" quando essa não está disponível.
+// Deliberadamente "pré-programado" pra além do que o usuário já lançou —
+// a IA ancorada nos dados reais (ver `expand-search-terms.ts`) só
+// consegue relacionar o que já existe nos lançamentos; esse dicionário
+// aqui precisa cobrir também categoria que a pessoa ainda não lançou
+// nenhuma vez (ex.: procurar "música" antes de existir qualquer
+// lançamento de Spotify) — por isso a cobertura é mais ampla que só "as
+// categorias mais comuns", tentando antecipar marcas/serviços conhecidos
+// no Brasil pra cada assunto do dia a dia, não só o assunto em si.
+// "streaming" aparece em mais de um grupo de propósito — a palavra sozinha
+// é ambígua (vídeo ou música), então buscar por ela ativa os dois.
 const SYNONYM_GROUPS: string[][] = [
-  ['filme', 'streaming', 'netflix', 'hbo max', 'disney+', 'amazon prime', 'paramount+', 'globoplay', 'cinema', 'ingresso'],
+  // Streaming de vídeo / filme
+  ['filme', 'streaming', 'netflix', 'hbo max', 'disney+', 'amazon prime', 'paramount+', 'globoplay', 'star+', 'apple tv', 'crunchyroll', 'cinema', 'ingresso', 'serie'],
+  // Streaming de música / áudio
+  ['musica', 'audio', 'streaming', 'spotify', 'deezer', 'apple music', 'youtube music', 'amazon music', 'tidal', 'soundcloud', 'podcast'],
+  // Jogos/games
+  ['jogo', 'game', 'steam', 'playstation', 'psn', 'xbox', 'game pass', 'nintendo', 'switch', 'epic games'],
+  // Livros/leitura
+  ['livro', 'leitura', 'kindle', 'ebook', 'audiobook', 'audible', 'livraria', 'saraiva', 'estante virtual'],
+  // Software/assinaturas digitais/nuvem
+  ['assinatura', 'software', 'nuvem', 'icloud', 'google one', 'google drive', 'dropbox', 'office 365', 'microsoft 365', 'canva', 'adobe', 'chatgpt', 'notion'],
+  // Remédio/farmácia
   ['remedio', 'farmacia', 'droga raia', 'drogasil', 'pacheco', 'drogaria', 'medicamento'],
+  // Roupa/vestuário
   ['roupa', 'vestuario', 'camiseta', 'calca', 'blusa', 'sapato', 'vestido', 'jaqueta', 'renner', 'c&a', 'zara', 'riachuelo'],
+  // Mercado/alimentação (compras de casa)
   ['mercado', 'supermercado', 'alimentacao', 'compras', 'carrefour', 'extra', 'pao de acucar', 'assai', 'atacadao'],
+  // Delivery de comida
+  ['delivery', 'ifood', 'rappi', 'uber eats', 'entrega', 'lanche'],
+  // Restaurante/bar
+  ['restaurante', 'bar', 'lanchonete', 'padaria', 'cafeteria', 'pizzaria', 'hamburgueria', 'bebida', 'cerveja'],
+  // Transporte urbano
   ['transporte', 'uber', '99', 'taxi', 'combustivel', 'gasolina', 'estacionamento'],
-  ['carro', 'veiculo', 'oficina', 'mecanico', 'pneu', 'ipva', 'seguro auto'],
+  // Carro/veículo
+  ['carro', 'veiculo', 'oficina', 'mecanico', 'pneu', 'ipva', 'seguro auto', 'lava rapido'],
+  // Viagem
   ['viagem', 'passagem', 'hotel', 'pousada', 'airbnb', 'latam', 'gol', 'azul'],
+  // Academia/exercício
   ['academia', 'gympass', 'totalpass', 'smartfit', 'personal'],
+  // Pet
   ['pet', 'petshop', 'veterinario', 'racao', 'cobasi', 'petz'],
+  // Educação
   ['educacao', 'escola', 'faculdade', 'curso', 'mensalidade', 'material escolar'],
+  // Filhos/criança
+  ['filho', 'crianca', 'fralda', 'escola infantil', 'creche', 'brinquedo', 'pediatra'],
+  // Internet/telefone
   ['internet', 'telefone', 'celular', 'vivo', 'claro', 'tim', 'oi', 'wifi'],
+  // Lazer geral
   ['lazer', 'diversao', 'passeio', 'parque'],
+  // Saúde
   ['saude', 'plano de saude', 'unimed', 'hapvida', 'consulta', 'exame', 'hospital'],
+  // Casa/moradia
   ['casa', 'moradia', 'aluguel', 'condominio', 'iptu', 'reforma'],
+  // Beleza
   ['beleza', 'salao', 'cabelo', 'manicure', 'estetica', 'cosmetico'],
+  // Presente
   ['presente', 'aniversario', 'natal'],
+  // Investimentos
+  ['investimento', 'poupanca', 'cdb', 'tesouro direto', 'acoes', 'corretora', 'bolsa'],
+  // Impostos/taxas
+  ['imposto', 'ir', 'imposto de renda', 'das', 'taxa', 'tarifa', 'iof'],
+  // Seguros
+  ['seguro', 'seguro de vida', 'seguro residencial', 'porto seguro'],
 ]
 
 function normalize(s: string): string {
@@ -64,10 +107,16 @@ function candidateSingulars(word: string): string[] {
 const NORMALIZED_GROUPS: string[][] = SYNONYM_GROUPS.map((group) => group.map((term) => normalize(term)))
 
 // Tamanho mínimo pra um candidato "bater por prefixo" numa entrada do
-// dicionário — busca incremental (usuário ainda digitando: "film" deve
-// já sugerir o grupo de "filme") sem deixar qualquer coisinha de 1-2
-// letras acender meio dicionário à toa.
-const MIN_PREFIX_LENGTH = 3
+// dicionário — busca incremental de verdade: usuário digitando "fi" (só
+// duas letras, ainda decidindo se vai escrever "filme") já deve ver o
+// grupo relacionado, mesmo que descubra depois que não era isso que
+// queria (pedido explícito do usuário — prefere ver relacionado demais
+// enquanto digita do que nada). Mesmo mínimo que já libera QUALQUER
+// tentativa de busca ampliada (`MIN_QUERY_LENGTH`, em
+// `use-transaction-search.ts`) — não faz sentido um limiar mais alto só
+// aqui dentro. Não é 1 letra: a essa altura ainda não há informação
+// suficiente pra relacionar a quase nada, ficaria só ruído.
+const MIN_PREFIX_LENGTH = 2
 
 function candidateMatchesEntry(candidates: string[], entry: string): boolean {
   return candidates.some((c) => c === entry || (c.length >= MIN_PREFIX_LENGTH && entry.startsWith(c)))
@@ -78,7 +127,7 @@ function candidateMatchesEntry(candidates: string[], entry: string): boolean {
  *  termo não bate em nenhum grupo conhecido (dicionário deliberadamente
  *  não é exaustivo). Tolerante a variações de plural (ver
  *  `candidateSingulars`) e a busca incremental — um prefixo de pelo menos
- *  3 letras já ativa o grupo (`candidateMatchesEntry`), pra funcionar
+ *  2 letras já ativa o grupo (`candidateMatchesEntry`), pra funcionar
  *  enquanto a pessoa ainda está digitando a palavra, não só quando ela
  *  termina de escrevê-la. */
 export function localRelatedTerms(query: string): string[] {

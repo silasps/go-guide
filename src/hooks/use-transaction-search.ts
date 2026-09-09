@@ -130,24 +130,31 @@ export function useTransactionSearch(transactions: TransactionWithCategory[], qu
     return () => clearTimeout(timer)
   }, [query, candidates])
 
+  const expanding = expandingQuery === query
+  const aiFailed = failedQuery === query && query.trim().length >= MIN_QUERY_LENGTH
+  const aiAnswered = expansion?.query === query
+
+  // Instantâneo, sem esperar debounce nem resposta de rede nenhuma — o
+  // dicionário local é síncrono, então não faz sentido só usá-lo depois
+  // que a IA falhar (é isso que uma versão anterior fazia, e o resultado
+  // parecia "lento": a pessoa via nada até a IA desistir). Recalcula a
+  // cada letra digitada, exatamente como o filtro direto — o usuário
+  // pediu que "toda letra" já pesquise algo relacionado, não só quando a
+  // palavra termina ou quando a IA (que leva um instante) responde.
+  const localFallbackTerms = useMemo(() => localRelatedTerms(query), [query])
+
   const aiExtraTerms = useMemo(
     () => (expansion?.query === query ? expansion.terms : []),
     [expansion, query]
   )
-  const expanding = expandingQuery === query
-  const expansionFailed = failedQuery === query && query.trim().length >= MIN_QUERY_LENGTH
 
-  // Terceira camada, só quando a IA falhou de verdade (não quando ela
-  // rodou e simplesmente não achou nada) — dicionário local sem rede, pra
-  // não deixar a busca sem nenhuma ajuda extra só porque o provedor de IA
-  // está fora (chave ausente, rede, erro do provedor). Cobertura bem mais
-  // enxuta que a IA ancorada nos dados reais, mas melhor que nada.
-  const localFallbackTerms = useMemo(
-    () => (expansionFailed ? localRelatedTerms(query) : []),
-    [expansionFailed, query]
-  )
-
-  const activeExtraTerms = aiExtraTerms.length > 0 ? aiExtraTerms : localFallbackTerms
+  // Prioridade: a resposta da IA, quando ela já respondeu pra essa query
+  // EXATA (mesmo que tenha sido "nada relacionado" — julgamento baseado
+  // nos dados reais da pessoa vale mais que o dicionário genérico). Antes
+  // disso responder (debounce ainda rolando, ou request em voo) ou se
+  // falhar, usa o dicionário local — que já estava certo desde a
+  // primeira letra, sem esperar nada.
+  const activeExtraTerms = aiAnswered ? aiExtraTerms : localFallbackTerms
 
   const filtered = useMemo(
     () => (activeExtraTerms.length > 0 ? filterTransactions(transactions, query, activeExtraTerms) : baseFiltered),
@@ -157,10 +164,11 @@ export function useTransactionSearch(transactions: TransactionWithCategory[], qu
   // Só marca como "ampliado" quando de fato trouxe lançamento extra além
   // do que o filtro direto já tinha achado — não só quando existem termos
   // (podem não ter batido em nada novo). `aiAssisted` e `localAssisted`
-  // são mutuamente exclusivos (dependem de qual das duas fontes gerou
-  // `activeExtraTerms`).
-  const aiAssisted = aiExtraTerms.length > 0 && filtered.length > baseFiltered.length
-  const localAssisted = aiExtraTerms.length === 0 && localFallbackTerms.length > 0 && filtered.length > baseFiltered.length
+  // são mutuamente exclusivos (dependem de qual das duas fontes está
+  // ativa agora — pode trocar de uma pra outra enquanto a IA ainda não
+  // respondeu e depois responde).
+  const aiAssisted = aiAnswered && filtered.length > baseFiltered.length
+  const localAssisted = !aiAnswered && localFallbackTerms.length > 0 && filtered.length > baseFiltered.length
 
   return {
     filtered,
@@ -169,12 +177,12 @@ export function useTransactionSearch(transactions: TransactionWithCategory[], qu
     // A IA falhou de verdade E o dicionário local também não ajudou — só
     // nesse caso vale mostrar "não conseguimos ampliar" (se o dicionário
     // local salvou a busca, isso é bom o bastante pra não soar como erro).
-    expansionFailed: expansionFailed && !localAssisted,
+    expansionFailed: aiFailed && !localAssisted,
     localAssisted,
     // A IA completou pra essa query exata (sucesso, não falhou), só que sem
     // acrescentar nada além do filtro direto — quarto estado, distinto de
     // "nunca tentou", "falhou" e "resolvido pelo dicionário local".
-    expansionEmpty: expansion?.query === query && !expansionFailed && !aiAssisted,
+    expansionEmpty: aiAnswered && !aiAssisted,
     // Termos de fato usados pra ampliar (de qualquer uma das duas fontes)
     // — exposto pra diagnóstico visível na tela sem precisar abrir o
     // DevTools.
