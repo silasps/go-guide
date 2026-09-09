@@ -123,5 +123,8 @@ export function useTransactionSearch(transactions: TransactionWithCategory[], qu
     // acrescentar nada além do filtro direto — terceiro estado, distinto de
     // "nunca tentou" e de "falhou".
     expansionEmpty: expansion?.query === query && !expansionFailed && !aiAssisted,
+    // Termos de fato devolvidos pra query atual — exposto pra diagnóstico
+    // visível na tela (ver `expansionEmpty`) sem precisar abrir o DevTools.
+    expansionTerms: activeExtraTerms,
   }
 }

@@ -22,7 +22,7 @@ interface Props {
 // bate, tenta de novo com sinônimos via IA (ver `useTransactionSearch`).
 export function TransactionSearchPanel({ transactions, accounts, categories, partners, highlights }: Props) {
   const [search, setSearch] = useState('')
-  const { filtered, expanding, aiAssisted, expansionFailed, expansionEmpty } = useTransactionSearch(transactions, search)
+  const { filtered, expanding, aiAssisted, expansionFailed, expansionEmpty, expansionTerms } = useTransactionSearch(transactions, search)
   const trimmed = search.trim()
 
   return (
@@ -49,7 +49,10 @@ export function TransactionSearchPanel({ transactions, accounts, categories, par
         </p>
       )}
       {expansionEmpty && filtered.length === 0 && (
-        <p className="text-xs text-muted-foreground">Tentamos ampliar com termos relacionados a &quot;{trimmed}&quot;, mas não achamos nada — pode não haver nenhum lançamento sobre isso ainda.</p>
+        <p className="text-xs text-muted-foreground">
+          Tentamos ampliar com termos relacionados a &quot;{trimmed}&quot;, mas não achamos nada — pode não haver nenhum lançamento sobre isso ainda.
+          {expansionTerms.length > 0 && <span className="italic"> (termos tentados: {expansionTerms.join(', ')})</span>}
+        </p>
       )}
 
       <TransactionTable

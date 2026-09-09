@@ -48,7 +48,7 @@ export function MonthTransactionsPanel({ transactions, month, monthLabel, accoun
     })
   }, [transactions, month, tab])
 
-  const { filtered, expanding, aiAssisted, expansionFailed, expansionEmpty } = useTransactionSearch(monthAndTabFiltered, search)
+  const { filtered, expanding, aiAssisted, expansionFailed, expansionEmpty, expansionTerms } = useTransactionSearch(monthAndTabFiltered, search)
   const trimmedSearch = search.trim()
 
   return (
@@ -94,7 +94,10 @@ export function MonthTransactionsPanel({ transactions, month, monthLabel, accoun
         </p>
       )}
       {expansionEmpty && filtered.length === 0 && (
-        <p className="text-xs text-muted-foreground">Tentamos ampliar com termos relacionados a &quot;{trimmedSearch}&quot;, mas não achamos nada — pode não haver nenhum lançamento sobre isso ainda.</p>
+        <p className="text-xs text-muted-foreground">
+          Tentamos ampliar com termos relacionados a &quot;{trimmedSearch}&quot;, mas não achamos nada — pode não haver nenhum lançamento sobre isso ainda.
+          {expansionTerms.length > 0 && <span className="italic"> (termos tentados: {expansionTerms.join(', ')})</span>}
+        </p>
       )}
 
       <TransactionTable
