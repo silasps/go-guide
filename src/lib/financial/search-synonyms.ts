@@ -38,22 +38,51 @@ function normalize(s: string): string {
     .trim()
 }
 
+// Gera possíveis formas "singulares" de uma palavra, tentando os padrões
+// regulares de plural do português (vogal -> +s, r/s/z -> +es, m -> +ns,
+// l -> +is/+eis). Não escolhe UMA resposta — devolve todas as reduções
+// plausíveis, incluindo a palavra original, e deixa quem chama checar
+// contra o dicionário real qual delas (se alguma) é uma entrada
+// conhecida. Isso evita ter que adivinhar sozinho se "es" no final é
+// "vogal+s que por acaso termina em es" (exame -> exames) ou "consoante
+// r/s/z + es" (celular -> celulares) — ambas as reduções candidatas são
+// geradas, e só uma bate numa entrada real do dicionário, então a
+// ambiguidade se resolve pela própria busca, não por uma regra cega.
+function candidateSingulars(word: string): string[] {
+  const candidates = new Set([word])
+  if (word.length > 3) {
+    if (word.endsWith('ns')) candidates.add(`${word.slice(0, -2)}m`) // viagens -> viagem
+    if (word.endsWith('ais')) candidates.add(`${word.slice(0, -3)}al`) // hospitais -> hospital
+    if (word.endsWith('eis')) candidates.add(`${word.slice(0, -3)}el`) // hoteis -> hotel
+    if (word.endsWith('es') && word.length > 4) candidates.add(word.slice(0, -2)) // celulares -> celular, meses -> mes
+    if (word.endsWith('s')) candidates.add(word.slice(0, -1)) // filmes -> filme, exames -> exame, manicures -> manicure
+  }
+  return Array.from(candidates)
+}
+
+// Grupos pré-normalizados uma vez só no carregamento do módulo.
+const NORMALIZED_GROUPS: string[][] = SYNONYM_GROUPS.map((group) => group.map((term) => normalize(term)))
+
 /** Termos relacionados ao termo buscado, achados no dicionário local — sem
  *  nenhuma chamada de rede, sempre instantâneo. Devolve `[]` quando o
  *  termo não bate em nenhum grupo conhecido (dicionário deliberadamente
- *  não é exaustivo). */
+ *  não é exaustivo). Tolerante a variações de plural (ver
+ *  `candidateSingulars`) — qualquer forma do termo buscado que bata
+ *  exatamente com uma entrada real do dicionário conta como match. */
 export function localRelatedTerms(query: string): string[] {
-  const tokens = normalize(query).split(/\s+/).filter(Boolean)
-  if (tokens.length === 0) return []
+  const rawTokens = normalize(query).split(/\s+/).filter(Boolean)
+  if (rawTokens.length === 0) return []
 
   const related = new Set<string>()
-  for (const token of tokens) {
-    for (const group of SYNONYM_GROUPS) {
-      if (!group.includes(token)) continue
-      for (const term of group) {
-        if (term !== token) related.add(term)
-      }
-    }
+  for (const rawToken of rawTokens) {
+    const candidates = candidateSingulars(rawToken)
+    NORMALIZED_GROUPS.forEach((group, groupIndex) => {
+      const matchIndex = group.findIndex((entry) => candidates.includes(entry))
+      if (matchIndex === -1) return
+      SYNONYM_GROUPS[groupIndex].forEach((term, i) => {
+        if (i !== matchIndex) related.add(term)
+      })
+    })
   }
   return Array.from(related)
 }
