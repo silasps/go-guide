@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { TransactionForm } from './transaction-form'
-import { FinancialAccount, TransactionCategory, Partner } from '@/types/database'
+import { FinancialAccount, TransactionCategory, Partner, Transaction } from '@/types/database'
 import { Plus } from 'lucide-react'
 
 interface Props {
@@ -12,9 +12,11 @@ interface Props {
   partners: Partner[]
   highlights: { id: string; title: string; budgetCategories: { id: string; label: string }[] }[]
   defaultHighlightId?: string
+  // Histórico pra sugestão automática de categoria (ver `TransactionForm`)
+  transactions?: Pick<Transaction, 'description' | 'category_id' | 'date'>[]
 }
 
-export function NewTransactionButton({ accounts, categories, partners, highlights, defaultHighlightId }: Props) {
+export function NewTransactionButton({ accounts, categories, partners, highlights, defaultHighlightId, transactions }: Props) {
   const [open, setOpen] = useState(false)
 
   if (accounts.length === 0) {
@@ -34,6 +36,7 @@ export function NewTransactionButton({ accounts, categories, partners, highlight
         partners={partners}
         highlights={highlights}
         defaultHighlightId={defaultHighlightId}
+        transactions={transactions}
       />
     </>
   )

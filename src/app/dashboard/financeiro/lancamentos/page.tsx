@@ -53,7 +53,8 @@ export default async function LancamentosPage({ searchParams }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <TransactionFilters accounts={accounts ?? []} categories={categories ?? []} />
-        <NewTransactionButton accounts={activeAccounts} categories={categories ?? []} partners={partners ?? []} highlights={highlightsWithBudget} />
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+        <NewTransactionButton accounts={activeAccounts} categories={categories ?? []} partners={partners ?? []} highlights={highlightsWithBudget} transactions={(transactions ?? []) as any} />
       </div>
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <TransactionSearchPanel transactions={(transactions ?? []) as any} accounts={accounts ?? []} categories={categories ?? []} partners={partners ?? []} highlights={highlightsWithBudget} />

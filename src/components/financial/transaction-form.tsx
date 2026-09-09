@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
+import { suggestCategoryId } from '@/lib/financial/suggest-category'
 import { FinancialAccount, TransactionCategory, TransactionType, Partner, Transaction } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,6 +14,11 @@ import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 
 interface HighlightOption { id: string; title: string; budgetCategories: { id: string; label: string }[] }
+
+// Só os 3 campos que `suggestCategoryId` precisa do histórico — deixa
+// aceitar `Transaction[]`/`TransactionWithCategory[]` de qualquer chamador
+// sem precisar remodelar nada na origem.
+interface HistoryTransaction { description: string; category_id: string | null; date: string }
 
 interface Props {
   open: boolean
@@ -25,6 +31,10 @@ interface Props {
   defaultHighlightId?: string
   defaultType?: TransactionType
   trigger?: React.ReactNode
+  // Histórico pra sugestão automática de categoria (ver
+  // `suggestCategoryId`) — opcional, só desliga a sugestão pra quem
+  // ainda não tem esse dado à mão, não quebra nada.
+  transactions?: HistoryTransaction[]
 }
 
 function toMasked(raw: string) {
@@ -44,7 +54,7 @@ function defaultFaturaDate(purchaseDate: string, closingDay: number | null) {
   return `${fd.getFullYear()}-${String(fd.getMonth() + 1).padStart(2, '0')}-01`
 }
 
-export function TransactionForm({ open, onOpenChange, transaction, accounts, categories = [], partners = [], highlights = [], defaultHighlightId, defaultType, trigger }: Props) {
+export function TransactionForm({ open, onOpenChange, transaction, accounts, categories = [], partners = [], highlights = [], defaultHighlightId, defaultType, trigger, transactions = [] }: Props) {
   const router = useRouter()
   const { isPending: saving, run } = usePendingAction()
   const [type, setType] = useState<TransactionType>(transaction?.type ?? defaultType ?? 'income')
@@ -57,8 +67,15 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
   const [budgetCategoryId, setBudgetCategoryId] = useState(transaction?.budget_category_id ?? '')
   const [date, setDate] = useState(transaction?.date ?? new Date().toISOString().slice(0, 10))
   const [isPaid, setIsPaid] = useState(transaction ? transaction.is_paid : date <= new Date().toISOString().slice(0, 10))
+  // `categoryTouched` começa `true` numa edição — nunca sobrescreve a
+  // categoria que a pessoa já tinha escolhido antes. Numa criação nova,
+  // fica `false` até o próprio usuário mexer no seletor; até lá, a
+  // sugestão automática (efeito abaixo) pode seguir atualizando
+  // `categoryId` livremente conforme a descrição muda.
+  const [categoryTouched, setCategoryTouched] = useState(Boolean(transaction))
+  const [categoryAutoFilled, setCategoryAutoFilled] = useState(false)
 
-  const topCategories = categories.filter(c => !c.parent_id)
+  const topCategories = useMemo(() => categories.filter(c => !c.parent_id), [categories])
   const selectedHighlight = highlights.find(h => h.id === highlightId)
   const selectedAccount = accounts.find(a => a.id === accountId)
   const isCreditAccount = selectedAccount?.account_type === 'credit'
@@ -70,6 +87,22 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
     const label = base.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
     return { value, label: label.charAt(0).toUpperCase() + label.slice(1) }
   })
+
+  // Sugestão automática de categoria a partir da descrição (pedido do
+  // usuário) — histórico do próprio usuário primeiro (mais confiável),
+  // dicionário de sinônimos como reforço (ver `suggestCategoryId`). Só
+  // roda em lançamento novo, e só enquanto o usuário não mexer no
+  // seletor de categoria com a própria mão — a sugestão nunca é
+  // obrigatória, é só um palpite que a pessoa pode trocar clicando.
+  useEffect(() => {
+    if (categoryTouched) return
+    const timer = setTimeout(() => {
+      const suggested = suggestCategoryId(description, transactions, topCategories)
+      setCategoryId(suggested ?? '')
+      setCategoryAutoFilled(Boolean(suggested))
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [description, categoryTouched, transactions, topCategories])
 
   function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -157,10 +190,15 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Categoria</Label>
-              <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
+              <select
+                value={categoryId}
+                onChange={(e) => { setCategoryId(e.target.value); setCategoryTouched(true); setCategoryAutoFilled(false) }}
+                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
+              >
                 <option value="">Sem categoria</option>
                 {topCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
+              {categoryAutoFilled && <p className="text-xs text-muted-foreground">Sugerido automaticamente — clique pra trocar.</p>}
             </div>
             <div className="space-y-2">
               <Label>Data</Label>

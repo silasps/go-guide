@@ -69,7 +69,8 @@ export default async function FinanceiroPage() {
       )}
 
       <div className="flex items-center justify-end">
-        <NewTransactionButton accounts={activeAccounts} categories={categories ?? []} partners={partners ?? []} highlights={highlightsWithBudget} />
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+        <NewTransactionButton accounts={activeAccounts} categories={categories ?? []} partners={partners ?? []} highlights={highlightsWithBudget} transactions={(windowTransactions ?? []) as any} />
       </div>
 
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}

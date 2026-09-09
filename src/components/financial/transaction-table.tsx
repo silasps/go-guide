@@ -112,6 +112,7 @@ export function TransactionTable({ transactions, accounts, categories = [], part
           categories={categories}
           partners={partners}
           highlights={highlights}
+          transactions={transactions}
         />
       )}
     </>

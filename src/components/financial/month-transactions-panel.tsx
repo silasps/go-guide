@@ -126,6 +126,7 @@ export function MonthTransactionsPanel({ transactions, month, monthLabel, accoun
           categories={categories}
           partners={partners}
           highlights={highlights}
+          transactions={transactions}
         />
       )}
     </div>
