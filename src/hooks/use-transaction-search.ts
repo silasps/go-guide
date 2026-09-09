@@ -37,6 +37,7 @@ export function useTransactionSearch(transactions: TransactionWithCategory[], qu
   // === query`), sem precisar de um "reset" explícito.
   const [expansion, setExpansion] = useState<{ query: string; terms: string[] } | null>(null)
   const [expandingQuery, setExpandingQuery] = useState<string | null>(null)
+  const [failedQuery, setFailedQuery] = useState<string | null>(null)
   const requestIdRef = useRef(0)
 
   const baseFiltered = useMemo(() => filterTransactions(transactions, query), [transactions, query])
@@ -51,7 +52,10 @@ export function useTransactionSearch(transactions: TransactionWithCategory[], qu
     const cached = expansionCache.get(cacheKey)
     if (cached) {
       Promise.resolve().then(() => {
-        if (requestIdRef.current === thisRequest) setExpansion({ query, terms: cached })
+        if (requestIdRef.current === thisRequest) {
+          setExpansion({ query, terms: cached })
+          setFailedQuery(null)
+        }
       })
       return
     }
@@ -63,14 +67,24 @@ export function useTransactionSearch(transactions: TransactionWithCategory[], qu
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: trimmed }),
       })
-        .then((res) => res.json())
-        .then((data: { terms?: string[] }) => {
+        .then(async (res) => {
+          if (!res.ok) throw new Error(`expand-search-terms respondeu ${res.status}`)
+          return res.json() as Promise<{ terms?: string[] }>
+        })
+        .then((data) => {
           const terms = Array.isArray(data.terms) ? data.terms : []
           expansionCache.set(cacheKey, terms)
-          if (requestIdRef.current === thisRequest) setExpansion({ query, terms })
+          if (requestIdRef.current === thisRequest) {
+            setExpansion({ query, terms })
+            setFailedQuery(null)
+          }
         })
-        .catch(() => {
-          // fail-open: busca continua com o filtro direto, só sem a ampliação
+        .catch((error) => {
+          // fail-open: busca continua com o filtro direto, só sem a ampliação —
+          // mas registra visivelmente (console + `failedQuery`) em vez de
+          // ficar indistinguível de "IA rodou e não achou nada relacionado".
+          console.error('Busca inteligente: falha ao ampliar com IA', error)
+          if (requestIdRef.current === thisRequest) setFailedQuery(query)
         })
         .finally(() => {
           if (requestIdRef.current === thisRequest) setExpandingQuery(null)
@@ -85,18 +99,29 @@ export function useTransactionSearch(transactions: TransactionWithCategory[], qu
     [expansion, query]
   )
   const expanding = expandingQuery === query
+  const expansionFailed = failedQuery === query && query.trim().length >= MIN_QUERY_LENGTH
 
   const filtered = useMemo(
     () => (activeExtraTerms.length > 0 ? filterTransactions(transactions, query, activeExtraTerms) : baseFiltered),
     [transactions, query, activeExtraTerms, baseFiltered]
   )
 
+  // Só marca como "ampliado" quando a IA de fato trouxe lançamento extra
+  // além do que o filtro direto já tinha achado — não só quando existem
+  // termos (podem não ter batido em nada novo).
+  const aiAssisted = activeExtraTerms.length > 0 && filtered.length > baseFiltered.length
+
   return {
     filtered,
     expanding,
-    // Só marca como "ampliado" quando a IA de fato trouxe lançamento extra
-    // além do que o filtro direto já tinha achado — não só quando existem
-    // termos (podem não ter batido em nada novo).
-    aiAssisted: activeExtraTerms.length > 0 && filtered.length > baseFiltered.length,
+    aiAssisted,
+    // Distingue "a IA rodou e não achou nada relacionado" (silêncio normal)
+    // de "a chamada falhou" (rede, 401, erro do provedor) — as duas ficavam
+    // idênticas pro usuário antes disso.
+    expansionFailed,
+    // A IA completou pra essa query exata (sucesso, não falhou), só que sem
+    // acrescentar nada além do filtro direto — terceiro estado, distinto de
+    // "nunca tentou" e de "falhou".
+    expansionEmpty: expansion?.query === query && !expansionFailed && !aiAssisted,
   }
 }

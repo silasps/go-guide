@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useTransactionSearch } from '@/hooks/use-transaction-search'
 import { FinancialAccount, TransactionCategory, TransactionWithCategory, Partner } from '@/types/database'
-import { Search, Loader2, Sparkles, TrendingUp, TrendingDown } from 'lucide-react'
+import { Search, Loader2, Sparkles, TriangleAlert, TrendingUp, TrendingDown } from 'lucide-react'
 
 interface Props {
   transactions: TransactionWithCategory[] // janela ampla, todos os meses/tipos
@@ -48,7 +48,7 @@ export function MonthTransactionsPanel({ transactions, month, monthLabel, accoun
     })
   }, [transactions, month, tab])
 
-  const { filtered, expanding, aiAssisted } = useTransactionSearch(monthAndTabFiltered, search)
+  const { filtered, expanding, aiAssisted, expansionFailed, expansionEmpty } = useTransactionSearch(monthAndTabFiltered, search)
   const trimmedSearch = search.trim()
 
   return (
@@ -87,6 +87,14 @@ export function MonthTransactionsPanel({ transactions, month, monthLabel, accoun
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Sparkles className="h-3 w-3 shrink-0" /> Ampliamos a busca com termos relacionados a &quot;{trimmedSearch}&quot;.
         </p>
+      )}
+      {expansionFailed && (
+        <p className="flex items-center gap-1.5 text-xs text-amber-600">
+          <TriangleAlert className="h-3 w-3 shrink-0" /> Não conseguimos ampliar essa busca agora — mostrando só o resultado direto.
+        </p>
+      )}
+      {expansionEmpty && filtered.length === 0 && (
+        <p className="text-xs text-muted-foreground">Tentamos ampliar com termos relacionados a &quot;{trimmedSearch}&quot;, mas não achamos nada — pode não haver nenhum lançamento sobre isso ainda.</p>
       )}
 
       <TransactionTable

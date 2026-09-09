@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, Loader2, Sparkles } from 'lucide-react'
+import { Search, Loader2, Sparkles, TriangleAlert } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { TransactionTable } from './transaction-table'
 import { useTransactionSearch } from '@/hooks/use-transaction-search'
@@ -22,7 +22,7 @@ interface Props {
 // bate, tenta de novo com sinônimos via IA (ver `useTransactionSearch`).
 export function TransactionSearchPanel({ transactions, accounts, categories, partners, highlights }: Props) {
   const [search, setSearch] = useState('')
-  const { filtered, expanding, aiAssisted } = useTransactionSearch(transactions, search)
+  const { filtered, expanding, aiAssisted, expansionFailed, expansionEmpty } = useTransactionSearch(transactions, search)
   const trimmed = search.trim()
 
   return (
@@ -42,6 +42,14 @@ export function TransactionSearchPanel({ transactions, accounts, categories, par
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Sparkles className="h-3 w-3 shrink-0" /> Ampliamos a busca com termos relacionados a &quot;{trimmed}&quot;.
         </p>
+      )}
+      {expansionFailed && (
+        <p className="flex items-center gap-1.5 text-xs text-amber-600">
+          <TriangleAlert className="h-3 w-3 shrink-0" /> Não conseguimos ampliar essa busca agora — mostrando só o resultado direto.
+        </p>
+      )}
+      {expansionEmpty && filtered.length === 0 && (
+        <p className="text-xs text-muted-foreground">Tentamos ampliar com termos relacionados a &quot;{trimmed}&quot;, mas não achamos nada — pode não haver nenhum lançamento sobre isso ainda.</p>
       )}
 
       <TransactionTable
