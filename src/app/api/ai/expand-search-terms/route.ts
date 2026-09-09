@@ -25,6 +25,19 @@ export async function POST(req: NextRequest) {
     ? body.candidates.filter((c: unknown): c is string => typeof c === 'string')
     : []
 
-  const terms = await expandSearchTerms(query, candidates)
-  return NextResponse.json({ terms })
+  try {
+    const terms = await expandSearchTerms(query, candidates)
+    return NextResponse.json({ terms })
+  } catch (error) {
+    // Diferente do resto do fluxo de IA deste app (que debita crédito
+    // antes de chamar e por isso não tenta reembolso automático em erro
+    // — ver /api/ai/translate), aqui não há nada a reembolsar. O que
+    // importa é o `status` não-2xx: é isso que o hook no browser usa pra
+    // diferenciar "a IA rodou e não achou nada" (200, `terms: []`) de "a
+    // chamada falhou de verdade" (chave ausente, rede, erro do provedor)
+    // — ver comentário de `expandSearchTerms` sobre por que não é fail-open
+    // aqui dentro.
+    console.error('POST /api/ai/expand-search-terms falhou:', error)
+    return NextResponse.json({ terms: [], error: 'ai_provider_error' }, { status: 502 })
+  }
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, Loader2, Sparkles, TriangleAlert } from 'lucide-react'
+import { Search, Loader2, Sparkles, TriangleAlert, BookOpen } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { TransactionTable } from './transaction-table'
 import { useTransactionSearch } from '@/hooks/use-transaction-search'
@@ -22,7 +22,7 @@ interface Props {
 // bate, tenta de novo com sinônimos via IA (ver `useTransactionSearch`).
 export function TransactionSearchPanel({ transactions, accounts, categories, partners, highlights }: Props) {
   const [search, setSearch] = useState('')
-  const { filtered, expanding, aiAssisted, expansionFailed, expansionEmpty, expansionTerms } = useTransactionSearch(transactions, search)
+  const { filtered, expanding, aiAssisted, expansionFailed, localAssisted, expansionEmpty, expansionTerms } = useTransactionSearch(transactions, search)
   const trimmed = search.trim()
 
   return (
@@ -41,6 +41,11 @@ export function TransactionSearchPanel({ transactions, accounts, categories, par
       {aiAssisted && (
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Sparkles className="h-3 w-3 shrink-0" /> Ampliamos a busca com termos relacionados a &quot;{trimmed}&quot;.
+        </p>
+      )}
+      {localAssisted && (
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <BookOpen className="h-3 w-3 shrink-0" /> Ampliamos a busca usando um dicionário local — a IA não está disponível agora.
         </p>
       )}
       {expansionFailed && (

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { TransactionWithCategory } from '@/types/database'
 import { filterTransactions } from '@/lib/financial/transaction-search'
+import { localRelatedTerms } from '@/lib/financial/search-synonyms'
 
 // Cache em memória do módulo — sobrevive a re-render/remontagem do
 // componente na mesma sessão de página (troca de aba, reabrir o painel),
@@ -123,37 +124,54 @@ export function useTransactionSearch(transactions: TransactionWithCategory[], qu
     return () => clearTimeout(timer)
   }, [query, candidates])
 
-  const activeExtraTerms = useMemo(
+  const aiExtraTerms = useMemo(
     () => (expansion?.query === query ? expansion.terms : []),
     [expansion, query]
   )
   const expanding = expandingQuery === query
   const expansionFailed = failedQuery === query && query.trim().length >= MIN_QUERY_LENGTH
 
+  // Terceira camada, só quando a IA falhou de verdade (não quando ela
+  // rodou e simplesmente não achou nada) — dicionário local sem rede, pra
+  // não deixar a busca sem nenhuma ajuda extra só porque o provedor de IA
+  // está fora (chave ausente, rede, erro do provedor). Cobertura bem mais
+  // enxuta que a IA ancorada nos dados reais, mas melhor que nada.
+  const localFallbackTerms = useMemo(
+    () => (expansionFailed ? localRelatedTerms(query) : []),
+    [expansionFailed, query]
+  )
+
+  const activeExtraTerms = aiExtraTerms.length > 0 ? aiExtraTerms : localFallbackTerms
+
   const filtered = useMemo(
     () => (activeExtraTerms.length > 0 ? filterTransactions(transactions, query, activeExtraTerms) : baseFiltered),
     [transactions, query, activeExtraTerms, baseFiltered]
   )
 
-  // Só marca como "ampliado" quando a IA de fato trouxe lançamento extra
-  // além do que o filtro direto já tinha achado — não só quando existem
-  // termos (podem não ter batido em nada novo).
-  const aiAssisted = activeExtraTerms.length > 0 && filtered.length > baseFiltered.length
+  // Só marca como "ampliado" quando de fato trouxe lançamento extra além
+  // do que o filtro direto já tinha achado — não só quando existem termos
+  // (podem não ter batido em nada novo). `aiAssisted` e `localAssisted`
+  // são mutuamente exclusivos (dependem de qual das duas fontes gerou
+  // `activeExtraTerms`).
+  const aiAssisted = aiExtraTerms.length > 0 && filtered.length > baseFiltered.length
+  const localAssisted = aiExtraTerms.length === 0 && localFallbackTerms.length > 0 && filtered.length > baseFiltered.length
 
   return {
     filtered,
     expanding,
     aiAssisted,
-    // Distingue "a IA rodou e não achou nada relacionado" (silêncio normal)
-    // de "a chamada falhou" (rede, 401, erro do provedor) — as duas ficavam
-    // idênticas pro usuário antes disso.
-    expansionFailed,
+    // A IA falhou de verdade E o dicionário local também não ajudou — só
+    // nesse caso vale mostrar "não conseguimos ampliar" (se o dicionário
+    // local salvou a busca, isso é bom o bastante pra não soar como erro).
+    expansionFailed: expansionFailed && !localAssisted,
+    localAssisted,
     // A IA completou pra essa query exata (sucesso, não falhou), só que sem
-    // acrescentar nada além do filtro direto — terceiro estado, distinto de
-    // "nunca tentou" e de "falhou".
+    // acrescentar nada além do filtro direto — quarto estado, distinto de
+    // "nunca tentou", "falhou" e "resolvido pelo dicionário local".
     expansionEmpty: expansion?.query === query && !expansionFailed && !aiAssisted,
-    // Termos de fato devolvidos pra query atual — exposto pra diagnóstico
-    // visível na tela (ver `expansionEmpty`) sem precisar abrir o DevTools.
+    // Termos de fato usados pra ampliar (de qualquer uma das duas fontes)
+    // — exposto pra diagnóstico visível na tela sem precisar abrir o
+    // DevTools.
     expansionTerms: activeExtraTerms,
   }
 }

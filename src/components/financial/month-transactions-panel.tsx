@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useTransactionSearch } from '@/hooks/use-transaction-search'
 import { FinancialAccount, TransactionCategory, TransactionWithCategory, Partner } from '@/types/database'
-import { Search, Loader2, Sparkles, TriangleAlert, TrendingUp, TrendingDown } from 'lucide-react'
+import { Search, Loader2, Sparkles, TriangleAlert, BookOpen, TrendingUp, TrendingDown } from 'lucide-react'
 
 interface Props {
   transactions: TransactionWithCategory[] // janela ampla, todos os meses/tipos
@@ -48,7 +48,7 @@ export function MonthTransactionsPanel({ transactions, month, monthLabel, accoun
     })
   }, [transactions, month, tab])
 
-  const { filtered, expanding, aiAssisted, expansionFailed, expansionEmpty, expansionTerms } = useTransactionSearch(monthAndTabFiltered, search)
+  const { filtered, expanding, aiAssisted, expansionFailed, localAssisted, expansionEmpty, expansionTerms } = useTransactionSearch(monthAndTabFiltered, search)
   const trimmedSearch = search.trim()
 
   return (
@@ -86,6 +86,11 @@ export function MonthTransactionsPanel({ transactions, month, monthLabel, accoun
       {aiAssisted && (
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Sparkles className="h-3 w-3 shrink-0" /> Ampliamos a busca com termos relacionados a &quot;{trimmedSearch}&quot;.
+        </p>
+      )}
+      {localAssisted && (
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <BookOpen className="h-3 w-3 shrink-0" /> Ampliamos a busca usando um dicionário local — a IA não está disponível agora.
         </p>
       )}
       {expansionFailed && (
