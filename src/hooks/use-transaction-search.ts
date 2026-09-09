@@ -14,12 +14,20 @@ const MIN_QUERY_LENGTH = 2
 
 /**
  * Filtro instantâneo (nome/categoria/parceiro/data/valor, ver
- * `filterTransactions`) sempre ativo, sem espera. Só quando ele não acha
- * NADA é que — depois de uma pausa de digitação — uma chamada a
- * `/api/ai/expand-search-terms` amplia a busca com sinônimos (ver
- * `expandSearchTerms`), sem bloquear a digitação nem gastar crédito de IA
- * do usuário. Falha na chamada (rede, erro) só deixa a busca sem a
- * ampliação — nunca quebra o filtro direto.
+ * `filterTransactions`) sempre ativo, sem espera. Depois de uma pausa de
+ * digitação, SEMPRE tenta ampliar com sinônimos/marcas via IA (ver
+ * `expandSearchTerms`) — não só quando o filtro direto acha zero
+ * resultados. Essa condição existiu numa versão anterior e se revelou
+ * frágil na prática: bastava UM lançamento qualquer bater por acaso com
+ * algum token da busca (ex. uma categoria cujo nome contém parte da
+ * palavra) pra pular a ampliação inteira, mesmo que ela devesse
+ * complementar com mais resultados relevantes — igual buscador de
+ * verdade (Google já fazia isso antes de IA existir): mistura o que bate
+ * direto com o que é relacionado, não escolhe um ou outro. Custo
+ * controlado pelo debounce (só dispara depois de parar de digitar) + cache
+ * por termo (nunca repete a mesma chamada). Não gasta crédito de IA do
+ * usuário. Falha na chamada (rede, erro, chave ausente) só deixa a busca
+ * sem a ampliação — nunca quebra o filtro direto.
  */
 export function useTransactionSearch(transactions: TransactionWithCategory[], query: string) {
   // Guarda a query a que os termos pertencem, em vez de resetar o estado
@@ -37,7 +45,7 @@ export function useTransactionSearch(transactions: TransactionWithCategory[], qu
     const trimmed = query.trim()
     const thisRequest = ++requestIdRef.current
 
-    if (trimmed.length < MIN_QUERY_LENGTH || baseFiltered.length > 0) return
+    if (trimmed.length < MIN_QUERY_LENGTH) return
 
     const cacheKey = trimmed.toLowerCase()
     const cached = expansionCache.get(cacheKey)
@@ -70,7 +78,7 @@ export function useTransactionSearch(transactions: TransactionWithCategory[], qu
     }, DEBOUNCE_MS)
 
     return () => clearTimeout(timer)
-  }, [query, baseFiltered.length])
+  }, [query])
 
   const activeExtraTerms = useMemo(
     () => (expansion?.query === query ? expansion.terms : []),
@@ -86,6 +94,9 @@ export function useTransactionSearch(transactions: TransactionWithCategory[], qu
   return {
     filtered,
     expanding,
-    aiAssisted: activeExtraTerms.length > 0 && filtered.length > 0,
+    // Só marca como "ampliado" quando a IA de fato trouxe lançamento extra
+    // além do que o filtro direto já tinha achado — não só quando existem
+    // termos (podem não ter batido em nada novo).
+    aiAssisted: activeExtraTerms.length > 0 && filtered.length > baseFiltered.length,
   }
 }
