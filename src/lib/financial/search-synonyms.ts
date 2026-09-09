@@ -63,12 +63,24 @@ function candidateSingulars(word: string): string[] {
 // Grupos pré-normalizados uma vez só no carregamento do módulo.
 const NORMALIZED_GROUPS: string[][] = SYNONYM_GROUPS.map((group) => group.map((term) => normalize(term)))
 
+// Tamanho mínimo pra um candidato "bater por prefixo" numa entrada do
+// dicionário — busca incremental (usuário ainda digitando: "film" deve
+// já sugerir o grupo de "filme") sem deixar qualquer coisinha de 1-2
+// letras acender meio dicionário à toa.
+const MIN_PREFIX_LENGTH = 3
+
+function candidateMatchesEntry(candidates: string[], entry: string): boolean {
+  return candidates.some((c) => c === entry || (c.length >= MIN_PREFIX_LENGTH && entry.startsWith(c)))
+}
+
 /** Termos relacionados ao termo buscado, achados no dicionário local — sem
  *  nenhuma chamada de rede, sempre instantâneo. Devolve `[]` quando o
  *  termo não bate em nenhum grupo conhecido (dicionário deliberadamente
  *  não é exaustivo). Tolerante a variações de plural (ver
- *  `candidateSingulars`) — qualquer forma do termo buscado que bata
- *  exatamente com uma entrada real do dicionário conta como match. */
+ *  `candidateSingulars`) e a busca incremental — um prefixo de pelo menos
+ *  3 letras já ativa o grupo (`candidateMatchesEntry`), pra funcionar
+ *  enquanto a pessoa ainda está digitando a palavra, não só quando ela
+ *  termina de escrevê-la. */
 export function localRelatedTerms(query: string): string[] {
   const rawTokens = normalize(query).split(/\s+/).filter(Boolean)
   if (rawTokens.length === 0) return []
@@ -77,7 +89,7 @@ export function localRelatedTerms(query: string): string[] {
   for (const rawToken of rawTokens) {
     const candidates = candidateSingulars(rawToken)
     NORMALIZED_GROUPS.forEach((group, groupIndex) => {
-      const matchIndex = group.findIndex((entry) => candidates.includes(entry))
+      const matchIndex = group.findIndex((entry) => candidateMatchesEntry(candidates, entry))
       if (matchIndex === -1) return
       SYNONYM_GROUPS[groupIndex].forEach((term, i) => {
         if (i !== matchIndex) related.add(term)
