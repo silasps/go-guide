@@ -16,12 +16,16 @@ interface Props {
   monthLabel: string
 }
 
-function Gauge({ pct, colorClass }: { pct: number; colorClass: string }) {
+// `fillPct` (0-100) desenha o anel — não dá pra desenhar além de uma volta
+// inteira. `labelPct` é o número mostrado no centro, sem cap: passar de
+// 100% do limite deve aparecer como 200%, 350% etc., não travar em 100%
+// (pedido do usuário).
+function Gauge({ fillPct, labelPct, colorClass }: { fillPct: number; labelPct: number; colorClass: string }) {
   const size = 112
   const stroke = 10
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
-  const offset = c - (Math.min(100, pct) / 100) * c
+  const offset = c - (Math.min(100, fillPct) / 100) * c
   return (
     <div className="relative mx-auto" style={{ width: size, height: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
@@ -40,7 +44,7 @@ function Gauge({ pct, colorClass }: { pct: number; colorClass: string }) {
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className={cn('text-lg font-bold', colorClass)}>{Math.round(pct)}%</span>
+        <span className={cn('text-lg font-bold', colorClass)}>{Math.round(labelPct)}%</span>
       </div>
     </div>
   )
@@ -92,11 +96,11 @@ export function GeneralLimitOverview({ settings, categoriesTotalLimit, totalSpen
       </CardHeader>
       <CardContent className="space-y-5">
         <div className="grid grid-cols-1 items-center gap-5 lg:grid-cols-[112px_minmax(0,1fr)]">
-          <Gauge pct={pct} colorClass={colorClass} />
+          <Gauge fillPct={pct} labelPct={rawPct} colorClass={colorClass} />
           <div className="min-w-0 space-y-3">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Uso do limite consolidado</span>
-              <span className={cn('font-semibold', colorClass)}>{Math.round(pct)}%</span>
+              <span className={cn('font-semibold', colorClass)}>{Math.round(rawPct)}%</span>
             </div>
             <Progress
               value={pct}

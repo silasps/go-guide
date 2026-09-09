@@ -15,6 +15,7 @@ interface Props {
   spentByCategory: Record<string, number>
   profileId: string
   currencies: string[]
+  enforceZeroLimit: boolean
 }
 
 const DEFAULT_COLOR = 'var(--muted-foreground)'
@@ -27,28 +28,39 @@ interface RowProps {
   spent: number
   currencies: string[]
   onEdit: () => void
+  enforceZeroLimit: boolean
 }
 
-function CategoryRow({ category, limit, spent, currencies, onEdit }: RowProps) {
+function CategoryRow({ category, limit, spent, currencies, onEdit, enforceZeroLimit }: RowProps) {
   const color = category.color ?? DEFAULT_COLOR
   const rowCurrency = limit?.currency ?? currencies[0] ?? 'BRL'
 
+  // Limite geral em modo "soma por categoria" (ver `GeneralLimitSettings`):
+  // categoria sem limite próprio passa a valer como limite R$0 — qualquer
+  // gasto nela já é "estourado", forçando a pessoa a definir um limite de
+  // verdade em vez de deixar esse gasto invisível pra lógica de soma.
+  const impliedOverLimit = !limit && enforceZeroLimit && spent > 0
+
+  // `rawPct` sem cap alimenta o texto (200% de verdade quando estourou o
+  // dobro, não trava em 100% — pedido do usuário); `pct` com cap alimenta só
+  // a largura da barra, que não tem como desenhar além do próprio contêiner.
   const rawPct = limit && limit.limit_amount > 0 ? (spent / limit.limit_amount) * 100 : 0
-  const pct = Math.min(100, rawPct)
-  const overLimit = !!limit && spent > limit.limit_amount
+  const pct = impliedOverLimit ? 100 : Math.min(100, rawPct)
+  const overLimit = (!!limit && spent > limit.limit_amount) || impliedOverLimit
   const nearLimit = !!limit && !overLimit && rawPct >= 80
   const pctColor = overLimit ? 'text-destructive' : nearLimit ? 'text-warning' : 'text-success'
+  const hasSignal = !!limit || impliedOverLimit // linha "vazia" (sem limite, sem gasto) continua sem sinal nenhum
 
   return (
     <div className="space-y-1.5">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <div className="flex items-center gap-2 min-w-0">
           <span className="size-3 rounded-full shrink-0" style={{ backgroundColor: color }} />
-          <span className={cn('text-sm font-semibold truncate', !limit && 'text-muted-foreground')}>{category.name}</span>
+          <span className={cn('text-sm font-semibold truncate', !hasSignal && 'text-muted-foreground')}>{category.name}</span>
         </div>
         <div className="flex items-center gap-2 shrink-0 ml-auto">
           <span className="text-sm whitespace-nowrap">
-            <span className={cn('font-semibold', limit && (overLimit ? 'text-destructive' : 'text-success'))}>{formatCurrency(spent, rowCurrency)}</span>
+            <span className={cn('font-semibold', hasSignal && (overLimit ? 'text-destructive' : 'text-success'))}>{formatCurrency(spent, rowCurrency)}</span>
             <span className="text-muted-foreground"> de {formatCurrency(limit?.limit_amount ?? 0, rowCurrency)}</span>
           </span>
           <Link href={`/dashboard/financeiro/lancamentos?category=${category.id}`} className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5')}>
@@ -65,11 +77,15 @@ function CategoryRow({ category, limit, spent, currencies, onEdit }: RowProps) {
         className={cn(overLimit && '[&_[data-slot=progress-indicator]]:bg-destructive', nearLimit && '[&_[data-slot=progress-indicator]]:bg-warning')}
       />
 
-      {/* `invisible` (não `hidden`) quando não há limite: mantém a altura da
+      {/* `invisible` (não `hidden`) quando não há sinal: mantém a altura da
           linha reservada, senão as linhas sem limite ficam mais baixas que
           as com limite e a lista desalinha. */}
-      <div className={cn('flex justify-end', !limit && 'invisible')}>
-        <span className={cn('text-xs font-semibold', pctColor)}>{Math.round(pct)}%</span>
+      <div className={cn('flex justify-end', !hasSignal && 'invisible')}>
+        {impliedOverLimit ? (
+          <span className="text-xs font-semibold text-destructive">Estourado — defina um limite</span>
+        ) : (
+          <span className={cn('text-xs font-semibold', pctColor)}>{Math.round(rawPct)}%</span>
+        )}
       </div>
     </div>
   )
@@ -79,11 +95,15 @@ function CategoryRow({ category, limit, spent, currencies, onEdit }: RowProps) {
 // separadas em dois grupos — com limite primeiro (o que a pessoa veio
 // acompanhar), sem limite depois (pedido do usuário: "deve ser mais
 // organizado... os que tem limite cadastrado e os que não tem" — antes
-// vinha tudo junto em ordem alfabética, misturando as duas coisas). Cada
-// linha tem sua própria barra de progresso — o mesmo formato de linhas
+// vinha tudo junto em ordem alfabética, misturando as duas coisas).
+// `enforceZeroLimit` (ligado quando o limite geral está em modo "soma por
+// categoria", ver `CategoryRow`) trata categoria sem limite como se tivesse
+// limite R$0 quando há gasto nela — ideia do próprio usuário, pra forçar
+// definir um limite de verdade em vez do gasto ficar invisível pra soma.
+// Cada linha tem sua própria barra de progresso — o mesmo formato de linhas
 // empilhadas do card "Progresso do limite total" acima dela, pra permitir
 // uma única linha vertical "Hoje" atravessando tudo (ver `SpendingLimitsTabs`).
-export function SpendingLimitsByCategory({ categories, limits, spentByCategory, profileId, currencies }: Props) {
+export function SpendingLimitsByCategory({ categories, limits, spentByCategory, profileId, currencies, enforceZeroLimit }: Props) {
   const [target, setTarget] = useState<FormTarget | null>(null)
   const limitByCategory = new Map(limits.map((l) => [l.category_id, l]))
   const usedCategoryIds = limits.map((l) => l.category_id)
@@ -102,7 +122,7 @@ export function SpendingLimitsByCategory({ categories, limits, spentByCategory, 
   return (
     <div className="space-y-3">
       {withLimit.map((cat) => (
-        <CategoryRow key={cat.id} category={cat} limit={limitByCategory.get(cat.id)} spent={spentByCategory[cat.id] ?? 0} currencies={currencies} onEdit={() => edit(cat, limitByCategory.get(cat.id))} />
+        <CategoryRow key={cat.id} category={cat} limit={limitByCategory.get(cat.id)} spent={spentByCategory[cat.id] ?? 0} currencies={currencies} onEdit={() => edit(cat, limitByCategory.get(cat.id))} enforceZeroLimit={enforceZeroLimit} />
       ))}
 
       {withLimit.length > 0 && withoutLimit.length > 0 && (
@@ -110,7 +130,7 @@ export function SpendingLimitsByCategory({ categories, limits, spentByCategory, 
       )}
 
       {withoutLimit.map((cat) => (
-        <CategoryRow key={cat.id} category={cat} limit={undefined} spent={spentByCategory[cat.id] ?? 0} currencies={currencies} onEdit={() => edit(cat, undefined)} />
+        <CategoryRow key={cat.id} category={cat} limit={undefined} spent={spentByCategory[cat.id] ?? 0} currencies={currencies} onEdit={() => edit(cat, undefined)} enforceZeroLimit={enforceZeroLimit} />
       ))}
 
       {target && (

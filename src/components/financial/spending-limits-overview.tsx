@@ -23,7 +23,11 @@ export function SpendingLimitsOverview({ totalSpent, totalLimit, currency }: Pro
     )
   }
 
-  const pct = Math.min(100, (totalSpent / totalLimit) * 100)
+  // `rawPct` sem cap alimenta o texto (200% de verdade quando estourou o
+  // dobro, não trava em 100% — pedido do usuário); `pct` com cap alimenta só
+  // a largura da barra, que não tem como desenhar além do próprio contêiner.
+  const rawPct = (totalSpent / totalLimit) * 100
+  const pct = Math.min(100, rawPct)
   const overLimit = totalSpent > totalLimit
   const barColor = overLimit ? 'bg-destructive' : pct >= 80 ? 'bg-warning' : 'bg-success'
   const pctColor = overLimit ? 'text-destructive' : pct >= 80 ? 'text-warning' : 'text-success'
@@ -43,7 +47,7 @@ export function SpendingLimitsOverview({ totalSpent, totalLimit, currency }: Pro
 
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-medium text-muted-foreground">Progresso do limite total</span>
-        <span className={cn('text-xs font-semibold', pctColor)}>{Math.round(pct)}%</span>
+        <span className={cn('text-xs font-semibold', pctColor)}>{Math.round(rawPct)}%</span>
       </div>
     </div>
   )

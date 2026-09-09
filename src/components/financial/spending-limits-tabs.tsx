@@ -58,6 +58,13 @@ export function SpendingLimitsTabs({
   // cabeçalho dele mudar de altura, ajustar aqui também.
   const showTodayMarker = todayPct !== null && totalLimit > 0
 
+  // Ideia do usuário: com o limite geral em modo "soma por categoria",
+  // categoria sem limite próprio passa a valer como limite R$0 nos cards de
+  // "Por categoria" — qualquer gasto nela já aparece "estourado", forçando
+  // a pessoa a definir um limite de verdade (só faz sentido nesse modo; em
+  // "valor único" o total não depende de limite nenhum por categoria).
+  const enforceZeroLimit = !!generalLimit?.enabled && generalLimit.mode === 'sum_categories'
+
   return (
     <div className="space-y-4">
       <div className="inline-flex items-center h-9 rounded-lg bg-muted p-1 text-muted-foreground">
@@ -95,7 +102,7 @@ export function SpendingLimitsTabs({
       ) : (
         <div className="relative rounded-xl border bg-card p-4 space-y-4">
           <SpendingLimitsOverview totalSpent={totalSpent} totalLimit={totalLimit} currency={overviewCurrency} />
-          <SpendingLimitsByCategory categories={categories} limits={limits} spentByCategory={spentByCategory} profileId={profileId} currencies={currencies} />
+          <SpendingLimitsByCategory categories={categories} limits={limits} spentByCategory={spentByCategory} profileId={profileId} currencies={currencies} enforceZeroLimit={enforceZeroLimit} />
 
           {showTodayMarker && (
             <div className="pointer-events-none absolute inset-y-0" style={{ left: `${todayPct}%` }}>
