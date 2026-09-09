@@ -1,14 +1,17 @@
 import { getAnthropicClient } from './client'
 
 const MODEL_SEARCH_EXPAND = 'claude-haiku-4-5'
-const MAX_TERMS = 8
+const MAX_TERMS = 10
 
 /**
- * Amplia um termo de busca de lançamentos financeiros em palavras
- * relacionadas em português (sinônimos, itens típicos, jeitos alternativos
- * de escrever) — reforço usado só quando a busca direta (nome/categoria/
- * data/valor, ver `transaction-search.ts`) não encontra nada. Ex.: "roupa"
- * -> camiseta, calça, blusa, sapato, vestido.
+ * Amplia um termo de busca de lançamentos financeiros em palavras/marcas
+ * relacionadas em português — reforço usado só quando a busca direta
+ * (nome/categoria/data/valor, ver `transaction-search.ts`) não encontra
+ * nada. Vai além de sinônimo: pensa em como o lançamento apareceria de
+ * verdade na lista (geralmente nome de loja/marca/serviço, não uma
+ * descrição genérica). Ex.: "roupa" -> camiseta, calça, Renner, C&A;
+ * "filme" -> Netflix, HBO Max, Disney+, streaming, cinema; "remédio" ->
+ * farmácia, Droga Raia, Drogasil, drogaria.
  *
  * Custo operacional (não consome os créditos de IA do plano do usuário,
  * mesmo espírito de `checkTextModeration`). Fail-open: erro ou timeout
@@ -25,7 +28,7 @@ export async function expandSearchTerms(query: string): Promise<string[]> {
     const response = await client.messages.create({
       model: MODEL_SEARCH_EXPAND,
       max_tokens: 256,
-      system: `Você ajuda a buscar lançamentos financeiros pessoais em português. Dado um termo de busca, devolva palavras relacionadas em português (sinônimos, itens típicos daquela categoria, formas alternativas de escrever) que ajudariam a achar um lançamento com descrição diferente do termo, mas do mesmo assunto. Exemplo: para "roupa", devolva algo como camiseta, calça, blusa, sapato, vestido, jaqueta, moletom, casaco. Não repita o termo original. Responda apenas com o JSON pedido.`,
+      system: `Você ajuda a buscar lançamentos financeiros pessoais em português (nome de quem foi pago, o que foi comprado). Dado um termo de busca, pense em como esse lançamento apareceria de verdade numa lista de gastos/receitas — geralmente é o nome de uma loja, marca ou serviço, não uma descrição genérica — e devolva até 10 palavras ou nomes relacionados em português que ajudariam a achar esse lançamento mesmo que a descrição real seja bem diferente do termo buscado. Inclua sinônimos, itens típicos do mesmo assunto E marcas/empresas conhecidas no Brasil pra esse assunto, sempre que fizer sentido. Exemplos: "roupa" -> camiseta, calça, blusa, sapato, vestido, jaqueta, moletom, casaco, Renner, C&A, Zara; "filme" -> Netflix, HBO Max, Disney+, Amazon Prime, streaming, cinema, ingresso; "remédio" -> farmácia, Droga Raia, Drogasil, Pacheco, drogaria, medicamento. Não repita o termo original. Responda apenas com o JSON pedido.`,
       output_config: {
         format: {
           type: 'json_schema',
