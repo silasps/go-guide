@@ -11,6 +11,7 @@ const expansionCache = new Map<string, string[]>()
 
 const DEBOUNCE_MS = 450
 const MIN_QUERY_LENGTH = 2
+const MAX_CANDIDATES = 200
 
 /**
  * Filtro instantâneo (nome/categoria/parceiro/data/valor, ver
@@ -28,6 +29,16 @@ const MIN_QUERY_LENGTH = 2
  * por termo (nunca repete a mesma chamada). Não gasta crédito de IA do
  * usuário. Falha na chamada (rede, erro, chave ausente) só deixa a busca
  * sem a ampliação — nunca quebra o filtro direto.
+ *
+ * A ampliação é "ancorada" nas categorias/descrições REAIS que já existem
+ * nos lançamentos dessa pessoa (`candidates`, calculado abaixo) — pesquisa
+ * de recuperação de informação mostra que pedir sinônimo pra uma IA "no
+ * vácuo" (sem checar contra o corpus real) tende a divergir exatamente do
+ * termo que já existe nos dados (ex.: pedir relacionado de "filme" sem
+ * saber que a categoria "Streaming" já existe faz o modelo sugerir só
+ * "cinema"/"ingresso", nunca "Streaming"/"Netflix", mesmo que o
+ * lançamento certo esteja bem ali) — daí mandar a lista real primeiro,
+ * priorizada sobre a criatividade genérica de marca conhecida.
  */
 export function useTransactionSearch(transactions: TransactionWithCategory[], query: string) {
   // Guarda a query a que os termos pertencem, em vez de resetar o estado
@@ -41,6 +52,24 @@ export function useTransactionSearch(transactions: TransactionWithCategory[], qu
   const requestIdRef = useRef(0)
 
   const baseFiltered = useMemo(() => filterTransactions(transactions, query), [transactions, query])
+
+  // Categorias/subcategorias/descrições REAIS que já existem nos
+  // lançamentos dessa pessoa — mandadas pra IA como base pra "ancorar" a
+  // ampliação em vez de deixá-la adivinhar do zero (ver comentário de
+  // `expandSearchTerms`). Deduplicado (a mesma descrição se repete todo
+  // mês) e limitado pra não estourar tokens numa conta com muito histórico.
+  const candidates = useMemo(() => {
+    const set = new Set<string>()
+    for (const t of transactions) {
+      if (t.category?.name) set.add(t.category.name)
+      if (t.subcategory?.name) set.add(t.subcategory.name)
+    }
+    for (const t of transactions) {
+      if (set.size >= MAX_CANDIDATES) break
+      if (t.description) set.add(t.description)
+    }
+    return Array.from(set).slice(0, MAX_CANDIDATES)
+  }, [transactions])
 
   useEffect(() => {
     const trimmed = query.trim()
@@ -65,7 +94,7 @@ export function useTransactionSearch(transactions: TransactionWithCategory[], qu
       fetch('/api/ai/expand-search-terms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: trimmed }),
+        body: JSON.stringify({ query: trimmed, candidates }),
       })
         .then(async (res) => {
           if (!res.ok) throw new Error(`expand-search-terms respondeu ${res.status}`)
@@ -92,7 +121,7 @@ export function useTransactionSearch(transactions: TransactionWithCategory[], qu
     }, DEBOUNCE_MS)
 
     return () => clearTimeout(timer)
-  }, [query])
+  }, [query, candidates])
 
   const activeExtraTerms = useMemo(
     () => (expansion?.query === query ? expansion.terms : []),

@@ -17,6 +17,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ terms: [] })
   }
 
-  const terms = await expandSearchTerms(query)
+  // Categorias/descrições reais do próprio usuário, pra ancorar a resposta
+  // da IA (ver comentário de `expandSearchTerms`) — nunca de outro perfil,
+  // já que quem manda é o próprio client autenticado a partir dos
+  // lançamentos que ele já carregou.
+  const candidates = Array.isArray(body?.candidates)
+    ? body.candidates.filter((c: unknown): c is string => typeof c === 'string')
+    : []
+
+  const terms = await expandSearchTerms(query, candidates)
   return NextResponse.json({ terms })
 }

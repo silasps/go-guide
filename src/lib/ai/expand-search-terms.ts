@@ -2,33 +2,51 @@ import { getAnthropicClient } from './client'
 
 const MODEL_SEARCH_EXPAND = 'claude-haiku-4-5'
 const MAX_TERMS = 10
+const MAX_CANDIDATES = 200
 
 /**
  * Amplia um termo de busca de lançamentos financeiros em palavras/marcas
  * relacionadas em português — reforço usado só quando a busca direta
  * (nome/categoria/data/valor, ver `transaction-search.ts`) não encontra
- * nada. Vai além de sinônimo: pensa em como o lançamento apareceria de
- * verdade na lista (geralmente nome de loja/marca/serviço, não uma
- * descrição genérica). Ex.: "roupa" -> camiseta, calça, Renner, C&A;
- * "filme" -> Netflix, HBO Max, Disney+, streaming, cinema; "remédio" ->
- * farmácia, Droga Raia, Drogasil, drogaria.
+ * nada.
+ *
+ * `candidates` são as categorias/descrições REAIS já existentes nos
+ * lançamentos dessa pessoa (ver `useTransactionSearch`) — passadas pro
+ * modelo como base pra "ancorar" a resposta, em vez de deixar a IA
+ * adivinhar sozinha a partir do zero ("free generation"). Pesquisa de
+ * recuperação de informação mostra que expansão de consulta sem checar
+ * contra o corpus real tende a errar exatamente o termo que já existe
+ * (ex.: pedir sinônimo de "filme" sem saber que a categoria "Streaming"
+ * já existe faz o modelo sugerir "cinema"/"ingresso" e nunca "Streaming"
+ * ou "Netflix", mesmo que o lançamento real esteja bem ali) — daí a
+ * lista real ir primeiro no prompt, priorizada sobre a criatividade
+ * genérica de marca conhecida.
  *
  * Custo operacional (não consome os créditos de IA do plano do usuário,
  * mesmo espírito de `checkTextModeration`). Fail-open: erro ou timeout
  * devolve lista vazia — a busca cai de volta pro filtro direto sem
  * quebrar nada.
  */
-export async function expandSearchTerms(query: string): Promise<string[]> {
+export async function expandSearchTerms(query: string, candidates: string[] = []): Promise<string[]> {
   const trimmed = query.trim()
   if (trimmed.length < 2) return []
+
+  const realCandidates = candidates
+    .map((c) => c.trim())
+    .filter((c) => c.length > 0)
+    .slice(0, MAX_CANDIDATES)
 
   try {
     const client = getAnthropicClient()
 
+    const userContent = realCandidates.length > 0
+      ? `Termo buscado: "${trimmed}"\n\nCategorias e descrições REAIS já usadas por essa pessoa nos lançamentos (separadas por vírgula): ${realCandidates.join(', ')}`
+      : `Termo buscado: "${trimmed}"`
+
     const response = await client.messages.create({
       model: MODEL_SEARCH_EXPAND,
-      max_tokens: 256,
-      system: `Você ajuda a buscar lançamentos financeiros pessoais em português (nome de quem foi pago, o que foi comprado). Dado um termo de busca, pense em como esse lançamento apareceria de verdade numa lista de gastos/receitas — geralmente é o nome de uma loja, marca ou serviço, não uma descrição genérica — e devolva até 10 palavras ou nomes relacionados em português que ajudariam a achar esse lançamento mesmo que a descrição real seja bem diferente do termo buscado. Inclua sinônimos, itens típicos do mesmo assunto E marcas/empresas conhecidas no Brasil pra esse assunto, sempre que fizer sentido. Exemplos: "roupa" -> camiseta, calça, blusa, sapato, vestido, jaqueta, moletom, casaco, Renner, C&A, Zara; "filme" -> Netflix, HBO Max, Disney+, Amazon Prime, streaming, cinema, ingresso; "remédio" -> farmácia, Droga Raia, Drogasil, Pacheco, drogaria, medicamento. Não repita o termo original. Responda apenas com o JSON pedido.`,
+      max_tokens: 300,
+      system: `Você ajuda a buscar lançamentos financeiros pessoais em português. Você recebe o termo buscado e, quando disponível, uma lista de categorias/descrições REAIS que já existem nos lançamentos dessa pessoa. Primeiro veja se algum item dessa lista real já se relaciona com o termo buscado — se relacionar, inclua esse item exatamente como está escrito na lista, isso é mais confiável do que adivinhar (ex.: se "Streaming" está na lista e o termo buscado é "filme", "Streaming" precisa entrar na resposta). Depois complemente com outras palavras, marcas ou serviços conhecidos no Brasil relacionados ao termo, mesmo que não estejam na lista (ex.: "filme" -> Netflix, HBO Max, Disney+, cinema, ingresso; "remédio" -> farmácia, Droga Raia, Drogasil, drogaria; "roupa" -> camiseta, calça, Renner, C&A). Devolva até 10 termos no total, sem repetir o termo original. Responda apenas com o JSON pedido.`,
       output_config: {
         format: {
           type: 'json_schema',
@@ -42,7 +60,7 @@ export async function expandSearchTerms(query: string): Promise<string[]> {
           },
         },
       },
-      messages: [{ role: 'user', content: trimmed }],
+      messages: [{ role: 'user', content: userContent }],
     })
 
     const block = response.content.find((b) => b.type === 'text')
