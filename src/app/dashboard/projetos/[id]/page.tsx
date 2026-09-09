@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveProfile } from '@/lib/profile/active-profile'
-import { HighlightForm } from '@/components/highlights/highlight-form'
+import { ProjectEditorModal } from '@/components/highlights/project-editor-modal'
 import { BudgetBreakdown } from '@/components/highlights/budget-breakdown'
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
@@ -78,7 +78,12 @@ export default async function EditarProjetoPage({ params }: Props) {
       {budgetProgress && budgetProgress.length > 0 && (
         <BudgetBreakdown categories={budgetProgress} currency={highlight.currency} showSpent heading="Financeiro do projeto" />
       )}
-      <HighlightForm highlight={{ ...highlight, milestones: milestones ?? [], budgetCategories: budgetCategories ?? [], galleryImages: galleryImages ?? [], prayerPoints: prayerPoints ?? [] }} profileId={profile.id} backPath={`/${profile.username}/projetos`} />
+      <ProjectEditorModal
+        mode="edit"
+        highlight={{ ...highlight, milestones: milestones ?? [], budgetCategories: budgetCategories ?? [], galleryImages: galleryImages ?? [], prayerPoints: prayerPoints ?? [] }}
+        profileId={profile.id}
+        backPath={`/${profile.username}/projetos`}
+      />
     </div>
   )
 }

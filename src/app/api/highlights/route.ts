@@ -88,8 +88,8 @@ export async function POST(req: NextRequest) {
   }
 
   // Rede de segurança server-side pro mesmo requisito já validado no
-  // client (highlight-form.tsx/use-project-composer.ts) — só na criação;
-  // projetos antigos sem capa continuam editáveis normalmente.
+  // client (use-project-editor.ts) — só na criação; projetos antigos sem
+  // capa continuam editáveis normalmente.
   if (!highlightId && !coverUrl && !coverBunnyVideoId) {
     return NextResponse.json({ error: 'Adicione uma foto de capa antes de salvar.' }, { status: 400 })
   }

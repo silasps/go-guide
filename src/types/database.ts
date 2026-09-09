@@ -187,6 +187,10 @@ export interface Highlight {
   cover_position: string
   scripture: string | null
   letter: string | null
+  letter_image_url: string | null
+  letter_image_caption: string | null
+  letter_image_url_2: string | null
+  letter_image_caption_2: string | null
   trip_start_date: string | null
   funding_deadline: string | null
   completed_at: string | null

@@ -1,13 +1,10 @@
 import { getActiveProfile } from '@/lib/profile/active-profile'
-import { HighlightForm } from '@/components/highlights/highlight-form'
+import { ProjectEditorModal } from '@/components/highlights/project-editor-modal'
 
 export default async function NovoProjetoPage() {
   const profile = await getActiveProfile()
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Novo projeto</h1>
-      <HighlightForm profileId={profile!.id} backPath={`/${profile!.username}/projetos`} />
-    </div>
+    <ProjectEditorModal mode="create" profileId={profile!.id} backPath={`/${profile!.username}/projetos`} />
   )
 }

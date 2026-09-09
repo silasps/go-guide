@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getLocale } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import { InstagramVideoPlayer } from '@/components/shared/instagram-video-player'
@@ -25,19 +25,12 @@ import { PostComposerProvider } from '@/components/dashboard/post-composer-provi
 import { ProjectComposerProvider } from '@/components/highlights/project-composer/project-composer-provider'
 import { getProfileViewerContext } from '@/lib/profile/viewer-context'
 import { CopyableValue } from '@/components/partners/payment-method-instructions'
-import { CoverTitleEditSection } from '@/components/highlights/cover-title-edit-section'
-import { DescriptionEditSection } from '@/components/highlights/description-edit-section'
-import { SupportTypesEditSection } from '@/components/highlights/support-types-edit-section'
-import { FinancialEditSection } from '@/components/highlights/financial-edit-section'
-import { MilestonesEditSection } from '@/components/highlights/milestones-edit-section'
-import { GalleryEditSection } from '@/components/highlights/gallery-edit-section'
+import { SectionEditLink } from '@/components/highlights/section-edit-link'
 import { ProjectCoverFallback } from '@/components/highlights/project-cover-fallback'
 import { FloatingSupportCta } from '@/components/highlights/floating-support-cta'
 import { ProjectStoryDialog } from '@/components/highlights/project-story-dialog'
 import { DeleteProjectButton } from '@/components/highlights/delete-project-button'
-import { LetterEditSection } from '@/components/highlights/letter-edit-section'
 import { LetterBody } from '@/components/highlights/letter-body'
-import { DatesStatusEditSection } from '@/components/highlights/dates-status-edit-section'
 import { StatusBadge } from '@/components/highlights/status-badge'
 import type { HighlightSnapshot } from '@/components/highlights/section-types'
 import { getProfile, getProfileOrRedirect } from '@/lib/profile/get-profile'
@@ -135,6 +128,8 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
 
   const supabase = await createClient()
   const { canEdit, viewerUserId } = await getProfileViewerContext(username)
+  const t = await getTranslations('PublicProject')
+  const editLabel = (section: string) => t('editSection', { section })
 
   const { data: paymentMethods } = await supabase
     .from('payment_methods')
@@ -287,7 +282,7 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
 
-        <CoverTitleEditSection {...sectionProps}>
+        <SectionEditLink canEdit={canEdit} highlightId={project.id} label={editLabel(t('sectionCover'))}>
           <>
             {/* Hero: capa 1.91:1 (paisagem do Instagram) + avatar sobreposto */}
             <div className="relative aspect-[1.91/1] rounded-2xl overflow-hidden">
@@ -341,14 +336,14 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
               )}
             </div>
           </>
-        </CoverTitleEditSection>
+        </SectionEditLink>
 
         {(project.description || canEdit) && (
-          <DescriptionEditSection {...sectionProps}>
+          <SectionEditLink canEdit={canEdit} highlightId={project.id} label={editLabel(t('sectionDescription'))}>
             {localizedDescription
               ? <p className="text-muted-foreground">{localizedDescription}</p>
               : (canEdit ? <p className="text-sm text-muted-foreground italic">Adicionar descrição...</p> : null)}
-          </DescriptionEditSection>
+          </SectionEditLink>
         )}
 
         {(project.letter || canEdit) && (
@@ -357,7 +352,7 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
             title="A história por trás deste projeto"
             closeLabel="Fechar"
           >
-            <LetterEditSection {...sectionProps}>
+            <SectionEditLink canEdit={canEdit} highlightId={project.id} label={editLabel(t('sectionLetter'))}>
               {localizedLetter ? (
                 <LetterBody
                   letter={localizedLetter}
@@ -369,23 +364,23 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
               ) : (
                 canEdit ? <p className="text-sm text-muted-foreground italic">Adicionar história...</p> : null
               )}
-            </LetterEditSection>
+            </SectionEditLink>
           </ProjectStoryDialog>
         )}
 
         {canEdit && (
-          <SupportTypesEditSection {...sectionProps}>
+          <SectionEditLink canEdit={canEdit} highlightId={project.id} label={editLabel(t('sectionSupportTypes'))}>
             <div className="flex flex-wrap gap-1.5">
-              {SUPPORT_TYPES.filter(t => types.includes(t.key)).map(t => (
-                <span key={t.key} className="text-xs px-2 py-1 rounded-full border text-muted-foreground">{t.icon} {t.title}</span>
+              {SUPPORT_TYPES.filter(st => types.includes(st.key)).map(st => (
+                <span key={st.key} className="text-xs px-2 py-1 rounded-full border text-muted-foreground">{st.icon} {st.title}</span>
               ))}
             </div>
-          </SupportTypesEditSection>
+          </SectionEditLink>
         )}
 
         {/* Datas + apoiadores */}
         <div className="flex flex-wrap gap-3 text-xs text-muted-foreground items-center">
-          <DatesStatusEditSection {...sectionProps}>
+          <SectionEditLink canEdit={canEdit} highlightId={project.id} label={editLabel(t('sectionDatesStatus'))}>
             <>
               {project.trip_start_date && (
                 <span className="px-2.5 py-1 rounded-full border">📅 Início em {new Date(project.trip_start_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
@@ -403,7 +398,7 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
                 <span className="italic pr-7">Adicionar datas...</span>
               )}
             </>
-          </DatesStatusEditSection>
+          </SectionEditLink>
           {(supporterCount ?? 0) > 0 && (
             <span className="px-2.5 py-1 rounded-full border flex items-center gap-1"><Users className="h-3 w-3" /> {supporterCount} apoiador(es)</span>
           )}
@@ -419,7 +414,7 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
         {(() => {
           const financialBlock = hasFinancial && (
             <div id="financial-card" className="rounded-2xl border bg-card p-5 space-y-5">
-              <FinancialEditSection {...sectionProps}>
+              <SectionEditLink canEdit={canEdit} highlightId={project.id} label={editLabel(t('sectionFinancial'))}>
                 <>
                   {project.goal_amount && pct !== null && (
                     <div className="space-y-2">
@@ -479,7 +474,7 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
                     />
                   )}
                 </>
-              </FinancialEditSection>
+              </SectionEditLink>
 
               {pixMethods.length > 0 && (
                 <div className="rounded-xl border border-support/40 bg-support/10 p-3 space-y-3">
@@ -523,7 +518,9 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
                 canPray={!canEdit}
               />
               {canEdit && (
-                <p className="text-xs text-muted-foreground italic">Pontos de oração são editados no formulário do projeto, no painel.</p>
+                <SectionEditLink canEdit={canEdit} highlightId={project.id} label="Editar pontos de oração">
+                  <p className="text-xs text-muted-foreground italic pr-7">Pontos de oração são editados no painel.</p>
+                </SectionEditLink>
               )}
             </div>
           )
@@ -607,7 +604,7 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
               <h2 className="font-semibold">Marcos</h2>
               {totalMilestones > 0 && <span className="text-sm text-muted-foreground">{completedCount}/{totalMilestones} concluídos</span>}
             </div>
-            <MilestonesEditSection {...sectionProps}>
+            <SectionEditLink canEdit={canEdit} highlightId={project.id} label={editLabel(t('sectionMilestones'))}>
               {totalMilestones > 0 ? (
                 <ul className="space-y-2">
                   {localizedMilestones.map(m => (
@@ -623,7 +620,7 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
               ) : (
                 canEdit ? <p className="text-sm text-muted-foreground italic">Nenhum marco ainda.</p> : null
               )}
-            </MilestonesEditSection>
+            </SectionEditLink>
           </div>
         )}
 
@@ -632,7 +629,7 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
         {(snapshot.galleryImages.length > 0 || canEdit) && (
           <div className="rounded-2xl border bg-card p-5 space-y-3">
             <h2 className="font-semibold">Fotos do projeto</h2>
-            <GalleryEditSection {...sectionProps}>
+            <SectionEditLink canEdit={canEdit} highlightId={project.id} label={editLabel(t('sectionGallery'))}>
               {snapshot.galleryImages.length > 0 ? (
                 <div className="grid grid-cols-3 gap-2">
                   {snapshot.galleryImages.map((url, i) => (
@@ -644,7 +641,7 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
               ) : (
                 canEdit ? <p className="text-sm text-muted-foreground italic">Nenhuma foto ainda.</p> : null
               )}
-            </GalleryEditSection>
+            </SectionEditLink>
           </div>
         )}
 

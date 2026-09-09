@@ -15,7 +15,7 @@ import { createClient } from '@/lib/supabase/client'
 import { DeleteProjectDialog } from './delete-project-dialog'
 import { Pencil, Trash2, Eye, EyeOff, ChevronUp, ChevronDown, ExternalLink } from 'lucide-react'
 
-export function HighlightsList({ highlights: initial, basePath = '/dashboard/destaques', username }: { highlights: Highlight[], basePath?: string, username?: string }) {
+export function HighlightsList({ highlights: initial, basePath = '/dashboard/projetos', username }: { highlights: Highlight[], basePath?: string, username?: string }) {
   const [highlights, setHighlights] = useState(initial)
   const [deleteTarget, setDeleteTarget] = useState<Highlight | null>(null)
 
