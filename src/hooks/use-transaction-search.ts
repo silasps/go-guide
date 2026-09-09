@@ -110,10 +110,16 @@ export function useTransactionSearch(transactions: TransactionWithCategory[], qu
           }
         })
         .catch((error) => {
-          // fail-open: busca continua com o filtro direto, só sem a ampliação —
-          // mas registra visivelmente (console + `failedQuery`) em vez de
-          // ficar indistinguível de "IA rodou e não achou nada relacionado".
-          console.error('Busca inteligente: falha ao ampliar com IA', error)
+          // fail-open: busca continua com o filtro direto (+ dicionário
+          // local, ver `localFallbackTerms`), só sem a ampliação via IA —
+          // registra em `console.warn` (não `console.error`) porque essa
+          // falha já é tratada e não deve virar um "Console Error" no
+          // overlay de dev do Next/Turbopack, que trata qualquer
+          // `console.error` como problema visível mesmo quando a exceção
+          // já foi capturada e a busca continua funcionando normalmente.
+          // O estado visível pro usuário é `failedQuery`/`expansionFailed`
+          // na própria UI, não esse log.
+          console.warn('Busca inteligente: falha ao ampliar com IA (fail-open, sem impacto na busca)', error)
           if (requestIdRef.current === thisRequest) setFailedQuery(query)
         })
         .finally(() => {
