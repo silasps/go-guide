@@ -1,7 +1,7 @@
 import { createClient, getCachedUser } from '@/lib/supabase/server'
 import { getActiveProfile } from '@/lib/profile/active-profile'
 import { markNotificationTypesRead } from '@/lib/notifications/mark-read'
-import { TransactionTable } from '@/components/financial/transaction-table'
+import { TransactionSearchPanel } from '@/components/financial/transaction-search-panel'
 import { NewTransactionButton } from '@/components/financial/new-transaction-button'
 import { TransactionFilters } from '@/components/financial/transaction-filters'
 import { resolveBudgetCategoryLabel } from '@/lib/highlights/budget-category-labels'
@@ -56,7 +56,7 @@ export default async function LancamentosPage({ searchParams }: Props) {
         <NewTransactionButton accounts={activeAccounts} categories={categories ?? []} partners={partners ?? []} highlights={highlightsWithBudget} />
       </div>
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <TransactionTable transactions={(transactions ?? []) as any} accounts={accounts ?? []} categories={categories ?? []} partners={partners ?? []} highlights={highlightsWithBudget} />
+      <TransactionSearchPanel transactions={(transactions ?? []) as any} accounts={accounts ?? []} categories={categories ?? []} partners={partners ?? []} highlights={highlightsWithBudget} />
     </div>
   )
 }

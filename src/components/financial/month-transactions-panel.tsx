@@ -5,9 +5,10 @@ import { TransactionTable } from './transaction-table'
 import { TransactionForm } from './transaction-form'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { cn, formatCurrency } from '@/lib/utils'
+import { cn } from '@/lib/utils'
+import { useTransactionSearch } from '@/hooks/use-transaction-search'
 import { FinancialAccount, TransactionCategory, TransactionWithCategory, Partner } from '@/types/database'
-import { Search, TrendingUp, TrendingDown } from 'lucide-react'
+import { Search, Loader2, Sparkles, TrendingUp, TrendingDown } from 'lucide-react'
 
 interface Props {
   transactions: TransactionWithCategory[] // janela ampla, todos os meses/tipos
@@ -39,15 +40,16 @@ export function MonthTransactionsPanel({ transactions, month, monthLabel, accoun
   // novo lançamento abaixo só oferece conta ativa.
   const activeAccounts = useMemo(() => accounts.filter((a) => !a.archived), [accounts])
 
-  const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase()
+  const monthAndTabFiltered = useMemo(() => {
     return transactions.filter((t) => {
       if (t.date.slice(0, 7) !== month) return false
       if (tab !== 'all' && t.type !== tab) return false
-      if (term && !t.description.toLowerCase().includes(term) && !formatCurrency(t.amount, t.currency).toLowerCase().includes(term)) return false
       return true
     })
-  }, [transactions, month, tab, search])
+  }, [transactions, month, tab])
+
+  const { filtered, expanding, aiAssisted } = useTransactionSearch(monthAndTabFiltered, search)
+  const trimmedSearch = search.trim()
 
   return (
     <div className="space-y-3">
@@ -77,8 +79,15 @@ export function MonthTransactionsPanel({ transactions, month, monthLabel, accoun
 
       <div className="relative">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-        <Input value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)} placeholder="Buscar por descrição ou valor..." className="h-8 pl-8 text-xs" />
+        <Input value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)} placeholder="Buscar por nome, categoria, data ou valor..." className="h-8 pl-8 pr-8 text-xs" />
+        {expanding && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />}
       </div>
+
+      {aiAssisted && (
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Sparkles className="h-3 w-3 shrink-0" /> Ampliamos a busca com termos relacionados a &quot;{trimmedSearch}&quot;.
+        </p>
+      )}
 
       <TransactionTable
         transactions={filtered}
@@ -86,8 +95,8 @@ export function MonthTransactionsPanel({ transactions, month, monthLabel, accoun
         categories={categories}
         partners={partners}
         highlights={highlights}
-        emptyTitle="Nenhuma transação encontrada"
-        emptyHint={`Não há transações para exibir em ${monthLabel.toLowerCase()}.`}
+        emptyTitle={trimmedSearch ? 'Nenhum lançamento encontrado' : 'Nenhuma transação encontrada'}
+        emptyHint={trimmedSearch ? `Não encontramos nada pra "${trimmedSearch}".` : `Não há transações para exibir em ${monthLabel.toLowerCase()}.`}
       />
 
       {filtered.length > 0 && <p className="text-xs text-muted-foreground text-right">Total: {filtered.length}</p>}
