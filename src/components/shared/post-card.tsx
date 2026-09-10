@@ -237,14 +237,17 @@ export function PostCard({ post, visitorLocale, canEdit = false, autoOpenComment
         </div>
       )}
 
-      <div onDoubleClick={handleDoubleClick} className="relative">
+      <div
+        onDoubleClick={handleDoubleClick}
+        onClick={() => { if (post.tags.length > 0) setShowTags((v) => !v) }}
+        className="relative"
+      >
         <PostMedia
           post={post}
           scrollRef={scrollRef}
           onScroll={handleScroll}
           activeSlide={activeSlide}
           showTags={showTags}
-          onToggleTags={() => setShowTags((v) => !v)}
         />
         {showLikeBurst && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -292,14 +295,13 @@ export function PostCard({ post, visitorLocale, canEdit = false, autoOpenComment
 }
 
 function PostMedia({
-  post, scrollRef, onScroll, activeSlide, showTags, onToggleTags,
+  post, scrollRef, onScroll, activeSlide, showTags,
 }: {
   post: PostWithProfile
   scrollRef: React.RefObject<HTMLDivElement | null>
   onScroll: () => void
   activeSlide: number
   showTags: boolean
-  onToggleTags: () => void
 }) {
   const t = useTranslations('Feed')
   const aspectClass = ASPECT_CLASS[post.media_aspect_ratio] || 'aspect-[4/5]'
@@ -343,7 +345,7 @@ function PostMedia({
           ))}
         </div>
         <RoleBadge role={post.profile.user_role} />
-        {post.tags.length > 0 && <TagToggleButton onClick={onToggleTags} />}
+        {post.tags.length > 0 && <TagToggleIndicator />}
       </div>
     )
   }
@@ -353,7 +355,7 @@ function PostMedia({
       <Image src={post.media_urls[0]} alt="" fill className="object-cover" />
       {showTags && <TagPins tags={post.tags.filter((tag) => tag.media_index === 0)} />}
       <RoleBadge role={post.profile.user_role} />
-      {post.tags.length > 0 && <TagToggleButton onClick={onToggleTags} />}
+      {post.tags.length > 0 && <TagToggleIndicator />}
     </MediaFrame>
   )
 }
@@ -376,11 +378,14 @@ function RoleBadge({ role }: { role: 'missionary' | 'partner' }) {
   )
 }
 
-function TagToggleButton({ onClick }: { onClick: () => void }) {
+/** Só um aviso visual de "tem gente marcada aqui" — o toque real que
+ *  mostra/esconde as marcações é em qualquer ponto da foto (ver
+ *  `onClick` no wrapper em `PostCard`), igual ao Instagram. */
+function TagToggleIndicator() {
   return (
-    <button type="button" onClick={onClick} className="absolute bottom-2 left-2 bg-black/50 text-white rounded-full p-1.5">
+    <div className="absolute bottom-2 left-2 bg-black/50 text-white rounded-full p-1.5 pointer-events-none">
       <TagIcon className="h-3.5 w-3.5" />
-    </button>
+    </div>
   )
 }
 
