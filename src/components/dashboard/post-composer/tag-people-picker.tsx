@@ -135,7 +135,7 @@ export function TagPeoplePicker({ profileId, media, mediaIndex, aspect, tags, on
             style={{ left: `${tag.x}%`, top: `${tag.y}%` }}
             onPointerDown={(e) => { e.stopPropagation(); setDraggingTagId(tag.id) }}
             aria-label={t('moveTag')}
-            className={`absolute -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 bg-black/70 text-white text-xs rounded-full pl-1 pr-1.5 py-0.5 cursor-grab active:cursor-grabbing touch-none ${draggingTagId === tag.id ? 'ring-2 ring-white/80' : ''}`}
+            className={`absolute -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 bg-black/70 text-white text-xs rounded-full pl-1 pr-1.5 py-0.5 cursor-grab active:cursor-grabbing touch-none select-none ${draggingTagId === tag.id ? 'ring-2 ring-white/80' : ''}`}
           >
             <span className="h-4 w-4 rounded-full bg-white/20 flex items-center justify-center">
               <UserRound className="h-2.5 w-2.5" />
