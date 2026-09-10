@@ -65,86 +65,90 @@ export function StepAdjust({ mediaFiles, activeIndex, onActiveIndexChange, aspec
         </div>
       </div>
 
-      <div className="flex-1 space-y-4">
-        {mediaFiles.length > 1 && (
-          <div className="flex items-center gap-2 overflow-x-auto">
-            {mediaFiles.map((m, i) => (
+      <div className="flex-1 flex flex-col min-h-0 md:h-full">
+        <div className="shrink-0 space-y-4">
+          {mediaFiles.length > 1 && (
+            <div className="flex items-center gap-2 overflow-x-auto">
+              {mediaFiles.map((m, i) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => onActiveIndexChange(i)}
+                  className={cn('h-10 w-10 shrink-0 rounded-md overflow-hidden ring-2', i === activeIndex ? 'ring-primary' : 'ring-transparent')}
+                >
+                  <Image src={m.previewUrl} alt="" width={40} height={40} className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center gap-1 border-b">
+            {(['filters', 'adjustments'] as Tab[]).map((tabId) => (
               <button
-                key={m.id}
+                key={tabId}
                 type="button"
-                onClick={() => onActiveIndexChange(i)}
-                className={cn('h-10 w-10 shrink-0 rounded-md overflow-hidden ring-2', i === activeIndex ? 'ring-primary' : 'ring-transparent')}
+                onClick={() => setTab(tabId)}
+                className={cn(
+                  'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+                  tab === tabId ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
+                )}
               >
-                <Image src={m.previewUrl} alt="" width={40} height={40} className="h-full w-full object-cover" />
+                {t(tabId === 'filters' ? 'tabFilters' : 'tabAdjustments')}
               </button>
             ))}
           </div>
-        )}
-
-        <div className="flex items-center gap-1 border-b">
-          {(['filters', 'adjustments'] as Tab[]).map((tabId) => (
-            <button
-              key={tabId}
-              type="button"
-              onClick={() => setTab(tabId)}
-              className={cn(
-                'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
-                tab === tabId ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
-              )}
-            >
-              {t(tabId === 'filters' ? 'tabFilters' : 'tabAdjustments')}
-            </button>
-          ))}
         </div>
 
-        {tab === 'filters' ? (
-          <div className="grid grid-cols-3 gap-3">
-            {FILTER_PRESETS.map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                onClick={() => onChange(activeIndex, { filterPreset: preset.id })}
-                className="space-y-1.5 text-center"
-              >
-                <div
-                  className={cn(
-                    'relative aspect-square rounded-lg overflow-hidden ring-2',
-                    active.filterPreset === preset.id ? 'ring-primary' : 'ring-transparent'
-                  )}
+        <div className="flex-1 min-h-0 overflow-y-auto md:pr-1 pt-4">
+          {tab === 'filters' ? (
+            <div className="grid grid-cols-3 gap-3">
+              {FILTER_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => onChange(activeIndex, { filterPreset: preset.id })}
+                  className="space-y-1.5 text-center"
                 >
-                  <Image src={active.previewUrl} alt="" fill className="object-cover" style={{ filter: preset.filter || undefined }} />
-                </div>
-                <span className="text-xs text-muted-foreground">{t(`filter_${preset.id}` as 'filter_none')}</span>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {SLIDERS.map(({ key, min, max }) => (
-              <div key={key} className="space-y-1">
-                <div className="flex items-center justify-between text-sm">
-                  <span>{t(`adjust_${key}` as 'adjust_brightness')}</span>
-                  <button
-                    type="button"
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                    onClick={() => onChange(activeIndex, { adjustments: { ...active.adjustments, [key]: DEFAULT_ADJUSTMENTS[key] } })}
+                  <div
+                    className={cn(
+                      'relative aspect-square rounded-lg overflow-hidden ring-2',
+                      active.filterPreset === preset.id ? 'ring-primary' : 'ring-transparent'
+                    )}
                   >
-                    {t('reset')}
-                  </button>
+                    <Image src={active.previewUrl} alt="" fill className="object-cover" style={{ filter: preset.filter || undefined }} />
+                  </div>
+                  <span className="text-xs text-muted-foreground">{t(`filter_${preset.id}` as 'filter_none')}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {SLIDERS.map(({ key, min, max }) => (
+                <div key={key} className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>{t(`adjust_${key}` as 'adjust_brightness')}</span>
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => onChange(activeIndex, { adjustments: { ...active.adjustments, [key]: DEFAULT_ADJUSTMENTS[key] } })}
+                    >
+                      {t('reset')}
+                    </button>
+                  </div>
+                  <input
+                    type="range"
+                    min={min}
+                    max={max}
+                    step={1}
+                    value={active.adjustments[key]}
+                    onChange={(e) => onChange(activeIndex, { adjustments: { ...active.adjustments, [key]: Number(e.target.value) } })}
+                    className="w-full accent-primary"
+                  />
                 </div>
-                <input
-                  type="range"
-                  min={min}
-                  max={max}
-                  step={1}
-                  value={active.adjustments[key]}
-                  onChange={(e) => onChange(activeIndex, { adjustments: { ...active.adjustments, [key]: Number(e.target.value) } })}
-                  className="w-full accent-primary"
-                />
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
