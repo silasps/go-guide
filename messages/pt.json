@@ -1110,8 +1110,7 @@
     "letterImageChange": "Trocar",
     "letterImageProcessing": "Processando...",
     "letterImageCaptionPlaceholder": "Legenda da foto (opcional)",
-    "sectionDatesStatus": "datas e status",
-    "sectionGallery": "galeria de fotos"
+    "sectionDatesStatus": "datas e status"
   },
   "PrayerPoints": {
     "prayForProject": "Orar por este projeto",

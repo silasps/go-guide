@@ -43,8 +43,12 @@ export function StoryImageField({ label, draft, onChange, captionValue, onCaptio
   return (
     <div className="space-y-1.5 rounded-lg border border-dashed p-3">
       <Label className="text-xs text-muted-foreground">{label}</Label>
+      {/* aspect-[4/3]: mesma proporção usada na página pública (`LetterImage`
+       *  em letter-body.tsx) — a miniatura já mostra o formato real do
+       *  recorte automático (`object-cover`), pra facilitar escolher uma
+       *  foto que encaixe bem, mesmo sem um editor de zoom/posição aqui. */}
       {draft.url ? (
-        <div className="relative h-32 w-full">
+        <div className="relative aspect-[4/3] w-full max-w-64 mx-auto">
           <Image src={draft.url} alt="" fill className="object-cover rounded-lg" />
           <label className="absolute bottom-2 right-2 cursor-pointer">
             <div className="bg-black/60 text-white text-xs px-2 py-1 rounded-lg hover:bg-black/80 transition-colors">
@@ -61,7 +65,7 @@ export function StoryImageField({ label, draft, onChange, captionValue, onCaptio
           </button>
         </div>
       ) : (
-        <label className="flex flex-col items-center justify-center gap-1.5 h-20 rounded-lg border border-dashed cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
+        <label className="flex aspect-[4/3] w-full max-w-64 mx-auto flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
           <ImagePlus className="h-4 w-4" />
           <span className="text-xs">{loading ? processingLabel : uploadLabel}</span>
           <input type="file" accept="image/*" className="hidden" onChange={handleSelect} disabled={loading} />

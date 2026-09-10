@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
-import { Highlight, Milestone, ProjectBudgetCategory, ProjectGalleryImage, ProjectPrayerPoint, MediaAspectRatio } from '@/types/database'
+import { Highlight, Milestone, ProjectBudgetCategory, ProjectPrayerPoint, MediaAspectRatio } from '@/types/database'
 import type { Locale } from '@/i18n/config'
 import { toMasked, fromMasked, reformatMasked } from '@/lib/currency-mask'
 import { uniqueFileName } from './cover-editor'
@@ -16,14 +16,13 @@ import { uploadVideoToBunny } from '@/lib/media/upload-bunny-video'
 import type { MilestoneDraft } from './milestones-editor'
 import type { BudgetCategoryDraft } from './budget-categories-editor'
 import type { PrayerPointDraft } from './prayer-points-editor'
-import type { GalleryImageDraft } from './gallery-editor'
 import { toImageDraft, type ImageDraft } from './story-image-field'
 import { initialTranslations, initialSources, buildTranslationsPayload, translateContent } from '@/lib/i18n/content-translations'
 
 export type ProjectEditorStepId =
   | 'cover' | 'identity' | 'support-types' | 'schedule' | 'category'
   | 'financial' | 'financial-detailed' | 'prayer' | 'scripture' | 'letter'
-  | 'milestones' | 'gallery'
+  | 'milestones'
 
 export const STEP_LABELS: Record<ProjectEditorStepId, string> = {
   cover: 'Capa',
@@ -37,13 +36,11 @@ export const STEP_LABELS: Record<ProjectEditorStepId, string> = {
   scripture: 'Versículo',
   letter: 'Carta',
   milestones: 'Marcos',
-  gallery: 'Galeria',
 }
 
 type HighlightWithRelations = Highlight & {
   milestones?: Milestone[]
   budgetCategories?: ProjectBudgetCategory[]
-  galleryImages?: ProjectGalleryImage[]
   prayerPoints?: ProjectPrayerPoint[]
 }
 
@@ -165,10 +162,6 @@ export function useProjectEditor({ mode, highlight, profileId, backPath, initial
       }))
   )
 
-  const [galleryImages, setGalleryImages] = useState<GalleryImageDraft[]>(
-    (highlight?.galleryImages ?? []).map(g => ({ url: g.image_url }))
-  )
-
   function handleCurrencyChange(newCurrency: string) {
     setGoalAmount(prev => reformatMasked(prev, currency, newCurrency))
     setCurrentAmount(prev => reformatMasked(prev, currency, newCurrency))
@@ -186,7 +179,7 @@ export function useProjectEditor({ mode, highlight, profileId, backPath, initial
     if (financialEnabled) list.push('financial')
     if (detailedBudget) list.push('financial-detailed')
     if (prayerSectionShown) list.push('prayer')
-    list.push('scripture', 'letter', 'milestones', 'gallery')
+    list.push('scripture', 'letter', 'milestones')
     return list
   }, [financialEnabled, detailedBudget, prayerSectionShown])
 
@@ -265,15 +258,6 @@ export function useProjectEditor({ mode, highlight, profileId, backPath, initial
           cover_position = '50% 50%'
         }
 
-        const galleryUrls: string[] = []
-        for (const img of galleryImages) {
-          if (!img.file) { galleryUrls.push(img.url); continue }
-          const path = `${currentUser!.id}/highlights/${uniqueFileName('webp')}`
-          const { error } = await supabase.storage.from('media').upload(path, img.file, { upsert: true })
-          if (error) throw error
-          galleryUrls.push(supabase.storage.from('media').getPublicUrl(path).data.publicUrl)
-        }
-
         const [letterImageUrl, letterImageUrl2] = await Promise.all([
           resolveLetterImageUrl(letterImage1, currentUser!.id),
           resolveLetterImageUrl(letterImage2, currentUser!.id),
@@ -346,7 +330,6 @@ export function useProjectEditor({ mode, highlight, profileId, backPath, initial
                   is_completed: p.is_completed,
                 }))
               : [],
-            galleryImages: galleryUrls,
           }),
         })
         if (!res.ok) {
@@ -384,7 +367,7 @@ export function useProjectEditor({ mode, highlight, profileId, backPath, initial
     letterImage2, setLetterImage2, letterImageCaption2, setLetterImageCaption2,
     status, setStatus, milestones, setMilestones,
     budgetMode, setBudgetMode, budgetCategories, setBudgetCategories, budgetTotal,
-    prayerPoints, setPrayerPoints, galleryImages, setGalleryImages,
+    prayerPoints, setPrayerPoints,
     financialEnabled, detailedBudget, prayerSectionShown,
     profileId,
   }

@@ -15,7 +15,6 @@ import { getMediaType } from '@/lib/media/compress'
 import { MilestonesEditor } from './milestones-editor'
 import { BudgetCategoriesEditor } from './budget-categories-editor'
 import { PrayerPointsEditor } from './prayer-points-editor'
-import { GalleryEditor } from './gallery-editor'
 import { DeleteProjectDialog } from './delete-project-dialog'
 import { SupportTypesPicker } from './support-types-picker'
 import { StoryImageField } from './story-image-field'
@@ -24,11 +23,11 @@ import { PROJECT_CATEGORIES } from '@/lib/highlights/project-categories'
 import { WizardModal } from '@/components/shared/wizard-modal'
 import { hasInAppNavigation } from '@/lib/navigation-tracker'
 import { useProjectEditor, STEP_LABELS, type ProjectEditorStepId, type ProjectEditor } from './use-project-editor'
-import type { Highlight, Milestone, ProjectBudgetCategory, ProjectGalleryImage, ProjectPrayerPoint } from '@/types/database'
+import type { Highlight, Milestone, ProjectBudgetCategory, ProjectPrayerPoint } from '@/types/database'
 
 interface Props {
   mode: 'create' | 'edit'
-  highlight?: Highlight & { milestones?: Milestone[]; budgetCategories?: ProjectBudgetCategory[]; galleryImages?: ProjectGalleryImage[]; prayerPoints?: ProjectPrayerPoint[] }
+  highlight?: Highlight & { milestones?: Milestone[]; budgetCategories?: ProjectBudgetCategory[]; prayerPoints?: ProjectPrayerPoint[] }
   profileId: string
   backPath: string
   initialStepId?: ProjectEditorStepId
@@ -304,6 +303,7 @@ function StepLetter({ e }: { e: ProjectEditor }) {
           onTranslateWithAi={(locale) => e.translateField(e.letter, locale, e.setLetterTranslations, e.setLetterSources)}
           originalPlaceholder="Queridos amigos e parceiros..."
           rows={8}
+          textareaClassName="max-h-64 overflow-y-auto"
         />
       </div>
       <StoryImageField
@@ -341,15 +341,6 @@ function StepMilestones({ e }: { e: ProjectEditor }) {
   )
 }
 
-function StepGallery({ e }: { e: ProjectEditor }) {
-  return (
-    <div className="space-y-3">
-      <Label>Fotos do projeto</Label>
-      <GalleryEditor images={e.galleryImages} onChange={e.setGalleryImages} />
-    </div>
-  )
-}
-
 const STEP_COMPONENTS: Record<ProjectEditorStepId, (props: { e: ProjectEditor }) => React.ReactElement> = {
   cover: StepCover,
   identity: StepIdentity,
@@ -362,7 +353,6 @@ const STEP_COMPONENTS: Record<ProjectEditorStepId, (props: { e: ProjectEditor })
   scripture: StepScripture,
   letter: StepLetter,
   milestones: StepMilestones,
-  gallery: StepGallery,
 }
 
 function ReviewContent({ e }: { e: ProjectEditor }) {
@@ -427,9 +417,8 @@ function ReviewContent({ e }: { e: ProjectEditor }) {
         <StepLetter e={e} />
       </SectionCard>
 
-      <SectionCard number={milestonesN} title="Marcos & Galeria">
+      <SectionCard number={milestonesN} title="Marcos">
         <StepMilestones e={e} />
-        <StepGallery e={e} />
       </SectionCard>
     </div>
   )
@@ -440,9 +429,18 @@ export function ProjectEditorModal({ mode, highlight, profileId, backPath, initi
   const e = useProjectEditor({ mode, highlight, profileId, backPath, initialStepId })
 
   const title = e.isReview ? 'Revisão' : STEP_LABELS[e.currentStepId as ProjectEditorStepId]
-  const rightLabel = e.isReview
-    ? (mode === 'edit' ? 'Salvar alterações' : 'Criar projeto')
-    : (e.currentIndex === e.steps.length - 1 ? 'Ir pra revisão' : 'Próxima')
+  const savingLabel = mode === 'edit' ? 'Salvando...' : 'Criando...'
+  // O botão fica no cabeçalho fixo, mas a Revisão é longa — sem esse
+  // spinner AQUI (onde o usuário está de fato olhando ao clicar), o único
+  // sinal de "salvando" era um texto no fim do formulário, fora de vista,
+  // dando a impressão de tela travada por vários segundos (reportado pelo
+  // usuário: "não teve nenhum retorno visual"). `rightDisabled` já
+  // desabilita o clique duplo, isso aqui é só o feedback visível.
+  const rightLabel = e.saving
+    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />{savingLabel}</>
+    : e.isReview
+      ? (mode === 'edit' ? 'Salvar alterações' : 'Criar projeto')
+      : (e.currentIndex === e.steps.length - 1 ? 'Ir pra revisão' : 'Próxima')
 
   // Fechar deve manter o usuário onde ele já estava (Feed, sidebar "Novo
   // projeto", banner de checklist etc.) em vez de sempre pular pra lista

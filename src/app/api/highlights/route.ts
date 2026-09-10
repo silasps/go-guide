@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { highlightId, profileId, title, description, goalTypes, category, goalAmount, currentAmount,
     currency, coverUrl, coverPosition, coverMediaType, coverStatus, coverBunnyVideoId, tripStartDate, fundingDeadline, scripture, letter, status, milestones, budgetCategories,
-    prayerPoints, galleryImages, originalLocale, titleTranslations, descriptionTranslations, scriptureTranslations, letterTranslations,
+    prayerPoints, originalLocale, titleTranslations, descriptionTranslations, scriptureTranslations, letterTranslations,
     letterImageUrl, letterImageCaption, letterImageUrl2, letterImageCaption2 } = body
 
   try {
@@ -200,14 +200,6 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      await dbDelete(`project_gallery_images?highlight_id=eq.${hId}`)
-      if (Array.isArray(galleryImages) && galleryImages.length > 0) {
-        await dbPost('project_gallery_images', galleryImages.map((url: string, i: number) => ({
-          highlight_id: hId,
-          image_url: url,
-          order_index: i,
-        })))
-      }
     }
 
     return NextResponse.json({ ok: true })

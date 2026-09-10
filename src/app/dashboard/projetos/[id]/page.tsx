@@ -39,12 +39,6 @@ export default async function EditarProjetoPage({ params }: Props) {
     .eq('highlight_id', id)
     .order('order_index')
 
-  const { data: galleryImages } = await supabase
-    .from('project_gallery_images')
-    .select('*')
-    .eq('highlight_id', id)
-    .order('order_index')
-
   const { data: prayerPoints } = await supabase
     .from('project_prayer_points')
     .select('*')
@@ -80,7 +74,7 @@ export default async function EditarProjetoPage({ params }: Props) {
       )}
       <ProjectEditorModal
         mode="edit"
-        highlight={{ ...highlight, milestones: milestones ?? [], budgetCategories: budgetCategories ?? [], galleryImages: galleryImages ?? [], prayerPoints: prayerPoints ?? [] }}
+        highlight={{ ...highlight, milestones: milestones ?? [], budgetCategories: budgetCategories ?? [], prayerPoints: prayerPoints ?? [] }}
         profileId={profile.id}
         backPath={`/${profile.username}/projetos`}
       />

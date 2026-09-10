@@ -145,44 +145,50 @@ export function PrayerPointsEditor({ points, onChange, originalLocale, profileId
           {expandedIdx === i && (
             <div className="space-y-2.5 pt-1 border-t">
               {targetLocales.map((locale) => (
-                <div key={locale} className="space-y-1.5">
-                  <p className="text-[11px] font-medium text-muted-foreground">{LOCALE_FLAGS[locale]} {locale.toUpperCase()}</p>
-                  <div className="flex items-center gap-1.5">
-                    <Input
-                      value={p.titleTranslations[locale] ?? ''}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldTranslation(i, 'title', locale, e.target.value)}
-                      placeholder={t('manualPlaceholder')}
-                      className="h-7 text-xs"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 shrink-0"
-                      disabled={!p.title.trim() || translatingKey !== null}
-                      onClick={() => translateField(i, 'title', locale)}
-                    >
-                      {translatingKey === `${i}-title-${locale}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Languages className="h-3.5 w-3.5" />}
-                    </Button>
+                <div key={locale} className="space-y-2 rounded-md bg-muted/40 p-2">
+                  <p className="text-[11px] font-semibold text-foreground">{LOCALE_FLAGS[locale]} {locale.toUpperCase()}</p>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-normal text-muted-foreground">Título</Label>
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        value={p.titleTranslations[locale] ?? ''}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFieldTranslation(i, 'title', locale, e.target.value)}
+                        placeholder={t('manualPlaceholder')}
+                        className="h-7 text-xs"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0"
+                        disabled={!p.title.trim() || translatingKey !== null}
+                        onClick={() => translateField(i, 'title', locale)}
+                      >
+                        {translatingKey === `${i}-title-${locale}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Languages className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-start gap-1.5">
-                    <Textarea
-                      value={p.descriptionTranslations[locale] ?? ''}
-                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFieldTranslation(i, 'description', locale, e.target.value)}
-                      placeholder={t('manualPlaceholder')}
-                      className="min-h-8 text-xs py-1.5"
-                      rows={2}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 shrink-0"
-                      disabled={!p.description.trim() || translatingKey !== null}
-                      onClick={() => translateField(i, 'description', locale)}
-                    >
-                      {translatingKey === `${i}-description-${locale}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Languages className="h-3.5 w-3.5" />}
-                    </Button>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-normal text-muted-foreground">Descrição (o que orar)</Label>
+                    <div className="flex items-start gap-1.5">
+                      <Textarea
+                        value={p.descriptionTranslations[locale] ?? ''}
+                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFieldTranslation(i, 'description', locale, e.target.value)}
+                        placeholder={t('manualPlaceholder')}
+                        className="min-h-8 text-xs py-1.5"
+                        rows={2}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0"
+                        disabled={!p.description.trim() || translatingKey !== null}
+                        onClick={() => translateField(i, 'description', locale)}
+                      >
+                        {translatingKey === `${i}-description-${locale}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Languages className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}

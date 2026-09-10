@@ -13,7 +13,7 @@ interface Props {
   closeLabel: string
   backLabel?: string
   onBack?: () => void
-  rightLabel?: string
+  rightLabel?: ReactNode
   onRight?: () => void
   rightDisabled?: boolean
   footer?: ReactNode
@@ -56,7 +56,7 @@ export function WizardModal({
               type="button"
               onClick={onRight}
               disabled={rightDisabled}
-              className="text-sm font-semibold text-primary disabled:opacity-40 justify-self-end"
+              className="text-sm font-semibold text-primary disabled:opacity-40 justify-self-end inline-flex items-center gap-1.5"
             >
               {rightLabel}
             </button>

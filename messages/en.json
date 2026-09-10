@@ -1110,8 +1110,7 @@
     "letterImageChange": "Change",
     "letterImageProcessing": "Processing...",
     "letterImageCaptionPlaceholder": "Photo caption (optional)",
-    "sectionDatesStatus": "dates and status",
-    "sectionGallery": "photo gallery"
+    "sectionDatesStatus": "dates and status"
   },
   "PrayerPoints": {
     "prayForProject": "Pray for this project",

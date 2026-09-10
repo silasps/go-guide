@@ -175,13 +175,12 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
   const localizedScripture = resolveLocalizedText(project.scripture, project.original_locale, project.scripture_translations, visitorLocale).text
   const localizedLetter = resolveLocalizedText(project.letter, project.original_locale, project.letter_translations, visitorLocale).text
 
-  const [{ data: milestones }, { data: updates }, { data: budgetCategories }, { data: galleryImages }, { data: pastProjects }, { count: supporterCount }, { data: prayerPoints }] = await Promise.all([
+  const [{ data: milestones }, { data: updates }, { data: budgetCategories }, { data: pastProjects }, { count: supporterCount }, { data: prayerPoints }] = await Promise.all([
     supabase.from('milestones').select('*').eq('highlight_id', project.id).order('order_index'),
     supabase.from('posts').select('*')
       .eq('profile_id', profile.id).eq('project_id', project.id).eq('is_draft', false).neq('moderation_status', 'removed')
       .order('published_at', { ascending: false }).limit(12),
     supabase.from('project_budget_progress').select('*').eq('highlight_id', project.id).order('order_index'),
-    supabase.from('project_gallery_images').select('*').eq('highlight_id', project.id).order('order_index'),
     supabase.from('highlights').select('id, slug, title, cover_url, cover_position, category, original_locale, title_translations')
       .eq('profile_id', profile.id).eq('status', 'completed').neq('id', project.id)
       .order('completed_at', { ascending: false }).limit(3),
@@ -274,7 +273,6 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
     status: project.status,
     milestones: (milestones ?? []).map(m => ({ id: m.id, title: m.title, titleTranslations: m.title_translations ?? {}, is_completed: m.is_completed })),
     budgetCategories: (budgetCategories ?? []).map(b => ({ category_type: b.category_type, custom_label: b.custom_label, description: b.description, target_amount: b.target_amount })),
-    galleryImages: (galleryImages ?? []).map(g => g.image_url),
   }
   const sectionProps = { canEdit, snapshot, highlightId: project.id, profileId: profile.id }
 
@@ -621,27 +619,6 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
                 </ul>
               ) : (
                 canEdit ? <p className="text-sm text-muted-foreground italic">Nenhum marco ainda.</p> : null
-              )}
-            </SectionEditLink>
-          </div>
-        )}
-
-        {/* Galeria — fotos avulsas que representam o projeto, separadas da
-            capa única e dos posts vinculados (que aparecem em "Atualizações"). */}
-        {(snapshot.galleryImages.length > 0 || canEdit) && (
-          <div className="rounded-2xl border bg-card p-5 space-y-3">
-            <h2 className="font-semibold">Fotos do projeto</h2>
-            <SectionEditLink canEdit={canEdit} highlightId={project.id} label={editLabel(t('sectionGallery'))}>
-              {snapshot.galleryImages.length > 0 ? (
-                <div className="grid grid-cols-3 gap-2">
-                  {snapshot.galleryImages.map((url, i) => (
-                    <div key={i} className="relative aspect-square rounded-xl overflow-hidden bg-muted">
-                      <Image src={url} alt="" fill sizes="33vw" className="object-cover" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                canEdit ? <p className="text-sm text-muted-foreground italic">Nenhuma foto ainda.</p> : null
               )}
             </SectionEditLink>
           </div>
