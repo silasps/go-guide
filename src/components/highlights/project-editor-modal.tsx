@@ -453,7 +453,6 @@ export function ProjectEditorModal({ mode, highlight, profileId, backPath, initi
         open
         onOpenChange={() => {}}
         onRequestClose={handleClose}
-        variant="centered"
         title={title}
         closeLabel="Fechar"
         backLabel="Voltar"
