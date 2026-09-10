@@ -22,6 +22,7 @@ import { StoryImageField } from './story-image-field'
 import { LocaleContentTabs } from '@/components/dashboard/locale-content-tabs'
 import { PROJECT_CATEGORIES } from '@/lib/highlights/project-categories'
 import { WizardModal } from '@/components/shared/wizard-modal'
+import { hasInAppNavigation } from '@/lib/navigation-tracker'
 import { useProjectEditor, STEP_LABELS, type ProjectEditorStepId, type ProjectEditor } from './use-project-editor'
 import type { Highlight, Milestone, ProjectBudgetCategory, ProjectGalleryImage, ProjectPrayerPoint } from '@/types/database'
 
@@ -443,8 +444,14 @@ export function ProjectEditorModal({ mode, highlight, profileId, backPath, initi
     ? (mode === 'edit' ? 'Salvar alterações' : 'Criar projeto')
     : (e.currentIndex === e.steps.length - 1 ? 'Ir pra revisão' : 'Próxima')
 
+  // Fechar deve manter o usuário onde ele já estava (Feed, sidebar "Novo
+  // projeto", banner de checklist etc.) em vez de sempre pular pra lista
+  // pública de projetos — `backPath` continua sendo usado depois de
+  // criar/salvar/excluir (onde ir pra lista de projetos É o destino certo),
+  // só não é mais o destino do botão de fechar sem salvar nada.
   function handleClose() {
-    e.router.push(backPath)
+    if (hasInAppNavigation()) e.router.back()
+    else e.router.push(backPath)
   }
 
   return (
