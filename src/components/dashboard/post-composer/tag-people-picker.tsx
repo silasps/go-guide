@@ -20,15 +20,36 @@ interface Props {
   tags: TagDraft[]
   onAddTag: (tag: TagDraft) => void
   onRemoveTag: (id: string) => void
+  onMoveTag: (id: string, x: number, y: number) => void
 }
 
-export function TagPeoplePicker({ profileId, media, mediaIndex, aspect, tags, onAddTag, onRemoveTag }: Props) {
+export function TagPeoplePicker({ profileId, media, mediaIndex, aspect, tags, onAddTag, onRemoveTag, onMoveTag }: Props) {
   const t = useTranslations('PostComposer')
   const frameRef = useRef<HTMLDivElement>(null)
   const [pending, setPending] = useState<{ x: number; y: number } | null>(null)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<TaggableProfile[]>([])
   const [searching, setSearching] = useState(false)
+  const [draggingTagId, setDraggingTagId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!draggingTagId) return
+    const tagId = draggingTagId
+    function handleMove(e: PointerEvent) {
+      if (!frameRef.current) return
+      const rect = frameRef.current.getBoundingClientRect()
+      const x = Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100))
+      const y = Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100))
+      onMoveTag(tagId, x, y)
+    }
+    function handleUp() { setDraggingTagId(null) }
+    window.addEventListener('pointermove', handleMove)
+    window.addEventListener('pointerup', handleUp)
+    return () => {
+      window.removeEventListener('pointermove', handleMove)
+      window.removeEventListener('pointerup', handleUp)
+    }
+  }, [draggingTagId, onMoveTag])
 
   const trimmedQuery = query.trim()
 
@@ -104,13 +125,22 @@ export function TagPeoplePicker({ profileId, media, mediaIndex, aspect, tags, on
           <div
             key={tag.id}
             style={{ left: `${tag.x}%`, top: `${tag.y}%` }}
-            className="absolute -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 bg-black/70 text-white text-xs rounded-full pl-1 pr-1.5 py-0.5"
+            className={`absolute -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 bg-black/70 text-white text-xs rounded-full pl-1 pr-1.5 py-0.5 ${draggingTagId === tag.id ? 'ring-2 ring-white/80' : ''}`}
           >
-            <span className="h-4 w-4 rounded-full bg-white/20 flex items-center justify-center">
+            <span
+              onPointerDown={(e) => { e.stopPropagation(); setDraggingTagId(tag.id) }}
+              className="h-4 w-4 rounded-full bg-white/20 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none"
+              aria-label={t('moveTag')}
+            >
               <UserRound className="h-2.5 w-2.5" />
             </span>
             {tag.displayName}
-            <button type="button" onClick={(e) => { e.stopPropagation(); onRemoveTag(tag.id) }} aria-label={t('removeTag')}>
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); onRemoveTag(tag.id) }}
+              aria-label={t('removeTag')}
+            >
               <X className="h-3 w-3" />
             </button>
           </div>

@@ -127,6 +127,7 @@ export function StepDetails({ composer, profileId }: Props) {
             tags={tags}
             onAddTag={(tag) => setTags((prev) => [...prev, tag])}
             onRemoveTag={(id) => setTags((prev) => prev.filter((t) => t.id !== id))}
+            onMoveTag={(id, x, y) => setTags((prev) => prev.map((t) => (t.id === id ? { ...t, x, y } : t)))}
           />
         </div>
       )}
