@@ -28,6 +28,7 @@ export function TagPeoplePicker({ profileId, media, mediaIndex, aspect, tags, on
   const [pending, setPending] = useState<{ x: number; y: number } | null>(null)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<TaggableProfile[]>([])
+  const [searching, setSearching] = useState(false)
 
   const trimmedQuery = query.trim()
 
@@ -35,10 +36,19 @@ export function TagPeoplePicker({ profileId, media, mediaIndex, aspect, tags, on
     if (!pending || trimmedQuery.length < 2) return
     let cancelled = false
     const id = setTimeout(() => {
-      searchTaggableProfiles(profileId, trimmedQuery).then((data) => { if (!cancelled) setResults(data) })
+      searchTaggableProfiles(profileId, trimmedQuery).then((data) => {
+        if (cancelled) return
+        setResults(data)
+        setSearching(false)
+      })
     }, DEBOUNCE_MS)
     return () => { cancelled = true; clearTimeout(id) }
   }, [trimmedQuery, pending, profileId])
+
+  function handleQueryChange(value: string) {
+    setQuery(value)
+    setSearching(value.trim().length >= 2)
+  }
 
   const visibleResults = pending && trimmedQuery.length >= 2 ? results : []
 
@@ -49,6 +59,8 @@ export function TagPeoplePicker({ profileId, media, mediaIndex, aspect, tags, on
     const y = ((e.clientY - rect.top) / rect.height) * 100
     setPending({ x, y })
     setQuery('')
+    setResults([])
+    setSearching(false)
   }
 
   function pickResult(profile: TaggableProfile) {
@@ -113,12 +125,18 @@ export function TagPeoplePicker({ profileId, media, mediaIndex, aspect, tags, on
             <input
               autoFocus
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => handleQueryChange(e.target.value)}
               placeholder={t('tagSearchPlaceholder')}
               className="w-full text-sm bg-transparent border-b px-1 py-1 outline-none"
             />
             <div className="max-h-40 overflow-y-auto overflow-x-hidden">
-              {visibleResults.map((profile) => (
+              {searching && (
+                <div className="flex items-center gap-2 px-1.5 py-1.5 text-xs text-muted-foreground">
+                  <span className="h-3 w-3 shrink-0 rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground animate-spin" />
+                  {t('searching')}
+                </div>
+              )}
+              {!searching && visibleResults.map((profile) => (
                 <button
                   key={profile.id}
                   type="button"
