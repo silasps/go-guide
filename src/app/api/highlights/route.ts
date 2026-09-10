@@ -183,11 +183,16 @@ export async function POST(req: NextRequest) {
         await dbDelete(`project_prayer_points?highlight_id=eq.${hId}`)
         const points = Array.isArray(prayerPoints) ? prayerPoints : []
         if (points.length > 0) {
-          await dbPost('project_prayer_points', points.map((p: { title: string; description: string | null; is_completed: boolean }, i: number) => ({
+          await dbPost('project_prayer_points', points.map((p: {
+            title: string; titleTranslations?: Record<string, unknown>; description: string | null;
+            descriptionTranslations?: Record<string, unknown>; is_completed: boolean
+          }, i: number) => ({
             highlight_id: hId,
             budget_category_id: null,
             title: p.title,
+            title_translations: p.titleTranslations ?? {},
             description: p.description,
+            description_translations: p.descriptionTranslations ?? {},
             is_completed: p.is_completed,
             completed_at: p.is_completed ? new Date().toISOString() : null,
             order_index: i,

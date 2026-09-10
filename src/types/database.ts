@@ -260,7 +260,9 @@ export interface ProjectPrayerPoint {
   highlight_id: string
   budget_category_id: string | null
   title: string
+  title_translations: Partial<Record<Locale, ContentTranslation>>
   description: string | null
+  description_translations: Partial<Record<Locale, ContentTranslation>>
   prayer_count: number
   is_completed: boolean
   completed_at: string | null

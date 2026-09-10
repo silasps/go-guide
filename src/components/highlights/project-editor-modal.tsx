@@ -264,7 +264,7 @@ function StepPrayer({ e }: { e: ProjectEditor }) {
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground">Pontos que parceiros podem orar especificamente, em vez de só “orar pelo projeto”.</p>
-      <PrayerPointsEditor points={e.prayerPoints} onChange={e.setPrayerPoints} />
+      <PrayerPointsEditor points={e.prayerPoints} onChange={e.setPrayerPoints} originalLocale={e.originalLocale} profileId={e.profileId} />
     </div>
   )
 }

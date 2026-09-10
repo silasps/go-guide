@@ -153,7 +153,16 @@ export function useProjectEditor({ mode, highlight, profileId, backPath, initial
   const [prayerPoints, setPrayerPoints] = useState<PrayerPointDraft[]>(
     (highlight?.prayerPoints ?? [])
       .filter(p => !p.budget_category_id)
-      .map(p => ({ id: p.id, title: p.title, description: p.description ?? '', is_completed: p.is_completed }))
+      .map(p => ({
+        id: p.id,
+        title: p.title,
+        description: p.description ?? '',
+        is_completed: p.is_completed,
+        titleTranslations: initialTranslations(p.title_translations),
+        titleSources: initialSources(p.title_translations),
+        descriptionTranslations: initialTranslations(p.description_translations),
+        descriptionSources: initialSources(p.description_translations),
+      }))
   )
 
   const [galleryImages, setGalleryImages] = useState<GalleryImageDraft[]>(
@@ -329,7 +338,13 @@ export function useProjectEditor({ mode, highlight, profileId, backPath, initial
                   }))
               : [],
             prayerPoints: goalTypes.includes('prayer')
-              ? prayerPoints.filter(p => p.title.trim()).map(p => ({ title: p.title.trim(), description: p.description.trim() || null, is_completed: p.is_completed }))
+              ? prayerPoints.filter(p => p.title.trim()).map(p => ({
+                  title: p.title.trim(),
+                  titleTranslations: buildTranslations(p.titleTranslations, p.titleSources),
+                  description: p.description.trim() || null,
+                  descriptionTranslations: buildTranslations(p.descriptionTranslations, p.descriptionSources),
+                  is_completed: p.is_completed,
+                }))
               : [],
             galleryImages: galleryUrls,
           }),

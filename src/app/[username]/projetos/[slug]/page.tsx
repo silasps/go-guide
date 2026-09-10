@@ -515,6 +515,8 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
                 highlightId={project.id}
                 missionaryName={profile.display_name}
                 points={standalonePrayerPoints}
+                originalLocale={project.original_locale}
+                visitorLocale={visitorLocale}
                 canPray={!canEdit}
               />
               {canEdit && (

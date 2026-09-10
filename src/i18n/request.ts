@@ -14,6 +14,24 @@ function parseAcceptLanguage(header: string | null): Locale | undefined {
   return preferred.find(isLocale)
 }
 
+// País de acesso (header de geo-IP que a Vercel injeta em produção — não
+// existe em `next dev` local nem fora da Vercel, então esse passo só entra
+// em jogo se o Accept-Language não bater com nenhum dos 3 idiomas
+// suportados). Só os países de língua portuguesa/espanhola precisam de
+// mapa — qualquer outro país cai em inglês, o 3º idioma que temos.
+const PT_COUNTRIES = new Set(['BR', 'PT', 'AO', 'MZ', 'CV', 'GW', 'ST', 'TL'])
+const ES_COUNTRIES = new Set([
+  'ES', 'MX', 'AR', 'CO', 'CL', 'PE', 'VE', 'EC', 'GT', 'CU', 'BO', 'DO',
+  'HN', 'PY', 'SV', 'NI', 'CR', 'PA', 'UY', 'PR', 'GQ',
+])
+
+function localeFromCountry(country: string | null): Locale | undefined {
+  if (!country) return undefined
+  if (PT_COUNTRIES.has(country)) return 'pt'
+  if (ES_COUNTRIES.has(country)) return 'es'
+  return 'en'
+}
+
 export default getRequestConfig(async () => {
   let locale: Locale | undefined
 
@@ -36,10 +54,18 @@ export default getRequestConfig(async () => {
   }
 
   // Primeira visita, sem cookie ainda: usa o idioma preferido do navegador
-  // em vez de cair direto no fallback fixo.
+  // (padrão do dispositivo) em vez de cair direto no fallback fixo.
+  let headerList: Headers | undefined
   if (!locale) {
-    const headerList = await headers()
+    headerList = await headers()
     locale = parseAcceptLanguage(headerList.get('accept-language'))
+  }
+
+  // Nem cookie nem Accept-Language reconhecível: usa o idioma do país de
+  // acesso (geo-IP) antes de cair no fallback fixo.
+  if (!locale) {
+    headerList ??= await headers()
+    locale = localeFromCountry(headerList.get('x-vercel-ip-country'))
   }
 
   if (!locale) locale = DEFAULT_LOCALE
