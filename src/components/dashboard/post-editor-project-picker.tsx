@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { coverThumbnailSrc } from '@/lib/media/bunny-thumbnail'
 import { useTranslations } from 'next-intl'
@@ -26,18 +26,19 @@ interface Props {
 export function PostEditorProjectPicker({ profileId, value, onChange }: Props) {
   const t = useTranslations('PostComposer')
   const [projects, setProjects] = useState<LinkableProject[] | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
 
-  async function ensureLoaded() {
-    if (projects !== null || loading) return
-    setLoading(true)
-    try {
-      const data = await getLinkableProjects(profileId)
-      setProjects(data)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Busca assim que o passo monta, não só ao abrir o dropdown — evita o
+  // dropdown abrir vazio/piscando enquanto a rede ainda está em voo (o
+  // usuário costuma demorar mais que isso pra clicar em "Vincular a
+  // projeto" depois de chegar nesse passo do composer).
+  useEffect(() => {
+    let cancelled = false
+    getLinkableProjects(profileId)
+      .then((data) => { if (!cancelled) setProjects(data) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [profileId])
 
   const selected = projects?.find((p) => p.id === value) ?? null
 
@@ -65,13 +66,21 @@ export function PostEditorProjectPicker({ profileId, value, onChange }: Props) {
     <DropdownMenu>
       <DropdownMenuTrigger
         className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5 w-fit')}
-        onClick={ensureLoaded}
       >
         {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FolderOpen className="h-3.5 w-3.5" />}
         {t('linkProject')}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
-        {projects?.map((project) => (
+        {loading && (
+          <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            {t('loadingProjects')}
+          </div>
+        )}
+        {!loading && projects?.length === 0 && (
+          <div className="px-2 py-1.5 text-xs text-muted-foreground">{t('noLinkableProjects')}</div>
+        )}
+        {!loading && projects?.map((project) => (
           <DropdownMenuItem key={project.id} onClick={() => onChange(project.id)} className="gap-2">
             <div className="h-5 w-5 shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
               {project.cover_url ? (

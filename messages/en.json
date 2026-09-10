@@ -788,6 +788,8 @@
     "videoMaxSize": "Max {size}MB",
     "uploadingMedia": "Uploading media... {progress}%",
     "linkProject": "Link to a project",
+    "loadingProjects": "Loading projects...",
+    "noLinkableProjects": "No projects available",
     "noProject": "None",
     "clearProject": "Remove link",
     "saveDraft": "Save draft",
