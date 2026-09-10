@@ -31,6 +31,10 @@ export function TagPeoplePicker({ profileId, media, mediaIndex, aspect, tags, on
   const [results, setResults] = useState<TaggableProfile[]>([])
   const [searching, setSearching] = useState(false)
   const [draggingTagId, setDraggingTagId] = useState<string | null>(null)
+  // Marca que o pointerup que terminou o arrasto acabou de acontecer, pra
+  // `handleFrameClick` ignorar o click sintético que o navegador dispara
+  // em seguida (senão soltar o arrasto abria o popover de nova marcação).
+  const justDraggedRef = useRef(false)
 
   useEffect(() => {
     if (!draggingTagId) return
@@ -42,7 +46,10 @@ export function TagPeoplePicker({ profileId, media, mediaIndex, aspect, tags, on
       const y = Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100))
       onMoveTag(tagId, x, y)
     }
-    function handleUp() { setDraggingTagId(null) }
+    function handleUp() {
+      justDraggedRef.current = true
+      setDraggingTagId(null)
+    }
     window.addEventListener('pointermove', handleMove)
     window.addEventListener('pointerup', handleUp)
     return () => {
@@ -74,6 +81,7 @@ export function TagPeoplePicker({ profileId, media, mediaIndex, aspect, tags, on
   const visibleResults = pending && trimmedQuery.length >= 2 ? results : []
 
   function handleFrameClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (justDraggedRef.current) { justDraggedRef.current = false; return }
     if (!frameRef.current) return
     const rect = frameRef.current.getBoundingClientRect()
     const x = ((e.clientX - rect.left) / rect.width) * 100
@@ -125,13 +133,11 @@ export function TagPeoplePicker({ profileId, media, mediaIndex, aspect, tags, on
           <div
             key={tag.id}
             style={{ left: `${tag.x}%`, top: `${tag.y}%` }}
-            className={`absolute -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 bg-black/70 text-white text-xs rounded-full pl-1 pr-1.5 py-0.5 ${draggingTagId === tag.id ? 'ring-2 ring-white/80' : ''}`}
+            onPointerDown={(e) => { e.stopPropagation(); setDraggingTagId(tag.id) }}
+            aria-label={t('moveTag')}
+            className={`absolute -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 bg-black/70 text-white text-xs rounded-full pl-1 pr-1.5 py-0.5 cursor-grab active:cursor-grabbing touch-none ${draggingTagId === tag.id ? 'ring-2 ring-white/80' : ''}`}
           >
-            <span
-              onPointerDown={(e) => { e.stopPropagation(); setDraggingTagId(tag.id) }}
-              className="h-4 w-4 rounded-full bg-white/20 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none"
-              aria-label={t('moveTag')}
-            >
+            <span className="h-4 w-4 rounded-full bg-white/20 flex items-center justify-center">
               <UserRound className="h-2.5 w-2.5" />
             </span>
             {tag.displayName}
