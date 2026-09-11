@@ -34,15 +34,26 @@ export function TransactionTable({ transactions, accounts, categories = [], part
   const { pendingValue: deletingId, run } = usePendingAction<string>()
   const { pendingValue: markingPaidId, run: runMarkPaid } = usePendingAction<string>()
 
-  function handleDelete(id: string) {
-    if (!confirm('Excluir este lançamento? O saldo da conta será ajustado.')) return
-    run(id, async () => {
+  function handleDelete(t: TransactionWithCategory) {
+    const isTransfer = t.type === 'transfer' && t.transfer_group_id
+    const message = isTransfer
+      ? 'Excluir esta transferência? Isso vai excluir as duas pontas dela, e os saldos das duas contas serão ajustados.'
+      : 'Excluir este lançamento? O saldo da conta será ajustado.'
+    if (!confirm(message)) return
+    run(t.id, async () => {
       const supabase = createClient()
-      const { error } = await supabase.from('transactions').delete().eq('id', id)
+      const query = supabase.from('transactions').delete()
+      const { error } = isTransfer
+        ? await query.eq('transfer_group_id', t.transfer_group_id!)
+        : await query.eq('id', t.id)
       if (error) { toast.error('Erro ao excluir lançamento.'); return }
-      toast.success('Lançamento excluído.')
+      toast.success(isTransfer ? 'Transferência excluída.' : 'Lançamento excluído.')
       router.refresh()
     })
+  }
+
+  function accountName(id: string | null) {
+    return accounts.find((a) => a.id === id)?.name ?? 'outra conta'
   }
 
   function handleMarkPaid(t: TransactionWithCategory) {
@@ -72,17 +83,20 @@ export function TransactionTable({ transactions, accounts, categories = [], part
           <div key={t.id} className="flex items-center gap-3 p-3">
             {TYPE_ICON[t.type]}
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium truncate">{t.description}</p>
+              <p className="text-sm font-medium truncate">
+                {t.type === 'transfer' ? `Transferência ${t.transfer_direction === 'out' ? 'para' : 'de'} ${accountName(t.transfer_account_id)}` : t.description}
+              </p>
               <p className="text-xs text-muted-foreground truncate">
                 {formatDate(t.date)}
                 {t.category?.name && ` · ${t.category.name}`}
                 {t.partner?.name && ` · ${t.partner.name}`}
                 {t.source === 'opening_balance' && ' · Saldo inicial'}
+                {t.source === 'balance_adjustment' && ' · Ajuste de saldo'}
                 {!t.is_paid && <span className="text-amber-600"> · {t.type === 'income' ? 'A receber' : 'Não pago'}</span>}
               </p>
             </div>
             <p className={`text-sm font-semibold shrink-0 ${!t.is_paid ? 'opacity-50' : ''} ${t.type === 'income' ? 'text-green-600' : t.type === 'expense' ? 'text-red-600' : ''}`}>
-              {t.type === 'expense' ? '-' : t.type === 'income' ? '+' : ''}{formatCurrency(t.amount, t.currency)}
+              {t.type === 'expense' ? '-' : t.type === 'income' ? '+' : t.type === 'transfer' ? (t.transfer_direction === 'out' ? '-' : '+') : ''}{formatCurrency(t.amount, t.currency)}
             </p>
             {!readOnly && (
               <div className="flex items-center gap-0.5 shrink-0">
@@ -91,10 +105,12 @@ export function TransactionTable({ transactions, accounts, categories = [], part
                     {markingPaidId === t.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5 text-chart-1" />}
                   </Button>
                 )}
-                <Button variant="ghost" size="icon-sm" onClick={() => setEditing(t)}>
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(t.id)} disabled={deletingId === t.id}>
+                {t.type !== 'transfer' && (
+                  <Button variant="ghost" size="icon-sm" onClick={() => setEditing(t)}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+                <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(t)} disabled={deletingId === t.id}>
                   {deletingId === t.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                 </Button>
               </div>

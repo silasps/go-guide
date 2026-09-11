@@ -6,20 +6,21 @@ import { usePendingAction } from '@/hooks/use-pending-action'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Loader2, Users, Trash2 } from 'lucide-react'
+import { Loader2, Trash2 } from 'lucide-react'
 
 interface Member { id: string; user_id: string; role: string }
 
 interface Props {
+  open: boolean
+  onOpenChange: (open: boolean) => void
   accountId: string
   members: Member[]
 }
 
-export function ManageMembersDialog({ accountId, members }: Props) {
+export function ManageMembersDialog({ open, onOpenChange, accountId, members }: Props) {
   const router = useRouter()
-  const [open, setOpen] = useState(false)
   const [email, setEmail] = useState('')
   const { isPending: saving, run: runAdd } = usePendingAction()
   const { pendingValue: removingId, run: runRemove } = usePendingAction<string>()
@@ -58,8 +59,7 @@ export function ManageMembersDialog({ accountId, members }: Props) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="outline" size="sm" className="gap-1.5"><Users className="h-3.5 w-3.5" /> Membros ({members.length})</Button>} />
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>Membros da conta</DialogTitle>

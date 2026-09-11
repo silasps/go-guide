@@ -7,9 +7,8 @@ import { usePendingAction } from '@/hooks/use-pending-action'
 import { formatCurrency } from '@/lib/utils'
 import { parseOfx, readOfxFile, ParsedStatementTransaction } from '@/lib/statement-import/ofx'
 import { FinancialAccount } from '@/types/database'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { Upload, Loader2, ArrowLeft, FileUp, HelpCircle } from 'lucide-react'
@@ -25,8 +24,10 @@ const BANK_HINTS: { name: string; steps: string }[] = [
 ]
 
 interface Props {
+  open: boolean
+  onOpenChange: (open: boolean) => void
   profileId: string
-  accounts: FinancialAccount[]
+  account: FinancialAccount
 }
 
 const CHUNK_SIZE = 200
@@ -37,20 +38,22 @@ const CHUNK_SIZE = 200
 // aqui. Só contas corrente/poupança por ora — o sinal de `TRNAMT` em OFX de
 // cartão de crédito varia entre emissores (alguns exportam compra como
 // negativo, outros como positivo), então importar fatura ficou de fora
-// deliberadamente pra não arriscar lançamento com sinal trocado.
-export function ImportStatementDialog({ profileId, accounts }: Props) {
+// deliberadamente pra não arriscar lançamento com sinal trocado (o card de
+// conta de crédito, em `AccountCard`, nem oferece este botão).
+//
+// Sempre escopado a uma conta (aberto a partir do card dela, estilo
+// GranaZen) — antes era um seletor de conta solto no topo da lista; virou
+// controlado por fora (`open`/`onOpenChange`, mesmo padrão de
+// `AccountWizard`/`TransferDialog`) porque não sobrou nenhum outro chamador
+// que precisasse escolher a conta dentro do próprio dialog.
+export function ImportStatementDialog({ open, onOpenChange, profileId, account }: Props) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [open, setOpen] = useState(false)
-  const [accountId, setAccountId] = useState('')
   const [fileName, setFileName] = useState('')
   const [parsed, setParsed] = useState<ParsedStatementTransaction[] | null>(null)
   const [newUids, setNewUids] = useState<Set<string>>(new Set())
   const { isPending: loadingFile, run: runLoad } = usePendingAction()
   const { isPending: importing, run: runImport } = usePendingAction()
-
-  const importableAccounts = accounts.filter((a) => a.account_type !== 'credit' && !a.archived)
-  const selectedAccount = importableAccounts.find((a) => a.id === accountId)
 
   function reset() {
     setFileName('')
@@ -61,7 +64,7 @@ export function ImportStatementDialog({ profileId, accounts }: Props) {
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file || !accountId) return
+    if (!file) return
     setFileName(file.name)
     runLoad(true, async () => {
       const text = await readOfxFile(file)
@@ -76,7 +79,7 @@ export function ImportStatementDialog({ profileId, accounts }: Props) {
       const { data: existing } = await supabase
         .from('transactions')
         .select('import_uid')
-        .eq('account_id', accountId)
+        .eq('account_id', account.id)
         .not('import_uid', 'is', null)
       const existingUids = new Set((existing ?? []).map((t) => t.import_uid as string))
 
@@ -86,17 +89,17 @@ export function ImportStatementDialog({ profileId, accounts }: Props) {
   }
 
   function confirmImport() {
-    if (!parsed || !selectedAccount) return
+    if (!parsed) return
     runImport(true, async () => {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       const toInsert = parsed.filter((t) => newUids.has(t.uid)).map((t) => ({
-        account_id: selectedAccount.id,
+        account_id: account.id,
         profile_id: profileId,
         created_by_user_id: user!.id,
         type: t.type,
         amount: t.amount,
-        currency: selectedAccount.currency_code,
+        currency: account.currency_code,
         description: t.description,
         source: 'import' as const,
         is_paid: true,
@@ -110,31 +113,21 @@ export function ImportStatementDialog({ profileId, accounts }: Props) {
       }
 
       toast.success(`${toInsert.length} lançamento${toInsert.length === 1 ? '' : 's'} importado${toInsert.length === 1 ? '' : 's'}.`)
-      setOpen(false)
-      setAccountId('')
+      onOpenChange(false)
       reset()
       router.refresh()
     })
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setAccountId(''); reset() } }}>
-      <DialogTrigger render={
-        <Button variant="outline" className="gap-2">
-          <Upload className="h-4 w-4" /> Importar extrato
-        </Button>
-      } />
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset() }}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Importar extrato (OFX)</DialogTitle>
-          <DialogDescription>Baixe o extrato no internet banking do seu banco (formato OFX) e envie aqui.</DialogDescription>
+          <DialogDescription>Baixe o extrato de {account.name} no internet banking do seu banco (formato OFX) e envie aqui.</DialogDescription>
         </DialogHeader>
 
-        {importableAccounts.length === 0 ? (
-          <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-            Nenhuma conta corrente ou poupança ativa pra importar. Crie uma conta primeiro.
-          </p>
-        ) : !parsed ? (
+        {!parsed ? (
           <div className="space-y-4">
             <details className="group rounded-lg border bg-muted/30 px-3 py-2 text-sm">
               <summary className="flex cursor-pointer list-none items-center gap-1.5 font-medium marker:content-none">
@@ -150,25 +143,11 @@ export function ImportStatementDialog({ profileId, accounts }: Props) {
                 <p>Os passos exatos variam conforme a versão do app de cada banco. Alguns bancos digitais oferecem só PDF ou CSV — nesses casos ainda não dá pra importar automaticamente por aqui.</p>
               </div>
             </details>
-            <div className="space-y-2">
-              <Label>Conta de destino</Label>
-              <select
-                value={accountId}
-                onChange={(e) => { setAccountId(e.target.value); reset() }}
-                className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
-              >
-                <option value="">Selecione uma conta</option>
-                {importableAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label>Arquivo OFX</Label>
-              <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground hover:bg-muted/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-60" aria-disabled={!accountId}>
-                {loadingFile ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileUp className="h-5 w-5" />}
-                <span>{fileName || (accountId ? 'Clique para escolher o arquivo .ofx' : 'Escolha a conta primeiro')}</span>
-                <input ref={fileInputRef} type="file" accept=".ofx,.qfx" className="hidden" disabled={!accountId || loadingFile} onChange={handleFile} />
-              </label>
-            </div>
+            <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground hover:bg-muted/50">
+              {loadingFile ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileUp className="h-5 w-5" />}
+              <span>{fileName || 'Clique para escolher o arquivo .ofx'}</span>
+              <input ref={fileInputRef} type="file" accept=".ofx,.qfx" className="hidden" disabled={loadingFile} onChange={handleFile} />
+            </label>
           </div>
         ) : (
           <div className="space-y-3">
@@ -186,7 +165,7 @@ export function ImportStatementDialog({ profileId, accounts }: Props) {
                     <p className="text-xs text-muted-foreground">{t.date.split('-').reverse().join('/')}</p>
                   </div>
                   <span className={t.type === 'income' ? 'shrink-0 text-emerald-600' : 'shrink-0 text-red-600'}>
-                    {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount, selectedAccount?.currency_code ?? 'BRL')}
+                    {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount, account.currency_code)}
                   </span>
                 </div>
               ))}

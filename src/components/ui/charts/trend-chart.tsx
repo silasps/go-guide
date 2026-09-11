@@ -190,10 +190,15 @@ export function TrendChart({ data, currency, selectedMonth, onSelectMonth }: Pro
             <path d={incomeArea} fill={`url(#${gradientId}-income)`} />
             <path d={expenseArea} fill={`url(#${gradientId}-expense)`} />
 
+            {/* Fade de opacidade, não `pathLength: 0 -> 1` (usuário viu a
+                linha "parar no meio" — os pontos, que não são animados,
+                apareciam completos enquanto o traço parecia truncado
+                permanentemente; uma animação binária de opacidade não tem
+                como travar visualmente pela metade). */}
             <motion.path d={incomePath} fill="none" stroke="var(--chart-1)" strokeWidth={2} vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round"
-              initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.9, ease: 'easeInOut' }} />
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, ease: 'easeOut' }} />
             <motion.path d={expensePath} fill="none" stroke="var(--chart-2)" strokeWidth={2} vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round"
-              initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.9, ease: 'easeInOut', delay: 0.1 }} />
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, ease: 'easeOut', delay: 0.05 }} />
 
             {data.map((p, i) => (
               <g key={p.month}>

@@ -7,7 +7,7 @@ export type MediaAspectRatio = 'original' | '1:1' | '4:5' | '1.91:1' | '21:9' | 
 export type PartnerType = 'financial' | 'prayer' | 'both' | 'ambassador'
 export type AccountType = 'checking' | 'savings' | 'credit'
 export type TransactionType = 'income' | 'expense' | 'transfer'
-export type TransactionSource = 'manual' | 'whatsapp' | 'api' | 'recurring' | 'open_finance' | 'import' | 'opening_balance'
+export type TransactionSource = 'manual' | 'whatsapp' | 'api' | 'recurring' | 'open_finance' | 'import' | 'opening_balance' | 'balance_adjustment'
 export type OpenFinanceItemStatus = 'UPDATED' | 'UPDATING' | 'WAITING_USER_INPUT' | 'LOGIN_ERROR' | 'OUTDATED'
 export type RequesterType = 'missionary' | 'partner'
 export type AccountMemberRole = 'owner' | 'viewer'
@@ -550,6 +550,9 @@ export interface Transaction {
   budget_category_id: string | null
   pluggy_transaction_id: string | null
   import_uid: string | null
+  transfer_group_id: string | null
+  transfer_direction: 'out' | 'in' | null
+  transfer_account_id: string | null
   created_at: string
 }
 
