@@ -1,5 +1,40 @@
 export const CURRENCIES = ['BRL', 'USD', 'EUR', 'GBP', 'CHF', 'CAD', 'AUD']
 
+// Todas as moedas ISO 4217 em circulação (via Intl.supportedValuesOf), menos as
+// que já saíram de uso (HRK, CUC, XDR — DES do FMI, não é moeda transacionável, XSU).
+export const ALL_CURRENCIES = [
+  'AED', 'AFN', 'ALL', 'AMD', 'ANG', 'AOA', 'ARS', 'AUD', 'AWG', 'AZN',
+  'BAM', 'BBD', 'BDT', 'BGN', 'BHD', 'BIF', 'BMD', 'BND', 'BOB', 'BRL',
+  'BSD', 'BTN', 'BWP', 'BYN', 'BZD', 'CAD', 'CDF', 'CHF', 'CLP', 'CNY',
+  'COP', 'CRC', 'CUP', 'CVE', 'CZK', 'DJF', 'DKK', 'DOP', 'DZD', 'EGP',
+  'ERN', 'ETB', 'EUR', 'FJD', 'FKP', 'GBP', 'GEL', 'GHS', 'GIP', 'GMD',
+  'GNF', 'GTQ', 'GYD', 'HKD', 'HNL', 'HTG', 'HUF', 'IDR', 'ILS', 'INR',
+  'IQD', 'IRR', 'ISK', 'JMD', 'JOD', 'JPY', 'KES', 'KGS', 'KHR', 'KMF',
+  'KPW', 'KRW', 'KWD', 'KYD', 'KZT', 'LAK', 'LBP', 'LKR', 'LRD', 'LSL',
+  'LYD', 'MAD', 'MDL', 'MGA', 'MKD', 'MMK', 'MNT', 'MOP', 'MRU', 'MUR',
+  'MVR', 'MWK', 'MXN', 'MYR', 'MZN', 'NAD', 'NGN', 'NIO', 'NOK', 'NPR',
+  'NZD', 'OMR', 'PAB', 'PEN', 'PGK', 'PHP', 'PKR', 'PLN', 'PYG', 'QAR',
+  'RON', 'RSD', 'RUB', 'RWF', 'SAR', 'SBD', 'SCR', 'SDG', 'SEK', 'SGD',
+  'SHP', 'SLE', 'SOS', 'SRD', 'SSP', 'STN', 'SVC', 'SYP', 'SZL', 'THB',
+  'TJS', 'TMT', 'TND', 'TOP', 'TRY', 'TTD', 'TWD', 'TZS', 'UAH', 'UGX',
+  'USD', 'UYU', 'UZS', 'VES', 'VND', 'VUV', 'WST', 'XAF', 'XCD', 'XOF',
+  'XPF', 'YER', 'ZAR', 'ZMW', 'ZWG',
+]
+
+const FLAG_OVERRIDES: Record<string, string> = {
+  EUR: '🇪🇺', ANG: '🇨🇼', XCD: '🌴', XOF: '🌍', XAF: '🌍', XPF: '🌴',
+}
+
+/** Deriva o emoji de bandeira do código da moeda: nas moedas nacionais ISO 4217 as
+ *  duas primeiras letras já são o código do país (BRL→BR, ARS→AR...), então dá pra
+ *  gerar a bandeira sem manter um mapa de ~160 entradas na mão. */
+export function getCurrencyFlag(code: string) {
+  if (CURRENCY_FLAGS[code]) return CURRENCY_FLAGS[code]
+  if (FLAG_OVERRIDES[code]) return FLAG_OVERRIDES[code]
+  const countryCode = code.slice(0, 2)
+  return [...countryCode].map(ch => String.fromCodePoint(127397 + ch.charCodeAt(0))).join('')
+}
+
 // Taxa da Stripe tem uma parte fixa por transação (~R$0,39 no Brasil) que
 // come uma fatia desproporcional de valores muito pequenos — só se aplica
 // a cartão (Stripe), métodos manuais (Pix, transferência, etc.) não têm

@@ -424,7 +424,6 @@ export function ProfileForm({ profile, onSaved }: Props) {
           maxLength={300}
           originalPlaceholder={bioPlaceholder}
         />
-        <p className="text-xs text-muted-foreground text-right">{bio.length}/300</p>
       </div>
 
       {/* Localização */}

@@ -3,7 +3,7 @@
 import { Suspense, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import * as keyManager from '@/lib/crypto/key-manager'
 import { Button } from '@/components/ui/button'
@@ -19,6 +19,7 @@ import { Loader2 } from 'lucide-react'
 
 function CadastroForm() {
   const t = useTranslations('Auth')
+  const locale = useLocale()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') ?? '/onboarding'
   // Quem chega aqui vindo do fluxo de "apoiar um missionário" pula o
@@ -46,7 +47,7 @@ function CadastroForm() {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name, phone: phone.trim() || undefined, birth_date: birthDate || undefined } },
+      options: { data: { full_name: name, phone: phone.trim() || undefined, birth_date: birthDate || undefined, locale } },
     })
 
     if (error) {

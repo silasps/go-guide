@@ -8,9 +8,10 @@ import { usePendingAction } from '@/hooks/use-pending-action'
 import { PaymentMethod, PaymentMethodType, FinancialAccount } from '@/types/database'
 import { MANUAL_PAYMENT_METHOD_CATALOG, PAYMENT_METHOD_CATALOG, PAYMENT_METHOD_GROUPS, getPaymentMethodEntry } from '@/lib/payment-methods/catalog'
 import { formatBankDetails, parseBankDetails } from '@/lib/payment-methods/bank-details'
-import { CURRENCIES } from '@/lib/currency-mask'
+import { ALL_CURRENCIES } from '@/lib/currency-mask'
 import { STRIPE_CONNECT_COUNTRIES } from '@/lib/stripe/connect-countries'
 import { AccountWizard } from '@/components/financial/account-wizard'
+import { CurrencySelect } from '@/components/partners/currency-select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -155,13 +156,13 @@ export function PaymentMethodForm({ profileId, method, nextSortOrder = 0, financ
           {!isStripe && (
             <div className="space-y-2">
               <Label>{t('currencyLabel')}</Label>
-              <select
+              <CurrencySelect
+                currencies={ALL_CURRENCIES}
                 value={currency}
-                onChange={(e) => handleCurrencyChange(e.target.value)}
-                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
-              >
-                {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+                onChange={handleCurrencyChange}
+                searchPlaceholder={t('currencySearchPlaceholder')}
+                triggerVariant="field"
+              />
             </div>
           )}
           <div className="space-y-2">

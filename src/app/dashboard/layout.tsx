@@ -13,6 +13,7 @@ import { SuperadminRoleSwitcher } from '@/components/dashboard/superadmin-role-s
 import { PostComposerProvider } from '@/components/dashboard/post-composer-provider'
 import { ProjectComposerProvider } from '@/components/highlights/project-composer/project-composer-provider'
 import { EmailVerificationBanner } from '@/components/dashboard/email-verification-banner'
+import { NavigationGuard } from '@/components/dashboard/navigation-guard'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { LanguageSwitcher } from '@/components/marketing/language-switcher'
 
@@ -50,6 +51,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       originalLocale={effectiveProfile.locale}
     >
       <div className="flex h-screen overflow-hidden bg-background">
+        <NavigationGuard />
         <DashboardSidebar profile={effectiveProfile} accessibleProfiles={accessibleProfiles} />
 
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">

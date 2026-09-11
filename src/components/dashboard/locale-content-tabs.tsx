@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { Loader2, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-import { LOCALES, type Locale } from '@/i18n/config'
+import { LOCALES, isLocale, orderLocalesByPreference, type Locale } from '@/i18n/config'
 
 const LOCALE_FLAGS: Record<Locale, string> = {
   pt: '🇧🇷',
@@ -51,7 +51,13 @@ export function LocaleContentTabs({
   preferredLocale,
 }: Props) {
   const t = useTranslations('LocaleContentTabs')
-  const [activeTab, setActiveTab] = useState<Locale>(preferredLocale ?? originalLocale)
+  const detectedLocale = useLocale()
+  // Idioma da conta logada (Configurações → Conta) — usado tanto pra decidir
+  // a aba aberta por padrão quanto pra ordenar as bandeirinhas, sempre com
+  // esse idioma primeiro e o restante depois.
+  const accountLocale: Locale = preferredLocale ?? (isLocale(detectedLocale) ? detectedLocale : originalLocale)
+  const orderedLocales = orderLocalesByPreference(accountLocale)
+  const [activeTab, setActiveTab] = useState<Locale>(accountLocale)
   const [translating, setTranslating] = useState<Locale | null>(null)
 
   const missingLocales = LOCALES.filter((l) => l !== originalLocale && !translations[l]?.trim())
@@ -68,7 +74,7 @@ export function LocaleContentTabs({
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-1">
-        {LOCALES.map((locale) => {
+        {orderedLocales.map((locale) => {
           const hasContent = locale === originalLocale ? !!originalText.trim() : !!translations[locale]?.trim()
           return (
             <button
@@ -87,7 +93,7 @@ export function LocaleContentTabs({
         })}
       </div>
 
-      {LOCALES.map((locale) => {
+      {orderedLocales.map((locale) => {
         if (locale !== activeTab) return null
         const isOriginal = locale === originalLocale
         return (

@@ -36,7 +36,7 @@ export function SettingsTabs({ profile, managers, paymentMethods, financialAccou
   return (
     <div className="space-y-0">
       {/* Tab bar — scrollable on mobile, icons on small screens */}
-      <div className="flex border-b overflow-x-auto scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
+      <div className="flex border-b overflow-x-auto scrollbar-hide touch-pan-x overscroll-x-contain -mx-4 px-4 md:mx-0 md:px-0">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}

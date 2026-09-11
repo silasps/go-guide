@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CheckCircle2, Circle, Languages, Loader2, Plus, Trash2 } from 'lucide-react'
-import { LOCALES, type Locale } from '@/i18n/config'
+import { isLocale, orderLocalesByPreference, type Locale } from '@/i18n/config'
 import { translateContent, type TranslationSource } from '@/lib/i18n/content-translations'
 
 const LOCALE_FLAGS: Record<Locale, string> = { pt: '🇧🇷', en: '🇺🇸', es: '🇪🇸' }
@@ -29,10 +29,12 @@ interface Props {
 export function MilestonesEditor({ milestones, onChange, originalLocale, profileId }: Props) {
   const t = useTranslations('LocaleContentTabs')
   const tError = useTranslations('PublicProject')
+  const detectedLocale = useLocale()
   const [newMilestone, setNewMilestone] = useState('')
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null)
   const [translatingKey, setTranslatingKey] = useState<string | null>(null)
-  const targetLocales = LOCALES.filter((l) => l !== originalLocale)
+  const accountLocale: Locale = isLocale(detectedLocale) ? detectedLocale : originalLocale
+  const targetLocales = orderLocalesByPreference(accountLocale).filter((l) => l !== originalLocale)
 
   function addMilestone() {
     const title = newMilestone.trim()
