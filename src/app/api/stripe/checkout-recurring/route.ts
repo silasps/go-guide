@@ -12,10 +12,13 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'not_authenticated' }, { status: 401 })
 
   const body = await req.json()
-  const { profileId, amount, currency, highlightId, budgetCategoryId } = body as {
-    profileId: string; amount: number; currency: string; highlightId?: string; budgetCategoryId?: string
+  const { profileId, amount, currency, highlightId, budgetCategoryId, durationMonths } = body as {
+    profileId: string; amount: number; currency: string; highlightId?: string; budgetCategoryId?: string; durationMonths?: number | null
   }
   if (!profileId || !amount || amount <= 0 || !currency) {
+    return NextResponse.json({ error: 'invalid_body' }, { status: 400 })
+  }
+  if (durationMonths != null && (!Number.isInteger(durationMonths) || durationMonths <= 0)) {
     return NextResponse.json({ error: 'invalid_body' }, { status: 400 })
   }
   // Espelha a validação do client (recurring-pledge-form.tsx).
@@ -53,6 +56,16 @@ export async function POST(req: NextRequest) {
     partnerId = createdPartner.id
   }
 
+  // cancel_at é calculado aqui (não deixado pro Stripe resolver "N ciclos")
+  // porque a API de Checkout só aceita um timestamp fixo, não uma contagem
+  // de cobranças — Stripe encerra a assinatura sozinho nessa data, sem
+  // precisar de nenhum cron nosso pra isso. Gravado também em
+  // `stripe_cancel_at` pro webhook (`customer.subscription.deleted`)
+  // distinguir "terminou o prazo" de "cancelado antes" (ver migration 101).
+  const cancelAt = durationMonths
+    ? (() => { const d = new Date(); d.setMonth(d.getMonth() + durationMonths); return d })()
+    : null
+
   const { data: recurringPledge, error: rpError } = await supabase.from('recurring_pledges').insert({
     profile_id: profileId,
     partner_id: partnerId,
@@ -65,6 +78,8 @@ export async function POST(req: NextRequest) {
     reminder_opt_in: false,
     next_reminder_at: null,
     status: 'pending',
+    duration_months: durationMonths || null,
+    stripe_cancel_at: cancelAt ? cancelAt.toISOString() : null,
   }).select('id').single()
   if (rpError || !recurringPledge) return NextResponse.json({ error: 'recurring_pledge_failed' }, { status: 500 })
 
@@ -84,6 +99,10 @@ export async function POST(req: NextRequest) {
       quantity: 1,
     }],
     metadata: { recurring_pledge_id: recurringPledge.id },
+    // Checkout Session não aceita `cancel_at` em subscription_data na
+    // criação (não faz parte dos campos suportados ali) — o encerramento
+    // automático é agendado depois, no webhook, assim que a assinatura de
+    // fato existe (checkout.session.completed → stripe.subscriptions.update).
     // Igual ao checkout-once/route.ts: sem `choice=` no success/cancel_url,
     // voltar do Stripe cai na lista inicial de /parceria em vez da tela de
     // recorrência de onde saiu.

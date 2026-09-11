@@ -10,7 +10,7 @@ import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { buttonVariants } from '@/components/ui/button'
-import { cn, formatCurrency, getInitials } from '@/lib/utils'
+import { cn, formatCurrency, formatShortDate, getInitials } from '@/lib/utils'
 import { resolveLocalizedText } from '@/lib/i18n/resolve-content-locale'
 import type { Locale } from '@/i18n/config'
 import { CheckCircle2, Circle, QrCode, Users } from 'lucide-react'
@@ -50,10 +50,11 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username, slug } = await params
   const supabase = await createClient()
+  const t = await getTranslations('PublicProject')
 
   const profile = await getProfile(username)
 
-  if (!profile) return { title: 'Projeto não encontrado' }
+  if (!profile) return { title: t('metaNotFound') }
 
   // Projeto sem slug próprio usa o id como slug na URL (ver isUUID mais
   // abaixo, na página de verdade) — sem esse mesmo fallback aqui, o link
@@ -67,7 +68,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     : supabase.from('highlights').select('title, description, cover_url').eq('profile_id', profile.id).eq('slug', slug)
   ).single()
 
-  if (!project) return { title: 'Projeto não encontrado' }
+  if (!project) return { title: t('metaNotFound') }
 
   const isIndexable = profile.privacy_mode === 'public'
 
@@ -83,40 +84,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-const SUPPORT_TYPES = [
-  {
-    key: 'financial',
-    choice: 'financial_once',
-    icon: '💰',
-    title: 'Apoio financeiro',
-    description: 'Faça uma oferta pontual ou seja parceiro fixo',
-    cta: 'Faça parte',
-  },
-  {
-    key: 'prayer',
-    choice: 'prayer',
-    icon: '🙏',
-    title: 'Oração',
-    description: 'Comprometa-se a orar regularmente por este projeto',
-    cta: 'Comprometer-me em oração',
-  },
-  {
-    key: 'volunteer',
-    choice: 'volunteer',
-    icon: '🤝',
-    title: 'Voluntário',
-    description: 'Ofereça apoio pessoal ou com suas habilidades',
-    cta: 'Oferecer minha ajuda',
-  },
-  {
-    key: 'ongoing',
-    choice: 'financial_ongoing',
-    icon: '🔄',
-    title: 'Parceria contínua',
-    description: 'Acompanhe esta missão no longo prazo',
-    cta: 'Ser parceiro de longo prazo',
-  },
-]
+const SUPPORT_TYPE_DEFS = [
+  { key: 'financial', choice: 'financial_once', icon: '💰' },
+  { key: 'prayer', choice: 'prayer', icon: '🙏' },
+  { key: 'volunteer', choice: 'volunteer', icon: '🤝' },
+  { key: 'ongoing', choice: 'financial_ongoing', icon: '🔄' },
+] as const
 
 export default async function ProjetoPublicoPage({ params, searchParams }: Props) {
   const { username, slug } = await params
@@ -130,6 +103,24 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
   const { canEdit, viewerUserId } = await getProfileViewerContext(username)
   const t = await getTranslations('PublicProject')
   const editLabel = (section: string) => t('editSection', { section })
+
+  // Parceiro já conectado ao missionário (relação geral, sem projeto
+  // específico) — muda a chamada de "parceria contínua" pra deixar claro
+  // que dá pra apoiar ESSE projeto também, sem duplicar a relação em
+  // `partners` (find-or-create já reaproveita a linha existente).
+  const isExistingPartner = !canEdit && !!viewerUserId
+    ? !!(await supabase.from('partners').select('id').eq('profile_id', profile.id).eq('user_id', viewerUserId).maybeSingle()).data
+    : false
+
+  const SUPPORT_TYPE_TEXT = {
+    financial: { title: t('supportTypeFinancialTitle'), description: t('supportTypeFinancialDescription'), cta: t('supportTypeFinancialCta') },
+    prayer: { title: t('supportTypePrayerTitle'), description: t('supportTypePrayerDescription'), cta: t('supportTypePrayerCta') },
+    volunteer: { title: t('supportTypeVolunteerTitle'), description: t('supportTypeVolunteerDescription'), cta: t('supportTypeVolunteerCta') },
+    ongoing: isExistingPartner
+      ? { title: t('supportTypeOngoingAlreadyPartnerTitle'), description: t('supportTypeOngoingAlreadyPartnerDescription'), cta: t('supportTypeOngoingAlreadyPartnerCta') }
+      : { title: t('supportTypeOngoingTitle'), description: t('supportTypeOngoingDescription'), cta: t('supportTypeOngoingCta') },
+  } as const
+  const SUPPORT_TYPES = SUPPORT_TYPE_DEFS.map((def) => ({ ...def, ...SUPPORT_TYPE_TEXT[def.key] }))
 
   const { data: paymentMethods } = await supabase
     .from('payment_methods')
@@ -318,8 +309,8 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
                   className="h-8 w-8 shrink-0"
                   url={`${SITE_URL}/${username}/projetos/${project.slug ?? project.id}`}
                   title={localizedTitle}
-                  label="Compartilhar projeto"
-                  copiedLabel="Link do projeto copiado"
+                  label={t('shareProject')}
+                  copiedLabel={t('projectLinkCopied')}
                 />
                 {canEdit && (
                   <DeleteProjectButton
@@ -340,15 +331,15 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
           <SectionEditLink canEdit={canEdit} highlightId={project.id} label={editLabel(t('sectionDescription'))}>
             {localizedDescription
               ? <p className="text-muted-foreground">{localizedDescription}</p>
-              : (canEdit ? <p className="text-sm text-muted-foreground italic">Adicionar descrição...</p> : null)}
+              : (canEdit ? <p className="text-sm text-muted-foreground italic">{t('addDescriptionPlaceholder')}</p> : null)}
           </SectionEditLink>
         )}
 
         {(project.letter || canEdit) && (
           <ProjectStoryDialog
-            triggerLabel={project.letter ? 'Conheça a história por trás deste projeto' : 'Adicionar a história por trás deste projeto'}
-            title="A história por trás deste projeto"
-            closeLabel="Fechar"
+            triggerLabel={project.letter ? t('storyTriggerView') : t('storyTriggerAdd')}
+            title={t('storyDialogTitle')}
+            closeLabel={t('close')}
           >
             <SectionEditLink canEdit={canEdit} highlightId={project.id} label={editLabel(t('sectionLetter'))}>
               {localizedLetter ? (
@@ -360,7 +351,7 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
                   imageCaption2={project.letter_image_caption_2}
                 />
               ) : (
-                canEdit ? <p className="text-sm text-muted-foreground italic">Adicionar história...</p> : null
+                canEdit ? <p className="text-sm text-muted-foreground italic">{t('addLetterPlaceholder')}</p> : null
               )}
             </SectionEditLink>
           </ProjectStoryDialog>
@@ -379,26 +370,31 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
         {/* Datas + apoiadores */}
         <div className="flex flex-wrap gap-3 text-xs text-muted-foreground items-center">
           <SectionEditLink canEdit={canEdit} highlightId={project.id} label={editLabel(t('sectionDatesStatus'))}>
-            <>
+            {/* flex-wrap + pr-7 (só quando há lápis de editar) num wrapper
+                único, não em cada chip: o lápis (absolute top-0 right-0) fica
+                ancorado à borda deste container inteiro, então sem essa
+                reserva de espaço aqui ele sobrepõe o fim do último chip
+                (bug reportado pelo usuário: "Prazo: ..." cortado pelo
+                ícone). Data em formato numérico (dd/mm/aaaa por locale) em
+                vez de "18 de set. de 2026" também ajuda — bem mais curta. */}
+            <div className={cn('flex flex-wrap gap-2', canEdit && 'pr-7')}>
               {project.trip_start_date && (
-                <span className="px-2.5 py-1 rounded-full border">📅 Início em {new Date(project.trip_start_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                <span className="px-2.5 py-1 rounded-full border whitespace-nowrap">📅 {t('startsOn', { date: formatShortDate(project.trip_start_date, visitorLocale) })}</span>
               )}
               {project.funding_deadline && (
-                <span className="px-2.5 py-1 rounded-full border">⏳ Prazo: {new Date(project.funding_deadline).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                <span className="px-2.5 py-1 rounded-full border whitespace-nowrap">⏳ {t('deadlineLabel', { date: formatShortDate(project.funding_deadline, visitorLocale) })}</span>
               )}
               {/* Sem isso, com as duas datas vazias o children fica sem
                   nenhum conteúdo — a caixinha que ancora o lápis de editar
                   (position: relative) encolhe a zero e o ícone (absolute)
                   fica "flutuando" solto no canto, sem card visível ao redor. */}
-              {/* pr-7 reserva o espaço do lápis (absolute top-0 right-0,
-                  h-7 w-7) — sem isso o texto passa por baixo do ícone. */}
               {!project.trip_start_date && !project.funding_deadline && canEdit && (
-                <span className="italic pr-7">Adicionar datas...</span>
+                <span className="italic">{t('addDatesPlaceholder')}</span>
               )}
-            </>
+            </div>
           </SectionEditLink>
           {(supporterCount ?? 0) > 0 && (
-            <span className="px-2.5 py-1 rounded-full border flex items-center gap-1"><Users className="h-3 w-3" /> {supporterCount} apoiador(es)</span>
+            <span className="px-2.5 py-1 rounded-full border flex items-center gap-1"><Users className="h-3 w-3" /> {t('supporterCount', { count: supporterCount ?? 0 })}</span>
           )}
         </div>
 
@@ -419,17 +415,17 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
                       <div className="flex items-end justify-between gap-3">
                         <div>
                           <p className="text-2xl md:text-3xl font-bold tracking-tight leading-none">{formatCurrency(project.current_amount, project.currency)}</p>
-                          <p className="text-xs text-muted-foreground mt-1">arrecadados</p>
+                          <p className="text-xs text-muted-foreground mt-1">{t('raisedLabel')}</p>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-xs text-muted-foreground">Meta</p>
+                          <p className="text-xs text-muted-foreground">{t('goalLabel')}</p>
                           <p className="text-sm font-semibold">{formatCurrency(project.goal_amount, project.currency)}</p>
                         </div>
                       </div>
                       <Progress value={pct} className="h-2.5" />
                       <div className="flex items-center gap-2">
-                        <p className="text-xs text-muted-foreground">{pct.toFixed(0)}% da meta atingida</p>
-                        {pct >= 100 && <Badge variant="success" className="text-xs">Meta atingida 🎉</Badge>}
+                        <p className="text-xs text-muted-foreground">{t('goalPercentReached', { pct: pct.toFixed(0) })}</p>
+                        {pct >= 100 && <Badge variant="success" className="text-xs">{t('goalReachedBadge')}</Badge>}
                       </div>
                     </div>
                   )}
@@ -437,7 +433,7 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
                   {!canEdit && hasFinancialData && (
                     <div className="space-y-2">
                       <Link href={`/${username}/parceria?highlight_id=${project.id}&choice=financial_once`} className={cn(buttonVariants({ variant: 'support', size: 'lg' }), 'w-full text-base')}>
-                        💰 Apoiar este projeto
+                        {t('supportThisProjectCta')}
                       </Link>
                       {/* Quem não pode ajudar agora provavelmente não clica em
                           nenhum CTA de pagamento — esse link precisa estar na
@@ -448,23 +444,31 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
                         href={`/${username}/parceria?highlight_id=${project.id}&choice=financial_scheduled`}
                         className="block text-center text-sm text-muted-foreground hover:text-foreground underline underline-offset-2"
                       >
-                        Não posso agora, mas quero ajudar depois
+                        {t('cantNowWantLater')}
                       </Link>
+                      {isExistingPartner && (
+                        <Link
+                          href={`/${username}/parceria?highlight_id=${project.id}&choice=financial_ongoing`}
+                          className="block text-center text-sm text-muted-foreground hover:text-foreground underline underline-offset-2"
+                        >
+                          {t('alreadyPartnerJoinProjectCta')}
+                        </Link>
+                      )}
                     </div>
                   )}
 
                   {canEdit && !hasFinancialData && (
-                    <p className="text-sm text-muted-foreground italic">Adicione uma meta, categorias ou uma forma de receber (Pix, etc.) pra esta seção aparecer publicamente.</p>
+                    <p className="text-sm text-muted-foreground italic">{t('missingFinancialDataHint')}</p>
                   )}
 
                   {budgetCategories && budgetCategories.length > 0 && (
                     <BudgetBreakdown
                       categories={budgetCategories}
                       currency={project.currency}
-                      heading="Ou apoie uma área específica"
+                      heading={t('specificAreaHeading')}
                       contributeBaseHref={canEdit ? undefined : `/${username}/parceria?highlight_id=${project.id}&choice=financial_once`}
-                      contributeLabel="Contribuir"
-                      missingLabel={(amount) => `Faltam ${amount}`}
+                      contributeLabel={t('contribute')}
+                      missingLabel={(amount) => t('missingAmount', { amount })}
                       linkedPrayerPoints={prayerPointsByCategory}
                       profileId={profile.id}
                       highlightId={project.id}
@@ -477,13 +481,13 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
               {pixMethods.length > 0 && (
                 <div className="rounded-xl border border-support/40 bg-support/10 p-3 space-y-3">
                   <p className="text-xs font-medium text-support text-center flex items-center justify-center gap-1.5">
-                    <QrCode className="h-3.5 w-3.5" /> {pixMethods.length > 1 ? 'Chaves PIX para transferência direta' : 'Chave PIX para transferência direta'}
+                    <QrCode className="h-3.5 w-3.5" /> {pixMethods.length > 1 ? t('pixKeysPlural') : t('pixKeySingular')}
                   </p>
                   {pixMethods.map((pix) => (
                     <div key={pix.id} className={cn('space-y-1.5', pixMethods.length > 1 && 'pt-2 border-t border-support/20 first:pt-0 first:border-0')}>
                       {pix.label && (
                         <p className="text-xs text-center text-muted-foreground">
-                          Em nome de <span className="font-medium text-foreground">{pix.label}</span>
+                          {t('inNameOf')} <span className="font-medium text-foreground">{pix.label}</span>
                         </p>
                       )}
                       <CopyableValue value={pix.value} emphasized />
@@ -518,8 +522,8 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
                 canPray={!canEdit}
               />
               {canEdit && (
-                <SectionEditLink canEdit={canEdit} highlightId={project.id} label="Editar pontos de oração">
-                  <p className="text-xs text-muted-foreground italic pr-7">Pontos de oração são editados no painel.</p>
+                <SectionEditLink canEdit={canEdit} highlightId={project.id} label={t('editPrayerPoints')}>
+                  <p className="text-xs text-muted-foreground italic pr-7">{t('prayerPointsEditedInDashboard')}</p>
                 </SectionEditLink>
               )}
             </div>
@@ -528,8 +532,8 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
           if (hasFinancial && hasPrayerContent) {
             return (
               <SupportSectionTabs
-                financialLabel="💰 Apoio financeiro"
-                prayerLabel="🙏 Apoio de oração"
+                financialLabel={t('financialTabLabel')}
+                prayerLabel={t('prayerTabLabel')}
                 financialContent={financialBlock}
                 prayerContent={prayerBlock}
                 defaultTab={initialTab === 'prayer' ? 'prayer' : 'financial'}
@@ -539,12 +543,12 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
           return <>{financialBlock}{prayerBlock}</>
         })()}
 
-        {hasFinancial && !canEdit && <FloatingSupportCta targetId="financial-card" />}
+        {hasFinancial && !canEdit && <FloatingSupportCta targetId="financial-card" label={t('supportThisProjectCta')} />}
 
         {/* Outras formas de apoio */}
         {activeSupportTypes.filter(t => t.key !== 'financial').length > 0 && (
           <div className="rounded-2xl border bg-card p-5 space-y-3">
-            <h2 className="font-semibold">Outras formas de apoiar</h2>
+            <h2 className="font-semibold">{t('otherWaysHeading')}</h2>
             <div className="space-y-2">
               {activeSupportTypes.filter(t => t.key !== 'financial').map(t => (
                 <Link
@@ -572,7 +576,7 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
         {/* Se não tem financeiro, mostra todos os tipos como cards */}
         {!hasFinancial && activeSupportTypes.length > 0 && (
           <div className="rounded-2xl border bg-card p-5 space-y-3">
-            <h2 className="font-semibold">Como apoiar</h2>
+            <h2 className="font-semibold">{t('howToSupportHeading')}</h2>
             <div className="space-y-2">
               {activeSupportTypes.map(t => (
                 <Link
@@ -601,8 +605,8 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
         {(totalMilestones > 0 || canEdit) && (
           <div className="rounded-2xl border bg-card p-5 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold">Marcos</h2>
-              {totalMilestones > 0 && <span className="text-sm text-muted-foreground">{completedCount}/{totalMilestones} concluídos</span>}
+              <h2 className="font-semibold">{t('milestonesHeading')}</h2>
+              {totalMilestones > 0 && <span className="text-sm text-muted-foreground">{t('milestonesCompleted', { completed: completedCount, total: totalMilestones })}</span>}
             </div>
             <SectionEditLink canEdit={canEdit} highlightId={project.id} label={editLabel(t('sectionMilestones'))}>
               {totalMilestones > 0 ? (
@@ -618,7 +622,7 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
                   ))}
                 </ul>
               ) : (
-                canEdit ? <p className="text-sm text-muted-foreground italic">Nenhum marco ainda.</p> : null
+                canEdit ? <p className="text-sm text-muted-foreground italic">{t('noMilestonesYet')}</p> : null
               )}
             </SectionEditLink>
           </div>
@@ -635,7 +639,7 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
             grid do perfil, só que dentro do cartão. */}
         {updatesWithProfile.length > 0 && (
           <div className="rounded-2xl border bg-card overflow-hidden">
-            <h2 className="font-semibold p-5 pb-3">Atualizações</h2>
+            <h2 className="font-semibold p-5 pb-3">{t('updatesHeading')}</h2>
             <div className="px-4">
               {canEdit && viewerUserId ? (
                 <ProjectComposerProvider profileId={profile.id}>
@@ -660,8 +664,8 @@ export default async function ProjetoPublicoPage({ params, searchParams }: Props
         {pastProjects && pastProjects.length > 0 && (
           <div className="rounded-2xl border bg-card p-5 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold">Trajetória de {profile.display_name}</h2>
-              <Link href={`/${username}/trajetoria`} className="text-xs text-primary hover:underline">Ver tudo</Link>
+              <h2 className="font-semibold">{t('trajectoryHeading', { name: profile.display_name })}</h2>
+              <Link href={`/${username}/trajetoria`} className="text-xs text-primary hover:underline">{t('viewAll')}</Link>
             </div>
             <div className="grid grid-cols-3 gap-2">
               {pastProjects.map(p => {

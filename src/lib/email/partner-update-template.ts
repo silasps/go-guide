@@ -14,7 +14,7 @@ export interface BroadcastProjectCard {
 // Cartão de projeto no e-mail de atualização — montado por código, nunca
 // pela IA (a IA só escreve a narrativa em texto; imagem/link/progresso
 // aqui vêm direto do banco, sempre corretos). system.architecture.md 7.10-bis.
-function projectCardHtml(p: BroadcastProjectCard, appUrl: string, username: string): string {
+export function projectCardHtml(p: BroadcastProjectCard, appUrl: string, username: string): string {
   const pct = p.goalAmount ? Math.min(100, Math.round((p.currentAmount / p.goalAmount) * 100)) : null
   const remaining = p.goalAmount ? Math.max(0, p.goalAmount - p.currentAmount) : null
   const link = p.slug ? `${appUrl}/${username}/projetos/${p.slug}` : `${appUrl}/${username}`

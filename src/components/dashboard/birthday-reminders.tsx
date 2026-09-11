@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 import { Cake } from 'lucide-react'
 import { getUpcomingBirthdays, PartnerBirthdayInfo } from '@/lib/partners/birthdays'
+import { buildWhatsAppLink } from '@/lib/whatsapp'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 
@@ -23,11 +24,10 @@ export async function BirthdayReminders({ partners }: Props) {
       </div>
       <ul className="mt-2 space-y-1.5">
         {upcoming.map(({ partner, daysUntil, turningAge }) => {
-          const waDigits = partner.phone?.replace(/\D/g, '')
           const actionHref = partner.user_id
             ? `/dashboard/mensagens/${partner.user_id}`
-            : waDigits
-              ? `https://wa.me/${waDigits}?text=${encodeURIComponent(t('waMessage', { name: partner.name.split(' ')[0] }))}`
+            : partner.phone
+              ? buildWhatsAppLink(partner.phone, t('waMessage', { name: partner.name.split(' ')[0] }))
               : null
 
           return (

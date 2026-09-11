@@ -3,7 +3,7 @@ export type ProfileAccountType = 'individual' | 'family' | 'organization'
 export type Locale = 'pt' | 'en' | 'es'
 export type Plan = 'free' | 'pro' | 'mission'
 export type PostType = 'text' | 'image' | 'video' | 'carousel'
-export type MediaAspectRatio = 'original' | '1:1' | '4:5' | '1.91:1' | '21:9'
+export type MediaAspectRatio = 'original' | '1:1' | '4:5' | '1.91:1' | '21:9' | '4:3'
 export type PartnerType = 'financial' | 'prayer' | 'both' | 'ambassador'
 export type AccountType = 'checking' | 'savings' | 'credit'
 export type TransactionType = 'income' | 'expense' | 'transfer'
@@ -396,13 +396,16 @@ export interface Pledge {
   created_at: string
 }
 
-export type RecurringPledgeStatus = 'pending' | 'active' | 'paused' | 'cancelled'
+export type RecurringPledgeStatus = 'pending' | 'active' | 'paused' | 'cancelled' | 'completed'
 
 export interface RecurringPledge {
   id: string
   profile_id: string
-  partner_id: string
-  reporter_user_id: string
+  partner_id: string | null
+  reporter_user_id: string | null
+  reporter_name: string | null
+  reporter_email: string | null
+  reporter_phone: string | null
   amount: number
   currency: string
   payment_method: PaymentMethodType
@@ -413,6 +416,15 @@ export interface RecurringPledge {
   stripe_subscription_id: string | null
   status: RecurringPledgeStatus
   lapsed_notified_at: string | null
+  /** Nº de meses combinado (Stripe: `subscription_data.cancel_at`; manual: teto de lembretes) — null = sem prazo definido. */
+  duration_months: number | null
+  /** Ciclos já cobrados (Stripe) ou já lembrados (manual). */
+  cycles_completed: number
+  completed_at: string | null
+  /** Timestamp exato mandado pro Stripe como `cancel_at`, pra o webhook distinguir "terminou o prazo" de "cancelado antes". */
+  stripe_cancel_at: string | null
+  /** `next_reminder_at` (valor anterior ao avanço) do ciclo em que o nudge de WhatsApp pro missionário já foi mandado — evita duplicar. */
+  missionary_nudge_sent_for_date: string | null
   created_at: string
 }
 

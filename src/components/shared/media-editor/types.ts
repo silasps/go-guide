@@ -62,6 +62,7 @@ export const ASPECT_RATIO_CLASS: Record<MediaAspectRatio, string> = {
   '4:5': 'aspect-[4/5]',
   '1.91:1': 'aspect-[1.91/1]',
   '21:9': 'aspect-[21/9]',
+  '4:3': 'aspect-[4/3]',
 }
 
 export function createMediaDraft(file: File, type: 'image' | 'video'): MediaDraft {

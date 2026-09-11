@@ -20,6 +20,7 @@ import { formatCurrency } from '@/lib/utils'
 import { PaymentMethodInstructions } from './payment-method-instructions'
 import { BudgetCategorySelect, type BudgetCategoryOption } from './budget-category-select'
 import { AmountChips } from './amount-chips'
+import { DurationChips } from './duration-chips'
 import { PaymentMethodCards } from './payment-method-cards'
 import { CurrencySelect } from './currency-select'
 import { DonationSummary } from './donation-summary'
@@ -71,6 +72,7 @@ export function RecurringPledgeForm({ profileId, username, missionaryName, curre
   const [done, setDone] = useState(doneViaStripe)
   const [redirectSeconds, setRedirectSeconds] = useState(50)
   const [amount, setAmount] = useState('')
+  const [durationMonths, setDurationMonths] = useState<number | null>(null)
   const [categoryId, setCategoryId] = useState<string | null>(initialCategoryId ?? null)
   const [optionId, setOptionId] = useState(canUseStripe ? 'stripe' : (paymentOptions[0]?.id ?? 'other'))
   const [reminderOptIn, setReminderOptIn] = useState(true)
@@ -199,7 +201,7 @@ export function RecurringPledgeForm({ profileId, username, missionaryName, curre
       const res = await fetch('/api/stripe/checkout-recurring', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profileId, amount: parsedAmount, currency: selectedCurrency, highlightId, budgetCategoryId: categoryId }),
+        body: JSON.stringify({ profileId, amount: parsedAmount, currency: selectedCurrency, highlightId, budgetCategoryId: categoryId, durationMonths }),
       })
       const data = await res.json()
       if (!res.ok || !data.url) { toast.error(t('errorCheckout')); return }
@@ -245,6 +247,7 @@ export function RecurringPledgeForm({ profileId, username, missionaryName, curre
           reminder_opt_in: reminderOptIn,
           next_reminder_at: nextReminderAt,
           status: 'active',
+          duration_months: durationMonths,
         })
 
         if (error) { console.error('recurring_pledges insert failed (guest):', error); toast.error(t('errorSave')); return }
@@ -302,6 +305,7 @@ export function RecurringPledgeForm({ profileId, username, missionaryName, curre
         reminder_opt_in: reminderOptIn,
         next_reminder_at: nextReminderAt,
         status: 'active',
+        duration_months: durationMonths,
       })
 
       if (error) { console.error('recurring_pledges insert failed:', error); toast.error(t('errorSave')); return }
@@ -345,6 +349,14 @@ export function RecurringPledgeForm({ profileId, username, missionaryName, curre
           </div>
           <AmountChips currency={selectedCurrency} selectedMasked={amount} onSelect={setAmount} />
           <Input ref={amountInputRef} inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value, selectedCurrency))} placeholder={tPledge('customAmountPlaceholder')} required />
+        </div>
+
+        <div className="space-y-2">
+          <Label>{t('durationLabel')}</Label>
+          <DurationChips value={durationMonths} onSelect={setDurationMonths} />
+          {durationMonths != null && (
+            <p className="text-xs text-muted-foreground">{t('durationHint', { count: durationMonths })}</p>
+          )}
         </div>
 
         <div className="space-y-3 border-t border-border pt-4">

@@ -313,9 +313,6 @@ function StepLetter({ e }: { e: ProjectEditor }) {
         captionValue={e.letterImageCaption1}
         onCaptionChange={e.setLetterImageCaption1}
         captionPlaceholder={t('letterImageCaptionPlaceholder')}
-        uploadLabel={t('letterImageUpload')}
-        changeLabel={t('letterImageChange')}
-        processingLabel={t('letterImageProcessing')}
       />
       <StoryImageField
         label={t('letterImageLabel2')}
@@ -324,9 +321,6 @@ function StepLetter({ e }: { e: ProjectEditor }) {
         captionValue={e.letterImageCaption2}
         onCaptionChange={e.setLetterImageCaption2}
         captionPlaceholder={t('letterImageCaptionPlaceholder')}
-        uploadLabel={t('letterImageUpload')}
-        changeLabel={t('letterImageChange')}
-        processingLabel={t('letterImageProcessing')}
       />
     </>
   )

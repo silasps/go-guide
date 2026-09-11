@@ -80,10 +80,22 @@ export async function POST(req: NextRequest) {
     const session = event.data.object as Stripe.Checkout.Session
     const recurringPledgeId = session.metadata?.recurring_pledge_id
     if (session.mode === 'subscription' && recurringPledgeId && session.subscription) {
+      const subscriptionId = String(session.subscription)
       await supabase.from('recurring_pledges').update({
         status: 'active',
-        stripe_subscription_id: String(session.subscription),
+        stripe_subscription_id: subscriptionId,
       }).eq('id', recurringPledgeId)
+
+      // Checkout Session não aceita `cancel_at` na criação (ver
+      // checkout-recurring/route.ts) — agenda o encerramento automático
+      // agora que a assinatura de fato existe, usando o mesmo timestamp já
+      // gravado em `stripe_cancel_at` na hora do pedido.
+      const { data: rp } = await supabase.from('recurring_pledges').select('stripe_cancel_at').eq('id', recurringPledgeId).maybeSingle()
+      if (rp?.stripe_cancel_at) {
+        await stripe.subscriptions.update(subscriptionId, {
+          cancel_at: Math.floor(new Date(rp.stripe_cancel_at).getTime() / 1000),
+        }, { stripeAccount: event.account })
+      }
     }
 
     const profileId = session.metadata?.pledge_profile_id
@@ -176,6 +188,11 @@ export async function POST(req: NextRequest) {
         const amount = invoice.amount_paid / 100
         const partner = Array.isArray(rp.partners) ? rp.partners[0] : rp.partners
 
+        // Progresso do prazo combinado (duration_months) — só pra exibição,
+        // quem de fato encerra a assinatura é o `cancel_at` já configurado
+        // na criação (checkout-recurring/route.ts), não uma contagem aqui.
+        await supabase.from('recurring_pledges').update({ cycles_completed: rp.cycles_completed + 1 }).eq('id', rp.id)
+
         const { data: newPledge } = await supabase.from('pledges').insert({
           profile_id: rp.profile_id,
           highlight_id: rp.highlight_id,
@@ -225,7 +242,28 @@ export async function POST(req: NextRequest) {
 
   if (event.type === 'customer.subscription.deleted') {
     const subscription = event.data.object as Stripe.Subscription
-    await supabase.from('recurring_pledges').update({ status: 'cancelled' }).eq('stripe_subscription_id', subscription.id)
+    // Distingue "terminou o prazo combinado sozinho" (completed) de
+    // "cancelado antes da hora" (cancelled): compara o instante real do
+    // cancelamento com o `stripe_cancel_at` que a gente mesmo mandou pro
+    // Stripe na criação (checkout-recurring/route.ts) — tolerância de 2
+    // dias cobre fuso/retry sem abrir margem pra confundir com um
+    // cancelamento manual muito antecipado.
+    const { data: rp } = await supabase
+      .from('recurring_pledges')
+      .select('id, stripe_cancel_at')
+      .eq('stripe_subscription_id', subscription.id)
+      .maybeSingle()
+
+    let status: 'cancelled' | 'completed' = 'cancelled'
+    if (rp?.stripe_cancel_at && subscription.canceled_at) {
+      const diffDays = Math.abs(subscription.canceled_at * 1000 - new Date(rp.stripe_cancel_at).getTime()) / 86_400_000
+      if (diffDays <= 2) status = 'completed'
+    }
+
+    await supabase.from('recurring_pledges').update({
+      status,
+      completed_at: status === 'completed' ? new Date().toISOString() : null,
+    }).eq('stripe_subscription_id', subscription.id)
   }
 
   // Conta conectada restringida (risco/conformidade/documentação pendente) —

@@ -1,8 +1,23 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import type { Locale } from '@/i18n/config'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
+}
+
+const INTL_LOCALE: Record<Locale, string> = { pt: 'pt-BR', en: 'en-US', es: 'es-ES' }
+
+// Numérico (dd/mm/aaaa, adaptado à ordem de cada locale) em vez de
+// "18 de set. de 2026" — no formato por extenso, o conector "de" (pt) e o
+// nome do mês empurram a data pra fora do pill de badge em telas estreitas
+// (feedback do usuário: badge "Prazo" cortado/coberto pelo lápis de editar).
+export function formatShortDate(date: string | Date, locale: Locale) {
+  return new Intl.DateTimeFormat(INTL_LOCALE[locale], {
+    day: 'numeric',
+    month: 'numeric',
+    year: 'numeric',
+  }).format(new Date(date))
 }
 
 export function formatCurrency(amount: number, currency: string) {

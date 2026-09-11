@@ -5,6 +5,7 @@ export const ASPECT_RATIOS: Partial<Record<MediaAspectRatio, number>> = {
   '4:5': 4 / 5,
   '1.91:1': 1.91,
   '21:9': 21 / 9,
+  '4:3': 4 / 3,
 }
 
 function loadImage(url: string): Promise<HTMLImageElement> {

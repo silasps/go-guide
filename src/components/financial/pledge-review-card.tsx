@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { buildWhatsAppLink } from '@/lib/whatsapp'
 import { Pledge, FinancialAccount } from '@/types/database'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -172,7 +173,7 @@ export function PledgeReviewCard({ pledge, accounts, profileId, budgetCategories
           </a>
         )}
         {pledge.reporter_phone && (
-          <a href={`https://wa.me/${pledge.reporter_phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+          <a href={buildWhatsAppLink(pledge.reporter_phone)} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
             <MessageCircle className="h-3 w-3" /> {pledge.reporter_phone}
           </a>
         )}
