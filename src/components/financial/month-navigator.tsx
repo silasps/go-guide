@@ -91,7 +91,7 @@ export function MonthNavigator({ points, selectedMonth, onSelectMonth, metric, o
                     <div
                       aria-hidden
                       className={cn(
-                        'pointer-events-none absolute top-[52px] left-1/2 h-0 w-[calc(100%+0.5rem)] border-t-2 z-0',
+                        'pointer-events-none absolute top-[52px] left-1/2 h-0 w-[calc(100%+0.5rem)] border-t-2 z-20',
                         lineFuture ? 'border-dashed border-muted-foreground/30' : 'border-solid border-primary/60'
                       )}
                     />
