@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email/brevo'
-import { wrapEmail } from '@/lib/email/email-header'
+import { wrapPersonalEmail } from '@/lib/email/personal-email-template'
+import { resolveRecipientLocale } from '@/lib/email/resolve-recipient-locale'
+import { formatCurrency } from '@/lib/utils'
 
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET
@@ -15,7 +18,7 @@ export async function GET(req: NextRequest) {
 
   const { data: due } = await supabase
     .from('scheduled_pledges')
-    .select('*, partners(name, email), profiles(display_name, username)')
+    .select('*, partners(name, email), profiles(display_name, username, avatar_url)')
     .eq('status', 'pending')
     .lte('scheduled_date', today)
 
@@ -58,32 +61,60 @@ export async function GET(req: NextRequest) {
     const recipientName = partner?.name ?? sp.reporter_name ?? ''
 
     if (recipientEmail) {
+      const firstName = recipientName.split(' ')[0] || recipientName
+      const missionaryName = missionaryProfile.display_name
+      // Com conta, `profiles.locale` (o que a pessoa escolheu em
+      // Configurações) manda; sem conta, cai pro idioma capturado no
+      // formulário (migration 103), com PT como último fallback.
+      const locale = await resolveRecipientLocale(supabase, sp.reporter_user_id, sp.reporter_locale)
+      const t = await getTranslations({ locale, namespace: 'ScheduledPledgeReminder' })
+
+      // Voz do missionário, não do sistema — a pedido do usuário: o parceiro
+      // deveria sentir que é o próprio missionário lembrando, não uma
+      // notificação institucional ("chegou a hora de pagar o que você
+      // prometeu"). `wrapPersonalEmail` (sem faixa de marca) + `fromName`
+      // no remetente reforçam isso; a menção à plataforma vira só uma linha
+      // pequena no rodapé, honesta sobre ser automático sem competir com a
+      // mensagem.
+      const bodyHtml = `
+        <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">
+          ${t('emailGreeting', { firstName, missionaryName })}
+        </p>
+        <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">
+          ${sp.amount
+            ? t('emailIntroWithAmount', { amount: formatCurrency(sp.amount, sp.currency) })
+            : t('emailIntro')}
+        </p>
+        <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
+          ${t('emailBody')}
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td align="center" style="padding:0 0 28px;">
+              <a href="${continueUrl}"
+                style="display:inline-block;background:#34390c;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 36px;border-radius:10px;">
+                ${t('emailCta')} →
+              </a>
+            </td>
+          </tr>
+        </table>
+        <p style="margin:0;font-size:15px;color:#374151;line-height:1.5;">
+          ${t('emailSignOff')}<br>${missionaryName}
+        </p>
+      `
+      const footNoteHtml = `
+        <p style="margin:0 0 8px;font-size:12px;color:#9ca3af;line-height:1.5;">
+          ${t('emailFooterNote')} ${t('emailCancelPrefix')} <a href="${cancelUrl}" style="color:#9ca3af;">${t('emailCancelLinkLabel')}</a>.
+        </p>
+        <p style="margin:0;font-size:11px;color:#c1c5cb;">${t('emailAutomatedNote', { missionaryName })}</p>
+      `
+
       const ok = await sendEmail({
         to: recipientEmail,
         toName: recipientName,
-        subject: 'Hoje é o dia combinado — sem cobrança',
-        html: wrapEmail(`
-          <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">
-            Olá, ${recipientName}! Você combinou pensar em ajudar <strong>${missionaryProfile.display_name}</strong>
-            por volta de hoje${sp.amount ? `, com algo perto de ${sp.amount} ${sp.currency}` : ''}.
-          </p>
-          <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
-            Não é uma cobrança — é só o lembrete que você mesmo pediu. Se ainda fizer sentido, é só continuar por aqui:
-          </p>
-          <table width="100%" cellpadding="0" cellspacing="0">
-            <tr>
-              <td align="center" style="padding:0 0 28px;">
-                <a href="${continueUrl}"
-                  style="display:inline-block;background:#34390c;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 36px;border-radius:10px;">
-                  Continuar →
-                </a>
-              </td>
-            </tr>
-          </table>
-          <p style="margin:0;font-size:12px;color:#9ca3af;">
-            Se não for mais o momento, sem problema — <a href="${cancelUrl}">cancelar este lembrete</a>.
-          </p>
-        `, 'Hoje é o dia combinado'),
+        subject: t('emailSubject', { firstName }),
+        fromName: `${missionaryName} via go→guide`,
+        html: wrapPersonalEmail({ missionaryName, avatarUrl: missionaryProfile.avatar_url, bodyHtml, footNoteHtml, locale }),
       })
 
       // Só marca como enviado quando de fato tentou (e conseguiu) mandar

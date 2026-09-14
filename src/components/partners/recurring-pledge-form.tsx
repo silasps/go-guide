@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
 import { PledgePaymentMethod } from '@/types/database'
@@ -56,6 +56,7 @@ interface Props {
 
 export function RecurringPledgeForm({ profileId, username, missionaryName, currency: projectCurrency, paymentOptions, stripeAvailable, heroImageUrl = null, heroImagePosition, backHref, user, highlightId, budgetCategories, initialCategoryId, whatsappGroupUrl }: Props) {
   const t = useTranslations('RecurringPledge')
+  const locale = useLocale()
   const tPledge = useTranslations('PledgeForm')
   const searchParams = useSearchParams()
   // Assinatura automática via Cartão exige conta no servidor
@@ -239,6 +240,7 @@ export function RecurringPledgeForm({ profileId, username, missionaryName, curre
           reporter_name: name.trim(),
           reporter_email: email.trim(),
           reporter_phone: authorizedPhone,
+          reporter_locale: locale,
           amount: parsedAmount,
           currency: selectedCurrency,
           payment_method: method,

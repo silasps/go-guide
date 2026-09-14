@@ -333,6 +333,8 @@ export interface Partner {
   created_at: string
   last_update_email_sent_at: string | null
   update_emails_opt_in: boolean
+  /** Idioma capturado no cadastro sem conta (migration 103) — ignorado quando `user_id` existe, aí `profiles.locale` manda. */
+  locale: string | null
 }
 
 export type VisibilityGrantSection = 'full_profile' | 'financial_summary' | 'prayer_requests' | 'sensitive_fields' | 'messages'
@@ -359,6 +361,7 @@ export interface PaymentMethod {
   currency: string
   linked_account_id: string | null
   is_active: boolean
+  stripe_disabled_reason: string | null
   sort_order: number
   created_at: string
   updated_at: string
@@ -377,6 +380,8 @@ export interface Pledge {
   reporter_name: string | null
   reporter_email: string | null
   reporter_phone: string | null
+  /** Idioma capturado no cadastro sem conta (migration 103) — ignorado quando `reporter_user_id` existe, aí `profiles.locale` manda. */
+  reporter_locale: string | null
   is_anonymous: boolean
   message: string | null
   reported_amount: number
@@ -406,6 +411,8 @@ export interface RecurringPledge {
   reporter_name: string | null
   reporter_email: string | null
   reporter_phone: string | null
+  /** Idioma capturado no cadastro sem conta (migration 103) — ignorado quando `reporter_user_id` existe, aí `profiles.locale` manda. */
+  reporter_locale: string | null
   amount: number
   currency: string
   payment_method: PaymentMethodType
@@ -442,6 +449,11 @@ export interface ScheduledPledge {
   status: ScheduledPledgeStatus
   reminded_at: string | null
   created_at: string
+  reporter_name: string | null
+  reporter_email: string | null
+  reporter_phone: string | null
+  /** Idioma capturado no cadastro sem conta (migration 103) — ignorado quando `reporter_user_id` existe, aí `profiles.locale` manda. */
+  reporter_locale: string | null
 }
 
 export type ProjectMemberRole = 'lead' | 'member' | 'viewer'

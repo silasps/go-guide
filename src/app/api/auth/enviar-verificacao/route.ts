@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('display_name, email_verified')
+    .select('display_name, email_verified, locale')
     .eq('user_id', user.id)
     .maybeSingle()
 
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     .eq('user_id', user.id)
 
   const verifyUrl = `${req.nextUrl.origin}/verificar-email/${token}`
-  const sent = await sendVerificationEmail(user.email, profile.display_name, verifyUrl)
+  const sent = await sendVerificationEmail(user.email, profile.display_name, verifyUrl, profile.locale)
 
   return NextResponse.json({ ok: sent, email: user.email })
 }

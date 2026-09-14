@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
 import { Button } from '@/components/ui/button'
@@ -54,6 +54,7 @@ function tomorrow() {
  *  fixo" (RecurringPledgeForm). Ver cron scheduled-pledge-reminders. */
 export function ScheduledPledgeForm({ profileId, username, missionaryName, defaultCurrency, paymentOptions, stripeAvailable = false, heroImageUrl = null, heroImagePosition, backHref, user, highlightId, whatsappGroupUrl }: Props) {
   const t = useTranslations('ScheduledPledge')
+  const locale = useLocale()
   const [done, setDone] = useState(false)
   const [date, setDate] = useState(tomorrow())
   const [amount, setAmount] = useState('')
@@ -133,6 +134,7 @@ export function ScheduledPledgeForm({ profileId, username, missionaryName, defau
           reporter_name: name.trim(),
           reporter_email: email.trim() || null,
           reporter_phone: phone.trim() || null,
+          reporter_locale: locale,
           amount: parsedAmount && parsedAmount > 0 ? parsedAmount : null,
           currency: parsedAmount && parsedAmount > 0 ? currency : null,
           highlight_id: highlightId ?? null,
