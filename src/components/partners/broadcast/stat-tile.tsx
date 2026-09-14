@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useMotionValue, useSpring } from 'framer-motion'
+import { useTranslations } from 'next-intl'
 import { formatCurrency } from '@/lib/utils'
 
 // Mesma técnica de contagem de src/components/financial/balance-summary.tsx
@@ -22,22 +23,24 @@ function useCountUp(target: number) {
 }
 
 interface Props {
-  label: string
   value: number
   currency: string
   /** Cor fixa da paleta de gráfico (11.1) — chart-1/chart-2 são sempre
    *  entrada/saída em qualquer lugar do app (dashboard, aqui). Antes esta
    *  peça usava `accent_color` do perfil (arbitrário, não validado pra
    *  contraste/CVD); trocado pra ficar consistente com o resto do
-   *  financeiro e garantir que a cor sempre passe nos checks da paleta. */
+   *  financeiro e garantir que a cor sempre passe nos checks da paleta.
+   *  O label ("Arrecadado"/"Investido na missão") vem do próprio variant,
+   *  já traduzido — nunca prop de texto livre. */
   variant: 'income' | 'expense'
 }
 
-export function BroadcastStatTile({ label, value, currency, variant }: Props) {
+export function BroadcastStatTile({ value, currency, variant }: Props) {
+  const t = useTranslations('PartnerUpdate')
   const display = useCountUp(value)
   return (
     <div className="bg-card border rounded-2xl p-4">
-      <p className="text-xs text-muted-foreground mb-1">{label}</p>
+      <p className="text-xs text-muted-foreground mb-1">{variant === 'income' ? t('statIncome') : t('statExpense')}</p>
       <p className={`text-xl font-bold tabular-nums ${variant === 'income' ? 'text-chart-1' : 'text-chart-2'}`}>
         {formatCurrency(display, currency)}
       </p>

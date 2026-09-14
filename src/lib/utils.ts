@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-const INTL_LOCALE: Record<Locale, string> = { pt: 'pt-BR', en: 'en-US', es: 'es-ES' }
+export const INTL_LOCALE: Record<Locale, string> = { pt: 'pt-BR', en: 'en-US', es: 'es-ES' }
 
 // Numérico (dd/mm/aaaa, adaptado à ordem de cada locale) em vez de
 // "18 de set. de 2026" — no formato por extenso, o conector "de" (pt) e o
@@ -26,6 +26,10 @@ export function formatCurrency(amount: number, currency: string) {
     currency,
     minimumFractionDigits: 2,
   }).format(amount)
+}
+
+export function formatLongDate(date: string | Date, locale: Locale) {
+  return new Intl.DateTimeFormat(INTL_LOCALE[locale], { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(date))
 }
 
 export function formatDate(date: string | Date) {

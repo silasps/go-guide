@@ -1390,5 +1390,41 @@
     "title": "Finance is a Pro plan feature",
     "description": "Accounts, multi-currency transactions and pledge reconciliation are available from the Pro plan onward. Upgrade to unlock this area.",
     "cta": "See plans"
+  },
+  "PartnerUpdate": {
+    "updateOf": "Update from {date}",
+    "categoryChartHeading": "How the money was used",
+    "categoryChartFootnote": "Exact amounts are available to partners authorized by {name}.",
+    "categoryDetail": "{count, plural, one {# entry} other {# entries}} between {from} and {to}",
+    "otherCategories": "Other",
+    "photosHeading": "Photos from this period",
+    "timelineHeading": "Timeline of this period",
+    "projectsHeading": "Ongoing projects",
+    "sentWithLove": "Sent with care by {name} — go→guide",
+    "statIncome": "Raised",
+    "statExpense": "Invested in the mission",
+    "ctaViewProject": "View project and give →",
+    "progressWithRemaining": "{current} of {goal} ({pct}%) — {remaining} left",
+    "progressNoRemaining": "{current} of {goal} ({pct}%)",
+    "lightboxPrev": "Previous photo",
+    "lightboxNext": "Next photo"
+  },
+  "PartnerUpdateTemplate": {
+    "reportHeading": "Accountability report — {period}",
+    "noExpenses": "We had no recorded expenses this period.",
+    "percentOnlyNoBreakdown": "As always, we keep you posted on how your giving is used.",
+    "percentOnlyWithBreakdown": "As always, we keep you posted on how your giving is used. The main areas were: {list}.",
+    "exactBody": "This period, {incomePart} — every gift makes a difference! Of what came in, {expensePart}. Thank you so much for walking with us in this.",
+    "incomeReceived": "we received {income} in support",
+    "incomeNone": "we didn't record any offering",
+    "expensePlain": "we invested {expense} in the mission",
+    "expenseWithTop": "we invested {expense} in the mission, mainly on {categories}",
+    "expenseNone": "we had no recorded expenses",
+    "projectsHeading": "Ongoing projects",
+    "projectOngoing": "\"{title}\" is still ongoing.",
+    "projectGoalReached": "\"{title}\" reached its goal — thank you for being part of it! 🎉",
+    "projectProgress": "\"{title}\" has reached {pct}% of its goal ({remaining} left).",
+    "defaultDraft": "Hi! Just stopping by to share some news.",
+    "closing": "Thank you for being part of this journey with us!"
   }
 }

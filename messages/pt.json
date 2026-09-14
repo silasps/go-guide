@@ -1390,5 +1390,41 @@
     "title": "Financeiro é um recurso do plano Pro",
     "description": "Contas, lançamentos multi-moeda e conciliação de ofertas ficam disponíveis a partir do plano Pro. Faça upgrade para liberar esta área.",
     "cta": "Ver planos"
+  },
+  "PartnerUpdate": {
+    "updateOf": "Atualização de {date}",
+    "categoryChartHeading": "Como o dinheiro foi usado",
+    "categoryChartFootnote": "Valores exatos disponíveis para parceiros autorizados por {name}.",
+    "categoryDetail": "{count, plural, one {# lançamento} other {# lançamentos}} entre {from} e {to}",
+    "otherCategories": "Outros",
+    "photosHeading": "Fotos do período",
+    "timelineHeading": "Linha do tempo do período",
+    "projectsHeading": "Projetos em andamento",
+    "sentWithLove": "Enviado com carinho por {name} — go→guide",
+    "statIncome": "Arrecadado",
+    "statExpense": "Investido na missão",
+    "ctaViewProject": "Ver projeto e contribuir →",
+    "progressWithRemaining": "{current} de {goal} ({pct}%) — faltam {remaining}",
+    "progressNoRemaining": "{current} de {goal} ({pct}%)",
+    "lightboxPrev": "Foto anterior",
+    "lightboxNext": "Próxima foto"
+  },
+  "PartnerUpdateTemplate": {
+    "reportHeading": "Prestação de contas — {period}",
+    "noExpenses": "Neste período não tivemos despesas registradas.",
+    "percentOnlyNoBreakdown": "Como sempre, seguimos prestando contas de como usamos o que vocês doam.",
+    "percentOnlyWithBreakdown": "Como sempre, seguimos prestando contas de como usamos o que vocês doam. Os principais destinos foram: {list}.",
+    "exactBody": "Neste período, {incomePart} — cada oferta faz toda a diferença! Do que entrou, {expensePart}. Muito obrigado por caminhar com a gente nisso.",
+    "incomeReceived": "recebemos {income} de apoio",
+    "incomeNone": "não recebemos nenhuma oferta registrada",
+    "expensePlain": "investimos {expense} na missão",
+    "expenseWithTop": "investimos {expense} na missão, principalmente com {categories}",
+    "expenseNone": "não tivemos despesas registradas",
+    "projectsHeading": "Projetos em andamento",
+    "projectOngoing": "\"{title}\" segue em andamento.",
+    "projectGoalReached": "\"{title}\" já bateu a meta — obrigado por fazer parte disso! 🎉",
+    "projectProgress": "\"{title}\" já alcançou {pct}% da meta (faltam {remaining}).",
+    "defaultDraft": "Olá! Passando para compartilhar as novidades por aqui.",
+    "closing": "Obrigado por fazer parte dessa caminhada com a gente!"
   }
 }

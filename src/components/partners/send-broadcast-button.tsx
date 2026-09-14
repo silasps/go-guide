@@ -103,6 +103,12 @@ export function SendBroadcastButton({ profileId, mode = 'campaign', activeHighli
     setCopied(false)
   }
 
+  // Em modo report, projetos ativos entram sozinhos — sem checkbox, sem
+  // seleção manual (o missionário nem vê essa opção nesse modo). Em modo
+  // campaign, continua dependendo de `includeProjects`/seleção do usuário.
+  const reportHighlightIds = activeHighlights.map((h) => h.id)
+  const effectiveHighlightIds = isReportMode ? reportHighlightIds : (includeProjects ? selectedHighlightIds : [])
+
   async function handleGenerate(mode: 'ai' | 'template') {
     setGeneratingMode(mode)
     try {
@@ -114,7 +120,7 @@ export function SendBroadcastButton({ profileId, mode = 'campaign', activeHighli
           draftText: body,
           financialPeriod: includeFinancial ? periodRange(financialPeriod) : null,
           financialVisibility,
-          highlightIds: includeProjects ? selectedHighlightIds : [],
+          highlightIds: effectiveHighlightIds,
           mode,
         }),
       })
@@ -143,7 +149,7 @@ export function SendBroadcastButton({ profileId, mode = 'campaign', activeHighli
         subject,
         body,
         filter,
-        includeProjects ? selectedHighlightIds : [],
+        effectiveHighlightIds,
         includeFinancial ? financialSnapshot : null,
         sendByEmail,
         includeFinancial ? financialVisibility : 'exact'
