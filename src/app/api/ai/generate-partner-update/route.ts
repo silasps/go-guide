@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { AI_ACTION_COSTS } from '@/lib/ai/costs'
 import { generatePartnerUpdate, PartnerUpdateFinancial, PartnerUpdateProject, FinancialVisibility } from '@/lib/ai/generate-partner-update'
 import { generateTemplateUpdate } from '@/lib/partners/generate-template-update'
+import type { Locale } from '@/types/database'
 
 interface RequestBody {
   profileId: string
@@ -43,7 +44,13 @@ export async function POST(req: NextRequest) {
   if (financialPeriod) {
     const { data: transactions } = await supabase
       .from('transactions')
-      .select('type, amount, currency, category_id, transaction_categories(name)')
+      // `!category_id` desambigua o embed: `transactions` tem duas FKs pra
+      // `transaction_categories` (category_id/subcategory_id), então
+      // `transaction_categories(name)` sem hint falha com "more than one
+      // relationship was found" (PostgREST) — bug real encontrado ao testar
+      // este redesign (income/expense/topExpenseCategories vinham sempre
+      // vazios em silêncio, porque o código só lê `data`, nunca `error`).
+      .select('type, amount, currency, category_id, date, transaction_categories!category_id(name)')
       .eq('profile_id', profileId)
       .in('type', ['income', 'expense'])
       .gte('date', financialPeriod.from)
@@ -51,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     const incomeByCurrency: Record<string, number> = {}
     const expenseByCurrency: Record<string, number> = {}
-    const expenseByCategory = new Map<string, { name: string; amount: number; currency: string }>()
+    const expenseByCategory = new Map<string, { name: string; amount: number; currency: string; count: number; firstDate: string; lastDate: string }>()
 
     for (const t of transactions ?? []) {
       const target = t.type === 'income' ? incomeByCurrency : expenseByCurrency
@@ -62,12 +69,21 @@ export async function POST(req: NextRequest) {
         const name = category?.name ?? 'Outros'
         const key = `${name}:${t.currency}`
         const existing = expenseByCategory.get(key)
-        expenseByCategory.set(key, { name, currency: t.currency, amount: (existing?.amount ?? 0) + Number(t.amount) })
+        expenseByCategory.set(key, {
+          name,
+          currency: t.currency,
+          amount: (existing?.amount ?? 0) + Number(t.amount),
+          count: (existing?.count ?? 0) + 1,
+          firstDate: existing?.firstDate && existing.firstDate < t.date ? existing.firstDate : t.date,
+          lastDate: existing?.lastDate && existing.lastDate > t.date ? existing.lastDate : t.date,
+        })
       }
     }
 
     financial = {
       periodLabel: financialPeriod.label,
+      periodFrom: financialPeriod.from,
+      periodTo: financialPeriod.to,
       incomeByCurrency,
       expenseByCurrency,
       topExpenseCategories: [...expenseByCategory.values()].sort((a, b) => b.amount - a.amount).slice(0, 3),
@@ -91,10 +107,17 @@ export async function POST(req: NextRequest) {
     }))
   }
 
+  // O texto é escrito uma única vez e fica congelado no broadcast — usa o
+  // idioma do próprio missionário (voz do texto), não o de quem vier a ler
+  // depois. A página pública em si (labels, datas) é locale-aware por
+  // visitante; só este parágrafo livre nasce fixo num idioma.
+  const { data: authorProfile } = await supabase.from('profiles').select('locale').eq('id', profileId).single()
+  const locale = (authorProfile?.locale ?? 'pt') as Locale
+
   try {
     const body = mode === 'template'
-      ? generateTemplateUpdate({ draftText: draftText ?? '', financial, financialVisibility, projects })
-      : await generatePartnerUpdate({ draftText: draftText ?? '', financial, financialVisibility, projects })
+      ? await generateTemplateUpdate({ draftText: draftText ?? '', financial, financialVisibility, projects, locale })
+      : await generatePartnerUpdate({ draftText: draftText ?? '', financial, financialVisibility, projects, locale })
     return NextResponse.json({ body, financial, remainingCredits: newBalance })
   } catch {
     return NextResponse.json({ error: 'ai_provider_error' }, { status: 502 })

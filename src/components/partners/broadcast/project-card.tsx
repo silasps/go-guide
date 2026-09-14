@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import Image from 'next/image'
+import { useTranslations } from 'next-intl'
 import { formatCurrency } from '@/lib/utils'
 
 export interface BroadcastProject {
@@ -26,6 +27,7 @@ interface Props {
 // destaque do perfil em vez de simplesmente omitir a foto — o card nunca
 // fica "incompleto" visualmente, mesmo sem imagem.
 export function BroadcastProjectCard({ project, username, accent }: Props) {
+  const t = useTranslations('PartnerUpdate')
   const pct = project.goal_amount ? Math.min(100, Math.round((project.current_amount / project.goal_amount) * 100)) : null
   const remaining = project.goal_amount ? Math.max(0, project.goal_amount - project.current_amount) : null
   const href = project.slug ? `/${username}/projetos/${project.slug}` : `/${username}`
@@ -64,8 +66,9 @@ export function BroadcastProjectCard({ project, username, accent }: Props) {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              {formatCurrency(project.current_amount, project.currency)} de {formatCurrency(project.goal_amount as number, project.currency)} ({pct}%)
-              {remaining && remaining > 0 ? ` — faltam ${formatCurrency(remaining, project.currency)}` : ''}
+              {remaining && remaining > 0
+                ? t('progressWithRemaining', { current: formatCurrency(project.current_amount, project.currency), goal: formatCurrency(project.goal_amount as number, project.currency), pct, remaining: formatCurrency(remaining, project.currency) })
+                : t('progressNoRemaining', { current: formatCurrency(project.current_amount, project.currency), goal: formatCurrency(project.goal_amount as number, project.currency), pct })}
             </p>
           </>
         )}
@@ -73,7 +76,7 @@ export function BroadcastProjectCard({ project, username, accent }: Props) {
           className="inline-block text-xs font-semibold text-white px-3 py-1.5 rounded-lg mt-1"
           style={{ background: accent }}
         >
-          Ver projeto e contribuir →
+          {t('ctaViewProject')}
         </span>
       </div>
     </motion.a>

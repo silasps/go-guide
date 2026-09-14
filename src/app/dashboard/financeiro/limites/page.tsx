@@ -3,7 +3,6 @@ import { getActiveProfile } from '@/lib/profile/active-profile'
 import { SpendingLimitsTabs } from '@/components/financial/spending-limits-tabs'
 import { NewSpendingLimitButton } from '@/components/financial/new-spending-limit-button'
 import { MonthLimitNav } from '@/components/financial/month-limit-nav'
-import { aggregateByCategory } from '@/lib/financial/dashboard-aggregation'
 
 interface Props {
   searchParams: Promise<{ month?: string }>
@@ -50,43 +49,6 @@ export default async function LimitesPage({ searchParams }: Props) {
   // moeda não deveria deixar essa moeda selecionável pra um limite novo.
   const currencies = [...new Set((accounts ?? []).filter((a) => !a.archived).map((a) => a.currency_code))]
 
-  // Limite só existe na categoria de TOPO, mas um lançamento pode estar
-  // marcado numa subcategoria dela — sem subir da subcategoria pro pai, o
-  // gasto de "Alimentação > Supermercado" nunca contava pro limite de
-  // "Alimentação" (achado com dados reais do usuário: limite de R$1.400
-  // aparecendo zerado mesmo com gasto de verdade na subcategoria).
-  const categoryParentId = new Map((allCategories ?? []).map((c) => [c.id, c.parent_id]))
-  const topCategoryId = (categoryId: string) => categoryParentId.get(categoryId) ?? categoryId
-
-  const spentByCategory: Record<string, number> = {}
-  for (const t of monthExpenses ?? []) {
-    if (!t.category_id) continue
-    const key = topCategoryId(t.category_id)
-    spentByCategory[key] = (spentByCategory[key] ?? 0) + t.amount
-  }
-
-  // Mesma simplificação já usada em `CategoryTree` pro badge de valor total
-  // (soma bruta, moeda do primeiro limite) — este app não faz conversão
-  // entre moedas em nenhum lugar, então misturar aqui seria inventar uma
-  // precisão que não existe no resto do financeiro.
-  const overviewCurrency = limits?.[0]?.currency ?? currencies[0] ?? 'BRL'
-  const totalLimit = (limits ?? []).reduce((s, l) => s + l.limit_amount, 0)
-
-  // Gasto total soma TODA despesa categorizada do mês (não só as categorias
-  // com limite individual) — usado tanto na aba "Por categoria" quanto na
-  // "Geral". Antes eram dois números diferentes (Por categoria só somava as
-  // categorias com limite), e o usuário viu as duas abas mostrando
-  // porcentagens diferentes pro "mesmo" limite total e achou confuso;
-  // unificado a pedido dele.
-  const totalSpentAllCategories = Object.values(spentByCategory).reduce((s, v) => s + v, 0)
-
-  // Esse gráfico é "por categoria E subcategoria" (rótulo da própria seção)
-  // — diferente de `spentByCategory` acima, aqui NÃO soma subcategoria no
-  // pai: cada uma aparece como fatia própria, por isso usa `allCategories`
-  // (não o `categories` só-de-topo) pra resolver o nome certo em vez de
-  // cair em "Sem categoria".
-  const categoryBreakdown = aggregateByCategory(monthExpenses ?? [], allCategories ?? [], month)
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -97,15 +59,13 @@ export default async function LimitesPage({ searchParams }: Props) {
       <SpendingLimitsTabs
         limits={limits ?? []}
         categories={categories}
-        spentByCategory={spentByCategory}
+        allCategories={allCategories ?? []}
+        monthExpenses={monthExpenses ?? []}
+        month={month}
         profileId={profile!.id}
         currencies={currencies}
-        totalSpent={totalSpentAllCategories}
-        totalLimit={totalLimit}
-        overviewCurrency={overviewCurrency}
         todayPct={todayPct}
         generalLimit={generalLimit}
-        categoryBreakdown={categoryBreakdown}
         monthLabel={monthLabel}
       />
     </div>

@@ -8,21 +8,22 @@ import { FinancialAccount, AccountType } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Loader2, Plus } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 
 const CURRENCIES = ['BRL', 'USD', 'EUR', 'GBP', 'CHF', 'CAD', 'AUD']
 const CARD_BRANDS = ['Visa', 'Mastercard', 'Elo', 'American Express', 'Hipercard', 'Outra']
 
 interface Props {
+  open: boolean
+  onOpenChange: (open: boolean) => void
   profileId: string
   account?: FinancialAccount
 }
 
-export function AccountForm({ profileId, account }: Props) {
+export function AccountForm({ open, onOpenChange, profileId, account }: Props) {
   const router = useRouter()
-  const [open, setOpen] = useState(false)
   const { isPending: saving, run } = usePendingAction()
   const [name, setName] = useState(account?.name ?? '')
   const [currencyCode, setCurrencyCode] = useState(account?.currency_code ?? 'BRL')
@@ -73,19 +74,13 @@ export function AccountForm({ profileId, account }: Props) {
         if (error) { toast.error('Erro ao criar conta.'); return }
         toast.success('Conta criada.')
       }
-      setOpen(false)
+      onOpenChange(false)
       router.refresh()
     })
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={
-        <Button variant={account ? 'outline' : 'default'} size={account ? 'sm' : 'default'} className="gap-2">
-          {!account && <Plus className="h-4 w-4" />}
-          {account ? 'Editar' : 'Nova conta'}
-        </Button>
-      } />
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>{account ? 'Editar conta' : 'Nova conta financeira'}</DialogTitle>
@@ -149,7 +144,7 @@ export function AccountForm({ profileId, account }: Props) {
             Conta compartilhada (equipe/família)
           </label>
           <div className="flex gap-2 pt-1">
-            <Button type="button" variant="outline" className="flex-1" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button type="submit" className="flex-1" disabled={saving}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {account ? 'Salvar' : 'Criar conta'}

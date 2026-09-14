@@ -1,16 +1,28 @@
 import { getAnthropicClient } from './client'
 import { formatCurrency } from '@/lib/utils'
+import type { Locale } from '@/types/database'
 
 // Sonnet, não Haiku (diferente de translate.ts/moderate-text.ts): aqui o
 // que se compra é qualidade de escrita envolvente, não velocidade/custo —
 // é o texto que decide se o parceiro lê até o fim ou não.
 const MODEL_GENERATE = 'claude-sonnet-5'
 
+const LANGUAGE_NAME: Record<Locale, string> = { pt: 'português', en: 'English', es: 'español' }
+
 export interface PartnerUpdateFinancial {
   periodLabel: string
+  /** Datas ISO reais do período (além do `periodLabel` só decorativo) — sem
+   *  elas, a página pública não sabe que janela usar pra buscar posts/
+   *  marcos do mesmo período (ver `page.tsx` da rota /atualizacoes).
+   *  Opcionais porque `financial_snapshot` é JSONB congelado no momento da
+   *  criação — broadcasts de antes deste campo existir não têm essas
+   *  chaves, e a página pública trata a ausência delas como "sem galeria/
+   *  timeline pra este relatório", nunca como erro. */
+  periodFrom?: string
+  periodTo?: string
   incomeByCurrency: Record<string, number>
   expenseByCurrency: Record<string, number>
-  topExpenseCategories: { name: string; amount: number; currency: string }[]
+  topExpenseCategories: { name: string; amount: number; currency: string; count?: number; firstDate?: string; lastDate?: string }[]
 }
 
 export type FinancialVisibility = 'exact' | 'percent_only'
@@ -86,11 +98,13 @@ export async function generatePartnerUpdate({
   financial,
   financialVisibility = 'exact',
   projects,
+  locale = 'pt',
 }: {
   draftText: string
   financial: PartnerUpdateFinancial | null
   financialVisibility?: FinancialVisibility
   projects: PartnerUpdateProject[]
+  locale?: Locale
 }): Promise<string> {
   const client = getAnthropicClient()
 
@@ -109,7 +123,7 @@ export async function generatePartnerUpdate({
   const response = await client.messages.create({
     model: MODEL_GENERATE,
     max_tokens: 1024,
-    system: `Você ajuda um missionário a escrever uma atualização por e-mail pra sua rede de parceiros (apoiadores financeiros e de oração). O texto precisa soar pessoal e caloroso, como se o próprio missionário estivesse contando as novidades a um amigo — nunca como um relatório financeiro ou um comunicado corporativo. Teça os números com naturalidade dentro de frases, nunca como uma lista de dados isolada ou tabela. Não use markdown, títulos nem bullet points. Parágrafos curtos, separados por linha em branco. Se houver projetos, um cartão com foto, barra de progresso e botão de cada um já aparece automaticamente logo depois do seu texto — então feche o texto convidando emocionalmente a continuar apoiando ou conhecer mais, sem tentar descrever números exatos de novo nem inventar um link (o botão real já vem a seguir).${financialPrivacyNote} Responda apenas com o JSON pedido.`,
+    system: `Você ajuda um missionário a escrever uma atualização por e-mail pra sua rede de parceiros (apoiadores financeiros e de oração). Escreva em ${LANGUAGE_NAME[locale]} — todo o texto de saída precisa estar nesse idioma, independente do idioma do rascunho recebido. O texto precisa soar pessoal e caloroso, como se o próprio missionário estivesse contando as novidades a um amigo — nunca como um relatório financeiro ou um comunicado corporativo. Teça os números com naturalidade dentro de frases, nunca como uma lista de dados isolada ou tabela. Não use markdown, títulos nem bullet points. Parágrafos curtos, separados por linha em branco. Se houver projetos, um cartão com foto, barra de progresso e botão de cada um já aparece automaticamente logo depois do seu texto — então feche o texto convidando emocionalmente a continuar apoiando ou conhecer mais, sem tentar descrever números exatos de novo nem inventar um link (o botão real já vem a seguir).${financialPrivacyNote} Responda apenas com o JSON pedido.`,
     output_config: {
       format: {
         type: 'json_schema',
