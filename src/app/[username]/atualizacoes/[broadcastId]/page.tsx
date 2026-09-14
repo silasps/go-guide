@@ -197,19 +197,20 @@ export default async function AtualizacaoPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-muted/30 relative overflow-hidden">
-      <div className="absolute inset-x-0 top-0 h-72 pointer-events-none overflow-hidden">
+      {/* Área de capa única (mesma altura pra cor e pra foto) — pensada
+          exatamente como a capa de um perfil de rede social: preenchida
+          sólida até uma borda definida, nunca desvanecendo em cima do
+          fundo da página (uma versão anterior fazia isso com `maskImage`
+          e o usuário achou "melhor, mas" — preferiu a borda nítida, mesmo
+          padrão de Twitter/Instagram/Facebook). Quando o missionário tiver
+          uma foto de capa no perfil (`profile.cover_url`), ela passa a
+          preencher automaticamente essa mesma área — nada muda de
+          tamanho/posição, só troca cor sólida por `object-cover`. */}
+      <div className="absolute inset-x-0 top-0 h-40 pointer-events-none overflow-hidden">
         {profile.cover_url ? (
-          <>
-            <Image src={profile.cover_url} alt="" fill className="object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-b from-background/10 via-background/70 to-background" />
-          </>
+          <Image src={profile.cover_url} alt="" fill className="object-cover" />
         ) : (
-          // Sem capa, o glow radial sozinho (${accent}22) ficava quase
-          // imperceptível no tema claro (crítica do usuário revendo a
-          // página como visitante: "a parte menos moderna"). Uma faixa de
-          // cor de verdade atrás do cabeçalho dá a mesma sensação de
-          // "banner de perfil" que a foto de capa daria.
-          <div className="absolute inset-x-0 top-0 h-40" style={{ background: `linear-gradient(135deg, ${accent}, ${accent}66)` }} />
+          <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accent}, ${accent}66)` }} />
         )}
         <div className="absolute inset-0" style={{ background: `radial-gradient(circle at 50% 0%, ${accent}22, transparent 70%)` }} />
       </div>
