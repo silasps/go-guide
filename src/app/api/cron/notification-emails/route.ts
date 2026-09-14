@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email/brevo'
 import { renderEmailTemplate, EmailAccent } from '@/lib/email/template'
+import { wrapPersonalEmail } from '@/lib/email/personal-email-template'
+import { isLocale, type Locale } from '@/i18n/config'
 import { formatCurrency } from '@/lib/utils'
 
 type ServiceClient = Awaited<ReturnType<typeof createServiceClient>>
@@ -20,6 +23,10 @@ interface EmailContent {
   toName: string
   subject: string
   html: string
+  /** Nome de exibição do remetente — só nos e-mails que soam como o
+   *  missionário escrevendo (`pledge_confirmed`, ver wrapPersonalEmail).
+   *  Omitido = remetente padrão da plataforma. */
+  fromName?: string
 }
 
 // E-mail por notificação selecionada (new_message, pledge_confirmed, new_pledge,
@@ -67,7 +74,7 @@ export async function GET(req: NextRequest) {
       continue
     }
 
-    const ok = await sendEmail({ to: email, toName: content.toName, subject: content.subject, html: content.html })
+    const ok = await sendEmail({ to: email, toName: content.toName, subject: content.subject, html: content.html, fromName: content.fromName })
     if (ok) sent += 1
     // Marca mesmo se falhar — evita retry indefinido a cada 5min pra um
     // endereço permanentemente inválido; falhas ficam nos logs do sendEmail.
@@ -88,7 +95,7 @@ export async function GET(req: NextRequest) {
 async function sendAnonymousRejectionEmails(supabase: ServiceClient, appUrl: string): Promise<number> {
   const { data: pledges } = await supabase
     .from('pledges')
-    .select('id, profile_id, reporter_name, reporter_email, reported_amount, currency, rejection_reason, highlight_id')
+    .select('id, profile_id, reporter_name, reporter_email, reporter_locale, reported_amount, currency, rejection_reason, highlight_id')
     .eq('status', 'rejected')
     .is('reporter_user_id', null)
     .not('reporter_email', 'is', null)
@@ -103,19 +110,26 @@ async function sendAnonymousRejectionEmails(supabase: ServiceClient, appUrl: str
       supabase.from('profiles').select('username, display_name').eq('id', p.profile_id).maybeSingle(),
     ])
 
+    // Sempre convidado (guarda `reporter_user_id IS NULL` na query acima)
+    // — idioma vem só do que foi capturado no formulário (migration 103).
+    const locale = isLocale(p.reporter_locale) ? p.reporter_locale : 'pt'
+    const t = await getTranslations({ locale, namespace: 'PledgeRejectedEmail' })
+    const highlightPhrase = highlight?.title ? t('emailHighlightPhrase', { highlightTitle: highlight.title }) : ''
+    const profilePhrase = profile?.display_name ? t('emailProfilePhrase', { profileName: profile.display_name }) : ''
+
     const ok = await sendEmail({
       to: p.reporter_email!,
       toName: p.reporter_name || 'Apoiador',
-      subject: 'Sua oferta não pôde ser confirmada',
+      subject: t('emailSubject'),
       html: renderEmailTemplate({
         appUrl,
-        title: 'Oferta não confirmada',
+        title: t('emailTitle'),
         accent: 'warning',
-        preheader: p.rejection_reason ?? 'Sua oferta ainda pode ser reanalisada.',
-        bodyHtml: `<p style="margin:0 0 12px;">Sua oferta de <strong>${formatCurrency(p.reported_amount, p.currency)}</strong>${highlight?.title ? ` para <strong>${highlight.title}</strong>` : ''}${profile?.display_name ? ` a <strong>${profile.display_name}</strong>` : ''} não pôde ser confirmada.</p>
-         ${p.rejection_reason ? `<p style="margin:0 0 12px;padding:12px 14px;background:#faf5eb;border-radius:10px;color:#0a0a0a;"><strong>Motivo:</strong> ${p.rejection_reason}</p>` : ''}
-         <p style="margin:0;">Se você acredita que isso foi um engano — por exemplo, se tem o comprovante em mãos — entre em contato pra reanalisarmos.</p>`,
-        cta: profile?.username ? { url: `${appUrl}/${profile.username}`, label: 'Ver perfil' } : undefined,
+        preheader: p.rejection_reason ?? t('emailPreheaderDefault'),
+        bodyHtml: `<p style="margin:0 0 12px;">${t('emailBody', { amount: formatCurrency(p.reported_amount, p.currency), highlightPhrase, profilePhrase })}</p>
+         ${p.rejection_reason ? `<p style="margin:0 0 12px;padding:12px 14px;background:#faf5eb;border-radius:10px;color:#0a0a0a;"><strong>${t('emailReasonLabel')}</strong> ${p.rejection_reason}</p>` : ''}
+         <p style="margin:0;">${t('emailReasonBody')}</p>`,
+        cta: profile?.username ? { url: `${appUrl}/${profile.username}`, label: t('emailCtaProfile') } : undefined,
       }),
     })
     if (ok) sent += 1
@@ -136,6 +150,15 @@ async function displayNameOf(supabase: ServiceClient, userId: string): Promise<s
   return data?.display_name ?? 'Alguém'
 }
 
+// Todo destinatário de `notifications` é uma conta de verdade (a tabela
+// exige `recipient_user_id NOT NULL`) — `profiles.locale` sempre resolve
+// aqui, diferente dos e-mails pra convidado/parceiro sem conta que
+// dependem do que foi capturado no formulário (migration 103).
+async function localeOf(supabase: ServiceClient, userId: string): Promise<Locale> {
+  const { data } = await supabase.from('profiles').select('locale').eq('user_id', userId).maybeSingle()
+  return isLocale(data?.locale) ? data.locale : 'pt'
+}
+
 const TYPE_ACCENT: Record<(typeof EMAIL_TYPES)[number], EmailAccent> = {
   new_message: 'primary',
   pledge_confirmed: 'success',
@@ -146,6 +169,7 @@ const TYPE_ACCENT: Record<(typeof EMAIL_TYPES)[number], EmailAccent> = {
 
 async function buildEmailContent(supabase: ServiceClient, n: NotificationRow, appUrl: string): Promise<EmailContent | null> {
   const recipientName = await displayNameOf(supabase, n.recipient_user_id)
+  const locale = await localeOf(supabase, n.recipient_user_id)
   const accent = TYPE_ACCENT[n.type]
 
   switch (n.type) {
@@ -153,15 +177,16 @@ async function buildEmailContent(supabase: ServiceClient, n: NotificationRow, ap
       const senderId = n.payload.sender_id as string | undefined
       if (!senderId) return null
       const senderName = await displayNameOf(supabase, senderId)
+      const t = await getTranslations({ locale, namespace: 'NewMessageEmail' })
       return {
         toName: recipientName,
-        subject: `Nova mensagem de ${senderName}`,
+        subject: t('emailSubject', { sender: senderName }),
         html: renderEmailTemplate({
           appUrl,
           accent,
-          title: 'Você recebeu uma nova mensagem',
-          bodyHtml: `<p style="margin:0;">${senderName} te mandou uma mensagem no go→guide.</p>`,
-          cta: { url: `${appUrl}/dashboard/mensagens/${senderId}`, label: 'Ver mensagem' },
+          title: t('emailTitle'),
+          bodyHtml: `<p style="margin:0;">${t('emailBody', { sender: senderName })}</p>`,
+          cta: { url: `${appUrl}/dashboard/mensagens/${senderId}`, label: t('emailCta') },
         }),
       }
     }
@@ -169,19 +194,37 @@ async function buildEmailContent(supabase: ServiceClient, n: NotificationRow, ap
     case 'pledge_confirmed': {
       const pledgeId = n.payload.pledge_id as string | undefined
       if (!pledgeId) return null
-      const { data: pledge } = await supabase.from('pledges').select('reported_amount, currency').eq('id', pledgeId).maybeSingle()
+      const { data: pledge } = await supabase.from('pledges').select('reported_amount, currency, profile_id').eq('id', pledgeId).maybeSingle()
       if (!pledge) return null
+      const { data: missionary } = await supabase.from('profiles').select('display_name, avatar_url').eq('id', pledge.profile_id).maybeSingle()
+      if (!missionary) return null
       const highlightTitle = n.payload.highlight_title as string | undefined
+      const t = await getTranslations({ locale, namespace: 'PledgeConfirmedEmail' })
+      const highlightPhrase = highlightTitle ? t('emailHighlightPhrase', { highlightTitle }) : ''
+      const firstName = recipientName.split(' ')[0] || recipientName
+      const missionaryName = missionary.display_name
+
+      // Voz do missionário, não do sistema — mesmo tratamento de
+      // scheduled-pledge-reminders/recurring-reminders: quem confirmou a
+      // oferta "de fato" foi o missionário revisando Conciliação, então o
+      // e-mail soa como ele mesmo avisando, não uma notificação genérica.
+      const bodyHtml = `
+        <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">${t('emailGreeting', { firstName, missionaryName })}</p>
+        <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">${t('emailBody', { amount: formatCurrency(pledge.reported_amount, pledge.currency), highlightPhrase })}</p>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td align="center" style="padding:0 0 28px;">
+            <a href="${appUrl}/dashboard/financeiro-parceiro" style="display:inline-block;background:#34390c;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 36px;border-radius:10px;">${t('emailCta')} →</a>
+          </td></tr>
+        </table>
+        <p style="margin:0;font-size:15px;color:#374151;line-height:1.5;">${t('emailSignOff')}<br>${missionaryName}</p>
+      `
+      const footNoteHtml = `<p style="margin:0;font-size:11px;color:#c1c5cb;">${t('emailAutomatedNote', { missionaryName })}</p>`
+
       return {
         toName: recipientName,
-        subject: 'Sua oferta foi confirmada',
-        html: renderEmailTemplate({
-          appUrl,
-          accent,
-          title: 'Oferta confirmada ✓',
-          bodyHtml: `<p style="margin:0;">Sua oferta de <strong>${formatCurrency(pledge.reported_amount, pledge.currency)}</strong>${highlightTitle ? ` para <strong>${highlightTitle}</strong>` : ''} foi confirmada. Obrigado pela sua parceria!</p>`,
-          cta: { url: `${appUrl}/dashboard/financeiro-parceiro`, label: 'Ver histórico de doações' },
-        }),
+        subject: t('emailSubject', { firstName }),
+        fromName: `${missionaryName} via go→guide`,
+        html: wrapPersonalEmail({ missionaryName, avatarUrl: missionary.avatar_url, bodyHtml, footNoteHtml, locale }),
       }
     }
 
@@ -192,18 +235,20 @@ async function buildEmailContent(supabase: ServiceClient, n: NotificationRow, ap
       if (!pledge) return null
       const highlightTitle = n.payload.highlight_title as string | undefined
       const reason = n.payload.rejection_reason as string | undefined
+      const t = await getTranslations({ locale, namespace: 'PledgeRejectedEmail' })
+      const highlightPhrase = highlightTitle ? t('emailHighlightPhrase', { highlightTitle }) : ''
       return {
         toName: recipientName,
-        subject: 'Sua oferta não pôde ser confirmada',
+        subject: t('emailSubject'),
         html: renderEmailTemplate({
           appUrl,
           accent,
-          title: 'Oferta não confirmada',
-          preheader: reason ?? 'Sua oferta ainda pode ser reanalisada.',
-          bodyHtml: `<p style="margin:0 0 12px;">Sua oferta de <strong>${formatCurrency(pledge.reported_amount, pledge.currency)}</strong>${highlightTitle ? ` para <strong>${highlightTitle}</strong>` : ''} não pôde ser confirmada.</p>
-           ${reason ? `<p style="margin:0 0 12px;padding:12px 14px;background:#faf5eb;border-radius:10px;color:#0a0a0a;"><strong>Motivo:</strong> ${reason}</p>` : ''}
-           <p style="margin:0;">Se você acredita que isso foi um engano — por exemplo, se tem o comprovante em mãos — entre em contato pra reanalisarmos.</p>`,
-          cta: { url: `${appUrl}/dashboard/financeiro-parceiro`, label: 'Ver histórico de doações' },
+          title: t('emailTitle'),
+          preheader: reason ?? t('emailPreheaderDefault'),
+          bodyHtml: `<p style="margin:0 0 12px;">${t('emailBody', { amount: formatCurrency(pledge.reported_amount, pledge.currency), highlightPhrase, profilePhrase: '' })}</p>
+           ${reason ? `<p style="margin:0 0 12px;padding:12px 14px;background:#faf5eb;border-radius:10px;color:#0a0a0a;"><strong>${t('emailReasonLabel')}</strong> ${reason}</p>` : ''}
+           <p style="margin:0;">${t('emailReasonBody')}</p>`,
+          cta: { url: `${appUrl}/dashboard/financeiro-parceiro`, label: t('emailCtaHistory') },
         }),
       }
     }
@@ -214,30 +259,32 @@ async function buildEmailContent(supabase: ServiceClient, n: NotificationRow, ap
       if (!pledgeId) return null
       const { data: pledge } = await supabase.from('pledges').select('reported_amount, currency').eq('id', pledgeId).maybeSingle()
       if (!pledge) return null
+      const t = await getTranslations({ locale, namespace: 'NewPledgeEmail' })
       return {
         toName: recipientName,
-        subject: `Nova oferta registrada por ${reporterName}`,
+        subject: t('emailSubject', { reporter: reporterName }),
         html: renderEmailTemplate({
           appUrl,
           accent,
-          title: 'Nova oferta pra revisar',
-          bodyHtml: `<p style="margin:0;"><strong>${reporterName}</strong> registrou uma oferta de <strong>${formatCurrency(pledge.reported_amount, pledge.currency)}</strong>, aguardando sua confirmação.</p>`,
-          cta: { url: `${appUrl}/dashboard/financeiro`, label: 'Revisar oferta' },
+          title: t('emailTitle'),
+          bodyHtml: `<p style="margin:0;">${t('emailBody', { reporter: reporterName, amount: formatCurrency(pledge.reported_amount, pledge.currency) })}</p>`,
+          cta: { url: `${appUrl}/dashboard/financeiro`, label: t('emailCta') },
         }),
       }
     }
 
     case 'new_partner': {
       const name = (n.payload.name as string | undefined) ?? 'Alguém'
+      const t = await getTranslations({ locale, namespace: 'NewPartnerEmail' })
       return {
         toName: recipientName,
-        subject: `${name} agora é seu parceiro`,
+        subject: t('emailSubject', { name }),
         html: renderEmailTemplate({
           appUrl,
           accent,
-          title: 'Novo parceiro 🎉',
-          bodyHtml: `<p style="margin:0;"><strong>${name}</strong> agora faz parte da sua rede de parceiros.</p>`,
-          cta: { url: `${appUrl}/dashboard/parceiros`, label: 'Ver parceiros' },
+          title: t('emailTitle'),
+          bodyHtml: `<p style="margin:0;">${t('emailBody', { name })}</p>`,
+          cta: { url: `${appUrl}/dashboard/parceiros`, label: t('emailCta') },
         }),
       }
     }

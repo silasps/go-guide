@@ -34,6 +34,11 @@ export function StripeConnectCard({ stripeMethod, financialAccounts }: Props) {
   const [linkedAccountId, setLinkedAccountId] = useState(stripeMethod?.linked_account_id ?? '')
 
   const pending = stripeMethod !== null && !stripeMethod.is_active
+  // `stripe_disabled_reason` é gravado pelo webhook `account.updated`
+  // (ver src/app/api/stripe/webhook/route.ts) sempre que a Stripe
+  // restringe a conta depois do onboarding já ter sido concluído — estado
+  // distinto de `pending` (que nunca chegou a terminar o onboarding).
+  const needsAttention = stripeMethod !== null && stripeMethod.is_active && !!stripeMethod.stripe_disabled_reason
 
   useEffect(() => {
     const status = searchParams.get('stripe')
@@ -92,10 +97,22 @@ export function StripeConnectCard({ stripeMethod, financialAccounts }: Props) {
             <Zap className="h-4 w-4 shrink-0 text-muted-foreground" />
             <p className="font-medium text-sm">{t('stripeTitle')}</p>
           </div>
-          <Badge variant={pending ? 'outline' : 'secondary'}>
-            {pending ? t('stripePending') : t('stripeConnected')}
+          <Badge variant={needsAttention ? 'destructive' : pending ? 'outline' : 'secondary'}>
+            {needsAttention ? t('stripeNeedsAttention') : pending ? t('stripePending') : t('stripeConnected')}
           </Badge>
         </div>
+
+        {needsAttention && (
+          <>
+            <p className="text-xs text-muted-foreground">{t('stripeNeedsAttentionHint')}</p>
+            <a href="/api/stripe/connect/start">
+              <Button size="sm" variant="destructive" className="gap-2">
+                <Zap className="h-4 w-4" />
+                {t('stripeResolveOnStripe')}
+              </Button>
+            </a>
+          </>
+        )}
 
         {pending ? (
           <>

@@ -1,58 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
+import { getTranslations } from 'next-intl/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getStripeClient } from '@/lib/stripe/client'
 import { sendEmail } from '@/lib/email/brevo'
 import { renderEmailTemplate } from '@/lib/email/template'
+import { isLocale } from '@/i18n/config'
 import { formatCurrency } from '@/lib/utils'
 
 type ServiceClient = Awaited<ReturnType<typeof createServiceClient>>
+
+// Busca a taxa real que a Stripe descontou de uma cobrança, direto da
+// `balance_transaction` da conta conectada — sem isso não dava pra saber
+// quanto de fato cai na conta do missionário (pedido do usuário, 2026-09-12).
+// Primeira versão fazia `transactions.amount` já nascer líquido (bruto menos
+// taxa) numa linha só; o usuário preferiu manter a oferta pelo valor cheio
+// e lançar a taxa como uma segunda transação de despesa à parte, pra ficar
+// rastreável (2026-09-13) — esta função virou só um lookup da taxa, quem soma
+// os dois lançamentos é o saldo da conta, não um cálculo aqui. Melhor
+// esforço: se a `balance_transaction` ainda não estiver disponível (raro, mas
+// pode acontecer com métodos de liquidação mais lenta), devolve 0 e a oferta
+// é lançada normalmente, sem o lançamento de taxa — nunca bloqueia o registro
+// da oferta por isso.
+async function getStripeFeeAmount(
+  stripe: Stripe,
+  paymentIntentId: string,
+  stripeAccount: string,
+): Promise<number> {
+  try {
+    const pi = await stripe.paymentIntents.retrieve(
+      paymentIntentId,
+      { expand: ['latest_charge.balance_transaction'] },
+      { stripeAccount },
+    )
+    const charge = pi.latest_charge as Stripe.Charge | null
+    const balanceTransaction = charge?.balance_transaction as Stripe.BalanceTransaction | null | undefined
+    return balanceTransaction ? balanceTransaction.fee / 100 : 0
+  } catch {
+    return 0
+  }
+}
 
 // Cumpre a responsabilidade de "notificar vendedores quando afetados por
 // risco/prevenção de fraude" que a Stripe exige reconhecer no perfil da
 // plataforma (Managed risk, ver system.architecture.md 7.11) — sem isso o
 // missionário só saberia que a conta dele foi restringida se checasse o
-// próprio Dashboard da Stripe por conta própria.
-async function notifyConnectedAccountOwner(
-  supabase: ServiceClient,
-  appUrl: string,
-  stripeAccountId: string,
-  subject: string,
-  bodyHtml: string,
-  preheader: string
-) {
+// próprio Dashboard da Stripe por conta própria. Dono de conta conectada é
+// sempre um usuário de verdade — `profiles.locale` resolve o idioma sem
+// precisar de fallback pra convidado.
+async function connectedAccountRecipient(supabase: ServiceClient, stripeAccountId: string) {
   const { data: method } = await supabase
     .from('payment_methods')
     .select('profile_id')
     .eq('type', 'stripe')
     .eq('value', stripeAccountId)
     .maybeSingle()
-  if (!method) return
+  if (!method) return null
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('user_id, display_name')
+    .select('user_id, display_name, locale')
     .eq('id', method.profile_id)
     .maybeSingle()
-  if (!profile) return
+  if (!profile) return null
 
   const { data: userRes } = await supabase.auth.admin.getUserById(profile.user_id)
   const email = userRes?.user?.email
-  if (!email) return
+  if (!email) return null
 
-  await sendEmail({
-    to: email,
-    toName: profile.display_name,
-    subject,
-    html: renderEmailTemplate({
-      appUrl,
-      title: subject,
-      accent: 'warning',
-      preheader,
-      bodyHtml,
-      cta: { url: `${appUrl}/dashboard/configuracoes?tab=pagamentos`, label: 'Ver configurações de pagamento' },
-    }),
-  })
+  return { email, displayName: profile.display_name, locale: isLocale(profile.locale) ? profile.locale : 'pt' } as const
 }
 
 // Webhook de Stripe Connect — recebe eventos de TODAS as contas conectadas
@@ -150,6 +166,9 @@ export async function POST(req: NextRequest) {
         .maybeSingle()
 
       if (newPledge && stripeMethod?.linked_account_id) {
+        const donorLabel = isAnonymous ? 'Apoiador anônimo' : (m.pledge_name || 'Doador')
+        const txDate = new Date().toISOString().slice(0, 10)
+
         const { data: transaction } = await supabase.from('transactions').insert({
           account_id: stripeMethod.linked_account_id,
           profile_id: profileId,
@@ -157,16 +176,33 @@ export async function POST(req: NextRequest) {
           type: 'income',
           amount,
           currency,
-          description: `Oferta via Stripe — ${isAnonymous ? 'Apoiador anônimo' : (m.pledge_name || 'Doador')}`,
+          description: `Oferta via Stripe — ${donorLabel}`,
           partner_id: partnerId,
           highlight_id: m.pledge_highlight_id || null,
           budget_category_id: m.pledge_budget_category_id || null,
           source: 'api',
-          date: new Date().toISOString().slice(0, 10),
+          date: txDate,
         }).select('id').single()
 
         if (transaction) {
           await supabase.from('pledges').update({ confirmed_transaction_id: transaction.id }).eq('id', newPledge.id)
+
+          const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id
+          const feeAmount = paymentIntentId && event.account ? await getStripeFeeAmount(stripe, paymentIntentId, event.account) : 0
+          if (feeAmount > 0) {
+            await supabase.from('transactions').insert({
+              account_id: stripeMethod.linked_account_id,
+              profile_id: profileId,
+              created_by_user_id: null,
+              type: 'expense',
+              amount: feeAmount,
+              currency,
+              description: `Taxa Stripe — ${donorLabel}`,
+              partner_id: partnerId,
+              source: 'api',
+              date: txDate,
+            })
+          }
         }
       }
     }
@@ -218,6 +254,9 @@ export async function POST(req: NextRequest) {
           .maybeSingle()
 
         if (newPledge && stripeMethod?.linked_account_id) {
+          const partnerLabel = partner?.name ?? 'Parceiro'
+          const txDate = new Date().toISOString().slice(0, 10)
+
           const { data: transaction } = await supabase.from('transactions').insert({
             account_id: stripeMethod.linked_account_id,
             profile_id: rp.profile_id,
@@ -225,15 +264,45 @@ export async function POST(req: NextRequest) {
             type: 'income',
             amount,
             currency: rp.currency,
-            description: `Assinatura Stripe — ${partner?.name ?? 'Parceiro'}`,
+            description: `Assinatura Stripe — ${partnerLabel}`,
             partner_id: rp.partner_id,
             highlight_id: rp.highlight_id,
             source: 'api',
-            date: new Date().toISOString().slice(0, 10),
+            date: txDate,
           }).select('id').single()
 
           if (transaction) {
             await supabase.from('pledges').update({ confirmed_transaction_id: transaction.id }).eq('id', newPledge.id)
+
+            let paymentIntentId: string | undefined
+            if (event.account) {
+              try {
+                const fullInvoice = await stripe.invoices.retrieve(
+                  invoice.id!,
+                  { expand: ['payments.data.payment.payment_intent'] },
+                  { stripeAccount: event.account },
+                )
+                const paymentRef = fullInvoice.payments?.data?.[0]?.payment?.payment_intent
+                paymentIntentId = typeof paymentRef === 'string' ? paymentRef : paymentRef?.id
+              } catch {
+                paymentIntentId = undefined
+              }
+            }
+            const feeAmount = paymentIntentId && event.account ? await getStripeFeeAmount(stripe, paymentIntentId, event.account) : 0
+            if (feeAmount > 0) {
+              await supabase.from('transactions').insert({
+                account_id: stripeMethod.linked_account_id,
+                profile_id: rp.profile_id,
+                created_by_user_id: null,
+                type: 'expense',
+                amount: feeAmount,
+                currency: rp.currency,
+                description: `Taxa Stripe — ${partnerLabel}`,
+                partner_id: rp.partner_id,
+                source: 'api',
+                date: txDate,
+              })
+            }
           }
         }
       }
@@ -267,23 +336,45 @@ export async function POST(req: NextRequest) {
   }
 
   // Conta conectada restringida (risco/conformidade/documentação pendente) —
-  // só alerta quando `requirements` mudou NESTE evento (previous_attributes),
-  // não em toda atualização irrelevante da conta enquanto ela seguir restrita.
+  // só mexe no estado quando `requirements` mudou NESTE evento
+  // (previous_attributes), não em toda atualização irrelevante da conta
+  // enquanto ela seguir restrita. `stripe_disabled_reason` é persistido em
+  // `payment_methods` (não só disparado por e-mail e esquecido) pra
+  // `StripeConnectCard` conseguir refletir o estado atual — e é limpo
+  // automaticamente aqui quando a Stripe libera a conta de novo.
   if (event.type === 'account.updated' && event.account) {
     const account = event.data.object as Stripe.Account
     const changedRequirements = (event.data.previous_attributes as Partial<Stripe.Account> | undefined)?.requirements
-    if (changedRequirements && account.requirements?.disabled_reason) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? req.nextUrl.origin
-      await notifyConnectedAccountOwner(
-        supabase,
-        appUrl,
-        event.account,
-        'Sua conta Stripe precisa de atenção',
-        `<p style="margin:0 0 12px;">A Stripe restringiu temporariamente o recebimento de pagamentos na sua conta conectada, por questões de risco ou conformidade.</p>
-         <p style="margin:0 0 12px;padding:12px 14px;background:#faf5eb;border-radius:10px;color:#0a0a0a;"><strong>Motivo informado pela Stripe:</strong> ${account.requirements.disabled_reason}</p>
-         <p style="margin:0;">Acesse suas configurações de pagamento pra ver o que precisa ser resolvido — geralmente é só confirmar algum documento ou dado adicional.</p>`,
-        'Sua conta Stripe foi restringida — veja o que fazer.'
-      )
+    if (changedRequirements) {
+      const disabledReason = account.requirements?.disabled_reason ?? null
+      await supabase
+        .from('payment_methods')
+        .update({ stripe_disabled_reason: disabledReason })
+        .eq('type', 'stripe')
+        .eq('value', event.account)
+
+      if (disabledReason) {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? req.nextUrl.origin
+        const recipient = await connectedAccountRecipient(supabase, event.account)
+        if (recipient) {
+          const t = await getTranslations({ locale: recipient.locale, namespace: 'StripeAlertsEmail' })
+          await sendEmail({
+            to: recipient.email,
+            toName: recipient.displayName,
+            subject: t('restrictedSubject'),
+            html: renderEmailTemplate({
+              appUrl,
+              title: t('restrictedSubject'),
+              accent: 'warning',
+              preheader: t('restrictedPreheader'),
+              bodyHtml: `<p style="margin:0 0 12px;">${t('restrictedBody')}</p>
+               <p style="margin:0 0 12px;padding:12px 14px;background:#faf5eb;border-radius:10px;color:#0a0a0a;"><strong>${t('restrictedReasonLabel')}</strong> ${disabledReason}</p>
+               <p style="margin:0;">${t('restrictedInstructions')}</p>`,
+              cta: { url: `${appUrl}/api/stripe/connect/start`, label: t('restrictedCta') },
+            }),
+          })
+        }
+      }
     }
   }
 
@@ -291,15 +382,24 @@ export async function POST(req: NextRequest) {
   if (event.type === 'charge.dispute.created' && event.account) {
     const dispute = event.data.object as Stripe.Dispute
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? req.nextUrl.origin
-    await notifyConnectedAccountOwner(
-      supabase,
-      appUrl,
-      event.account,
-      'Uma contestação foi aberta na sua conta Stripe',
-      `<p style="margin:0 0 12px;">Um pagamento de <strong>${formatCurrency(dispute.amount / 100, dispute.currency.toUpperCase())}</strong> recebido na sua conta foi contestado pelo titular do cartão (motivo: ${dispute.reason.replace(/_/g, ' ')}).</p>
-       <p style="margin:0;">Responda essa contestação direto no seu Dashboard da Stripe o quanto antes — contestações não respondidas dentro do prazo costumam ser perdidas automaticamente.</p>`,
-      'Uma contestação foi aberta — responda no prazo.'
-    )
+    const recipient = await connectedAccountRecipient(supabase, event.account)
+    if (recipient) {
+      const t = await getTranslations({ locale: recipient.locale, namespace: 'StripeAlertsEmail' })
+      await sendEmail({
+        to: recipient.email,
+        toName: recipient.displayName,
+        subject: t('disputeSubject'),
+        html: renderEmailTemplate({
+          appUrl,
+          title: t('disputeSubject'),
+          accent: 'warning',
+          preheader: t('disputePreheader'),
+          bodyHtml: `<p style="margin:0 0 12px;">${t('disputeBody', { amount: formatCurrency(dispute.amount / 100, dispute.currency.toUpperCase()), reason: dispute.reason.replace(/_/g, ' ') })}</p>
+           <p style="margin:0;">${t('disputeInstructions')}</p>`,
+          cta: { url: `${appUrl}/dashboard/configuracoes?tab=pagamentos`, label: t('defaultCta') },
+        }),
+      })
+    }
   }
 
   return NextResponse.json({ received: true })

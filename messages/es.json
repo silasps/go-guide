@@ -436,6 +436,9 @@
     "stripePending": "Configuración pendiente",
     "stripePendingHint": "Empezaste a conectar tu cuenta Stripe, pero aún falta terminar de completar el formulario de Stripe. Haz clic abajo para continuar donde lo dejaste.",
     "stripeContinueOnboarding": "Continuar configuración",
+    "stripeNeedsAttention": "Necesita atención",
+    "stripeNeedsAttentionHint": "Stripe restringió temporalmente la recepción de pagos en esta cuenta y pidió documentos o datos adicionales. Haz clic abajo para resolverlo — serás llevado directo al formulario seguro de la propia Stripe.",
+    "stripeResolveOnStripe": "Resolver en Stripe",
     "stripeToastConnected": "¡Cuenta Stripe conectada! Ya puedes recibir socios por suscripción automática.",
     "stripeToastIncomplete": "Falta terminar la configuración en el formulario de Stripe — haz clic en \"Continuar configuración\" cuando puedas.",
     "stripeToastCountryRequired": "Selecciona el país de tu cuenta bancaria antes de conectar.",
@@ -1390,6 +1393,115 @@
     "title": "Finanzas es una función del plan Pro",
     "description": "Cuentas, transacciones multimoneda y conciliación de ofrendas están disponibles a partir del plan Pro. Actualiza tu plan para desbloquear esta área.",
     "cta": "Ver planes"
+  },
+  "ScheduledPledgeReminder": {
+    "emailSubject": "Hoy es el día, {firstName}",
+    "emailGreeting": "¡Hola, {firstName}! Soy {missionaryName}.",
+    "emailIntro": "Solo pasando a recordarte: hoy es el día que marcaste para ayudarme — no quería dejarlo pasar sin avisarte.",
+    "emailIntroWithAmount": "Solo pasando a recordarte: hoy es el día que marcaste para ayudarme con algo cerca de {amount} — no quería dejarlo pasar sin avisarte.",
+    "emailBody": "Me alegra mucho que hayas decidido ser parte de esto conmigo. Este gesto es parte de algo más grande que estamos construyendo juntos — muchas gracias por caminar a mi lado en esto.",
+    "emailCta": "Continuar mi contribución",
+    "emailSignOff": "Un abrazo,",
+    "emailFooterNote": "Esto no es un cobro — es solo el recordatorio que tú mismo(a) programaste.",
+    "emailCancelPrefix": "Si ya no es el momento, no hay problema —",
+    "emailCancelLinkLabel": "cancelar este recordatorio",
+    "emailAutomatedNote": "Recordatorio automático enviado vía go→guide en nombre de {missionaryName}."
+  },
+  "RecurringPledgeReminderEmail": {
+    "emailSubject": "Solo pasando a recordarte, {firstName}!",
+    "emailGreeting": "¡Hola, {firstName}! Soy {missionaryName}.",
+    "emailBody": "Solo pasando a recordarte nuestro acuerdo: {amount} al mes, vía {method}, y hoy es el día del recordatorio.",
+    "emailLinkPrefix": "Si quieres ver de nuevo los datos para recibir el pago, ",
+    "emailLinkLabel": "entra aquí",
+    "emailLinkSuffix": ".",
+    "emailSignOff": "Un abrazo,",
+    "emailUnsubscribePrefix": "¿Ya no quieres recibir este recordatorio? ",
+    "emailUnsubscribeLinkLabel": "Cancelar recordatorio mensual",
+    "emailAutomatedNote": "Recordatorio automático enviado vía go→guide en nombre de {missionaryName}."
+  },
+  "PledgeGuestConfirmationEmail": {
+    "emailSubject": "¡Recibí tu contribución, {firstName}!",
+    "emailGreeting": "¡Hola, {firstName}! Soy {missionaryName}.",
+    "emailBody": "Solo pasando a confirmarte que recibí el registro de tu contribución de {amount}{projectPhrase}. En cuanto sea confirmada, podrás darle seguimiento aquí.",
+    "emailProjectPhrase": " para el proyecto {projectTitle}",
+    "emailThanks": "¡Muchas gracias por ser parte de este camino conmigo!",
+    "emailProfileLinkLabel": "Ver mi perfil",
+    "emailSignOff": "Un abrazo,",
+    "emailAutomatedNote": "Confirmación automática enviada vía go→guide en nombre de {missionaryName}."
+  },
+  "PledgeRejectedEmail": {
+    "emailSubject": "Tu ofrenda no pudo ser confirmada",
+    "emailTitle": "Ofrenda no confirmada",
+    "emailPreheaderDefault": "Tu ofrenda todavía puede ser revisada de nuevo.",
+    "emailBody": "Tu ofrenda de {amount}{highlightPhrase}{profilePhrase} no pudo ser confirmada.",
+    "emailHighlightPhrase": " para {highlightTitle}",
+    "emailProfilePhrase": " a {profileName}",
+    "emailReasonLabel": "Motivo:",
+    "emailReasonBody": "Si crees que esto fue un error — por ejemplo, si tienes el comprobante en mano — contáctanos para revisarlo de nuevo.",
+    "emailCtaHistory": "Ver historial de donaciones",
+    "emailCtaProfile": "Ver perfil"
+  },
+  "PledgeConfirmedEmail": {
+    "emailSubject": "¡Confirmé tu ofrenda, {firstName}!",
+    "emailGreeting": "¡Hola, {firstName}! Soy {missionaryName}.",
+    "emailHighlightPhrase": " para {highlightTitle}",
+    "emailBody": "Solo pasando a confirmarte: tu ofrenda de {amount}{highlightPhrase} quedó registrada correctamente. ¡Muchas gracias por tu colaboración!",
+    "emailCta": "Ver historial de donaciones",
+    "emailSignOff": "Un abrazo,",
+    "emailAutomatedNote": "Confirmación automática enviada vía go→guide en nombre de {missionaryName}."
+  },
+  "NewMessageEmail": {
+    "emailSubject": "Nuevo mensaje de {sender}",
+    "emailTitle": "Recibiste un nuevo mensaje",
+    "emailBody": "{sender} te envió un mensaje en go→guide.",
+    "emailCta": "Ver mensaje"
+  },
+  "NewPledgeEmail": {
+    "emailSubject": "Nueva ofrenda registrada por {reporter}",
+    "emailTitle": "Nueva ofrenda para revisar",
+    "emailBody": "{reporter} registró una ofrenda de {amount}, esperando tu confirmación.",
+    "emailCta": "Revisar ofrenda"
+  },
+  "NewPartnerEmail": {
+    "emailSubject": "{name} ahora es tu colaborador(a)",
+    "emailTitle": "Nuevo colaborador(a) 🎉",
+    "emailBody": "{name} ahora es parte de tu red de colaboradores.",
+    "emailCta": "Ver colaboradores"
+  },
+  "VerificationEmail": {
+    "emailSubject": "Confirma tu correo",
+    "emailTitle": "Confirma tu correo",
+    "emailGreeting": "¡Hola{comma} Confirma tu correo para activar tu cuenta en {appName}. Haz clic en el botón de abajo para verificar.",
+    "emailCta": "Confirmar mi correo",
+    "emailFootnote": "Este enlace vence en 24 horas. Si no creaste esta cuenta, ignora este correo."
+  },
+  "PrayerPartnerUpdateEmail": {
+    "emailSubject": "Novedades para que ores, {partnerName} 🙏",
+    "emailGreeting": "¡Hola, {partnerName}! Soy {name}.",
+    "emailThanks": "Gracias por orar por mí — tu colaboración hace mucha diferencia.",
+    "emailUpdatesIntro": "Solo pasando a contarte las novedades: desde la última vez, {updates}.",
+    "updatePosts": "{count, plural, one {publiqué 1 actualización nueva} other {publiqué # actualizaciones nuevas}}",
+    "updateProjects": "{count, plural, one {inicié 1 proyecto nuevo} other {inicié # proyectos nuevos}}",
+    "updatesJoiner": " y ",
+    "emailLinkLabel": "Sigue mi progreso",
+    "emailLinkSuffix": " y sigue elevando esta misión en oración.",
+    "emailSignOff": "Un abrazo,",
+    "emailUnsubscribePrefix": "¿Ya no quieres recibir estos correos? ",
+    "emailUnsubscribeLinkLabel": "Cancelar correos de actualización",
+    "emailAutomatedNote": "Correo automático enviado vía go→guide en nombre de {name}."
+  },
+  "StripeAlertsEmail": {
+    "restrictedSubject": "Tu cuenta de Stripe necesita atención",
+    "restrictedPreheader": "Tu cuenta de Stripe fue restringida — mira qué hacer.",
+    "restrictedBody": "Stripe restringió temporalmente la recepción de pagos en tu cuenta conectada, por motivos de riesgo o cumplimiento.",
+    "restrictedReasonLabel": "Motivo indicado por Stripe:",
+    "restrictedInstructions": "Haz clic en el botón de abajo para ver exactamente qué falta — serás llevado directo al formulario seguro de la propia Stripe, sin pasar por ninguna otra pantalla. Generalmente es solo confirmar algún documento o dato adicional.",
+    "restrictedCta": "Resolver en Stripe",
+    "disputeSubject": "Se abrió una disputa en tu cuenta de Stripe",
+    "disputeBody": "Un pago de {amount} recibido en tu cuenta fue disputado por el titular de la tarjeta (motivo: {reason}).",
+    "disputeInstructions": "Responde a esta disputa directamente en tu Dashboard de Stripe lo antes posible — las disputas no respondidas dentro del plazo suelen perderse automáticamente.",
+    "disputePreheader": "Se abrió una disputa — responde dentro del plazo.",
+    "defaultCta": "Ver configuración de pagos"
   },
   "PartnerUpdate": {
     "updateOf": "Actualización del {date}",

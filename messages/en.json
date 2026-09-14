@@ -436,6 +436,9 @@
     "stripePending": "Setup pending",
     "stripePendingHint": "You started connecting your Stripe account, but still need to finish the form on Stripe's side. Click below to continue where you left off.",
     "stripeContinueOnboarding": "Continue setup",
+    "stripeNeedsAttention": "Needs attention",
+    "stripeNeedsAttentionHint": "Stripe temporarily restricted payouts on this account and is asking for extra documents or information. Click below to resolve it — you'll be taken straight to Stripe's own secure form.",
+    "stripeResolveOnStripe": "Resolve on Stripe",
     "stripeToastConnected": "Stripe account connected! You can now receive partners via automatic subscription.",
     "stripeToastIncomplete": "You still need to finish the setup on Stripe's form — click \"Continue setup\" when you're ready.",
     "stripeToastCountryRequired": "Select your bank account's country before connecting.",
@@ -1390,6 +1393,115 @@
     "title": "Finance is a Pro plan feature",
     "description": "Accounts, multi-currency transactions and pledge reconciliation are available from the Pro plan onward. Upgrade to unlock this area.",
     "cta": "See plans"
+  },
+  "ScheduledPledgeReminder": {
+    "emailSubject": "Today's the day, {firstName}!",
+    "emailGreeting": "Hi, {firstName}! It's {missionaryName}.",
+    "emailIntro": "Just a quick note to remind you: today's the day you set to help me out — didn't want it to slip by without a heads-up.",
+    "emailIntroWithAmount": "Just a quick note to remind you: today's the day you set to help me out with around {amount} — didn't want it to slip by without a heads-up.",
+    "emailBody": "I'm really glad you decided to be part of this with me. This gift is part of something bigger we're building together — thank you so much for walking alongside me in this.",
+    "emailCta": "Continue my contribution",
+    "emailSignOff": "With gratitude,",
+    "emailFooterNote": "This isn't a charge — just the reminder you scheduled yourself.",
+    "emailCancelPrefix": "If it's not the right moment anymore, no worries —",
+    "emailCancelLinkLabel": "cancel this reminder",
+    "emailAutomatedNote": "Automated reminder sent via go→guide on behalf of {missionaryName}."
+  },
+  "RecurringPledgeReminderEmail": {
+    "emailSubject": "Just a quick reminder, {firstName}!",
+    "emailGreeting": "Hi, {firstName}! It's {missionaryName}.",
+    "emailBody": "Just stopping by to remind you about our arrangement: {amount} a month, via {method}, and today's the reminder day.",
+    "emailLinkPrefix": "If you want to see the receiving details again, ",
+    "emailLinkLabel": "just click here",
+    "emailLinkSuffix": ".",
+    "emailSignOff": "With gratitude,",
+    "emailUnsubscribePrefix": "Don't want to receive this reminder anymore? ",
+    "emailUnsubscribeLinkLabel": "Cancel monthly reminder",
+    "emailAutomatedNote": "Automated reminder sent via go→guide on behalf of {missionaryName}."
+  },
+  "PledgeGuestConfirmationEmail": {
+    "emailSubject": "Got your contribution, {firstName}!",
+    "emailGreeting": "Hi, {firstName}! It's {missionaryName}.",
+    "emailBody": "Just stopping by to confirm I've received your contribution of {amount}{projectPhrase}. Once it's confirmed, you'll be able to follow it here.",
+    "emailProjectPhrase": " for the project {projectTitle}",
+    "emailThanks": "Thank you so much for being part of this journey with me!",
+    "emailProfileLinkLabel": "See my profile",
+    "emailSignOff": "With gratitude,",
+    "emailAutomatedNote": "Automated confirmation sent via go→guide on behalf of {missionaryName}."
+  },
+  "PledgeRejectedEmail": {
+    "emailSubject": "Your offering couldn't be confirmed",
+    "emailTitle": "Offering not confirmed",
+    "emailPreheaderDefault": "Your offering can still be reviewed again.",
+    "emailBody": "Your offering of {amount}{highlightPhrase}{profilePhrase} couldn't be confirmed.",
+    "emailHighlightPhrase": " for {highlightTitle}",
+    "emailProfilePhrase": " to {profileName}",
+    "emailReasonLabel": "Reason:",
+    "emailReasonBody": "If you believe this was a mistake — for example, if you have the receipt on hand — get in touch so we can review it again.",
+    "emailCtaHistory": "See donation history",
+    "emailCtaProfile": "See profile"
+  },
+  "PledgeConfirmedEmail": {
+    "emailSubject": "Confirmed your offering, {firstName}!",
+    "emailGreeting": "Hi, {firstName}! It's {missionaryName}.",
+    "emailHighlightPhrase": " for {highlightTitle}",
+    "emailBody": "Just stopping by to confirm: your offering of {amount}{highlightPhrase} was recorded successfully. Thank you so much for your partnership!",
+    "emailCta": "See donation history",
+    "emailSignOff": "With gratitude,",
+    "emailAutomatedNote": "Automated confirmation sent via go→guide on behalf of {missionaryName}."
+  },
+  "NewMessageEmail": {
+    "emailSubject": "New message from {sender}",
+    "emailTitle": "You've received a new message",
+    "emailBody": "{sender} sent you a message on go→guide.",
+    "emailCta": "See message"
+  },
+  "NewPledgeEmail": {
+    "emailSubject": "New offering registered by {reporter}",
+    "emailTitle": "New offering to review",
+    "emailBody": "{reporter} registered an offering of {amount}, awaiting your confirmation.",
+    "emailCta": "Review offering"
+  },
+  "NewPartnerEmail": {
+    "emailSubject": "{name} is now your partner",
+    "emailTitle": "New partner 🎉",
+    "emailBody": "{name} is now part of your partner network.",
+    "emailCta": "See partners"
+  },
+  "VerificationEmail": {
+    "emailSubject": "Confirm your email",
+    "emailTitle": "Confirm your email",
+    "emailGreeting": "Hi{comma} Confirm your email to activate your account on {appName}. Click the button below to verify.",
+    "emailCta": "Confirm my email",
+    "emailFootnote": "This link expires in 24 hours. If you didn't create this account, ignore this email."
+  },
+  "PrayerPartnerUpdateEmail": {
+    "emailSubject": "News for you to pray about, {partnerName} 🙏",
+    "emailGreeting": "Hi, {partnerName}! It's {name}.",
+    "emailThanks": "Thank you for praying for me — your partnership makes a real difference.",
+    "emailUpdatesIntro": "Just stopping by with some news: since last time, I've {updates}.",
+    "updatePosts": "{count, plural, one {posted 1 new update} other {posted # new updates}}",
+    "updateProjects": "{count, plural, one {started 1 new project} other {started # new projects}}",
+    "updatesJoiner": " and ",
+    "emailLinkLabel": "Follow my progress",
+    "emailLinkSuffix": " and keep lifting this mission up in prayer.",
+    "emailSignOff": "With gratitude,",
+    "emailUnsubscribePrefix": "Don't want to receive these emails anymore? ",
+    "emailUnsubscribeLinkLabel": "Cancel update emails",
+    "emailAutomatedNote": "Automated email sent via go→guide on behalf of {name}."
+  },
+  "StripeAlertsEmail": {
+    "restrictedSubject": "Your Stripe account needs attention",
+    "restrictedPreheader": "Your Stripe account was restricted — see what to do.",
+    "restrictedBody": "Stripe has temporarily restricted payments on your connected account, due to risk or compliance concerns.",
+    "restrictedReasonLabel": "Reason given by Stripe:",
+    "restrictedInstructions": "Click the button below to see exactly what's missing — you'll be taken straight to Stripe's own secure form, no other screens in between. It's usually just confirming a document or an extra bit of info.",
+    "restrictedCta": "Resolve on Stripe",
+    "disputeSubject": "A dispute was opened on your Stripe account",
+    "disputeBody": "A payment of {amount} received on your account was disputed by the cardholder (reason: {reason}).",
+    "disputeInstructions": "Respond to this dispute directly in your Stripe Dashboard as soon as possible — disputes not answered within the deadline are usually lost automatically.",
+    "disputePreheader": "A dispute was opened — respond before the deadline.",
+    "defaultCta": "See payment settings"
   },
   "PartnerUpdate": {
     "updateOf": "Update from {date}",

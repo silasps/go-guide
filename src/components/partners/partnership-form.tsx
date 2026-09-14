@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,6 +16,7 @@ interface Props { profileId: string; missionaryName: string; defaultType?: 'fina
 
 export function PartnershipForm({ profileId, missionaryName, defaultType }: Props) {
   const t = useTranslations('PartnershipForm')
+  const locale = useLocale()
   const [done, setDone] = useState(false)
   const [saving, setSaving] = useState(false)
   const [name, setName] = useState('')
@@ -53,6 +54,7 @@ export function PartnershipForm({ profileId, missionaryName, defaultType }: Prop
       birth_date: birthDate || null,
       notes: notes.trim() || null,
       type,
+      locale,
     })
 
     setSaving(false)

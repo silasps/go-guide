@@ -3,11 +3,18 @@ interface SendEmailArgs {
   toName: string
   subject: string
   html: string
+  /** Nome de exibição do remetente (campo "De"), pros e-mails que soam como o
+   *  próprio missionário escrevendo (lembrete de parceria, agradecimento de
+   *  oferta etc.) — mostra "{missionário} via {appName}" em vez do nome fixo
+   *  da plataforma, sem trocar o endereço de fato (continua saindo do domínio
+   *  verificado). Omitido = nome padrão da plataforma (e-mails operacionais:
+   *  verificação, alerta de Stripe, notificação de dashboard). */
+  fromName?: string
 }
 
 // Chave ausente = desativado (mesmo padrão de getStripeClient() em src/lib/stripe/client.ts) —
 // não lança erro, só não envia, até BREVO_API_KEY entrar em produção.
-export async function sendEmail({ to, toName, subject, html }: SendEmailArgs): Promise<boolean> {
+export async function sendEmail({ to, toName, subject, html, fromName }: SendEmailArgs): Promise<boolean> {
   const apiKey = process.env.BREVO_API_KEY
   const fromEmail = process.env.BREVO_FROM_EMAIL
   if (!apiKey || !fromEmail) {
@@ -23,7 +30,7 @@ export async function sendEmail({ to, toName, subject, html }: SendEmailArgs): P
       Accept: 'application/json',
     },
     body: JSON.stringify({
-      sender: { email: fromEmail, name: process.env.NEXT_PUBLIC_APP_NAME ?? 'Missão' },
+      sender: { email: fromEmail, name: fromName ?? (process.env.NEXT_PUBLIC_APP_NAME ?? 'Missão') },
       to: [{ email: to, name: toName }],
       subject,
       htmlContent: html,

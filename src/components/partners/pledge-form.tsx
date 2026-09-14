@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/media/compress'
 import { usePendingAction } from '@/hooks/use-pending-action'
@@ -51,6 +51,7 @@ interface Props {
 
 export function PledgeForm({ profileId, username, missionaryName, highlightId, highlightTitle, highlightGoalAmount, highlightCurrentAmount, isRecurring, defaultCurrency, paymentOptions, stripeAvailable = false, heroImageUrl = null, heroImagePosition, budgetCategories, initialCategoryId, backHref, onBecomePartner }: Props) {
   const t = useTranslations('PledgeForm')
+  const locale = useLocale()
   const searchParams = useSearchParams()
   // Volta do Stripe Checkout é um reload completo (window.location.href),
   // então nenhum state local sobrevive — o único jeito de saber que o
@@ -266,6 +267,7 @@ export function PledgeForm({ profileId, username, missionaryName, highlightId, h
       reporter_name: isAnonymous ? null : name.trim(),
       reporter_email: isAnonymous ? null : (email.trim() || user?.email || null),
       reporter_phone: isAnonymous ? null : (phone.trim() || null),
+      reporter_locale: isAnonymous ? null : locale,
       is_anonymous: isAnonymous,
       message: fullMessage,
       reported_amount: parsedAmount,

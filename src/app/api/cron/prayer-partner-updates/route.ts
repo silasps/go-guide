@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email/brevo'
+import { wrapPersonalEmail } from '@/lib/email/personal-email-template'
+import { resolveRecipientLocale } from '@/lib/email/resolve-recipient-locale'
 
 // Roda 1x/dia (ver vercel.json): pra cada parceiro de oração (type
 // 'prayer'/'both', com e-mail e não descadastrado), confere se o
@@ -19,7 +22,7 @@ export async function GET(req: NextRequest) {
 
   const { data: partners } = await supabase
     .from('partners')
-    .select('id, name, email, profile_id, joined_at, last_update_email_sent_at, profiles(display_name, username)')
+    .select('id, name, email, profile_id, user_id, locale, joined_at, last_update_email_sent_at, profiles(display_name, username, avatar_url)')
     .in('type', ['prayer', 'both'])
     .eq('update_emails_opt_in', true)
     .not('email', 'is', null)
@@ -40,25 +43,36 @@ export async function GET(req: NextRequest) {
 
     if (!newPosts && !newProjects) continue
 
+    const locale = await resolveRecipientLocale(supabase, partner.user_id, partner.locale)
+    const t = await getTranslations({ locale, namespace: 'PrayerPartnerUpdateEmail' })
+
     const updates: string[] = []
-    if (newPosts) updates.push(newPosts === 1 ? 'publicou 1 atualização nova' : `publicou ${newPosts} atualizações novas`)
-    if (newProjects) updates.push(newProjects === 1 ? 'iniciou 1 projeto novo' : `iniciou ${newProjects} projetos novos`)
+    if (newPosts) updates.push(t('updatePosts', { count: newPosts }))
+    if (newProjects) updates.push(t('updateProjects', { count: newProjects }))
     const unsubscribeUrl = `${appUrl}/api/partners/${partner.id}/unsubscribe-updates`
+    const firstName = partner.name.split(' ')[0] || partner.name
+    const missionaryName = missionary.display_name
+
+    const bodyHtml = `
+      <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">${t('emailGreeting', { partnerName: firstName, name: missionaryName })}</p>
+      <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">${t('emailThanks')}</p>
+      <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">${t('emailUpdatesIntro', { updates: updates.join(t('updatesJoiner')) })}
+        <a href="${appUrl}/${missionary.username}" style="color:#34390c;">${t('emailLinkLabel')}</a>${t('emailLinkSuffix')}</p>
+      <p style="margin:0;font-size:15px;color:#374151;line-height:1.5;">${t('emailSignOff')}<br>${missionaryName}</p>
+    `
+    const footNoteHtml = `
+      <p style="margin:0 0 8px;font-size:12px;color:#9ca3af;line-height:1.5;">
+        ${t('emailUnsubscribePrefix')}<a href="${unsubscribeUrl}" style="color:#9ca3af;">${t('emailUnsubscribeLinkLabel')}</a>.
+      </p>
+      <p style="margin:0;font-size:11px;color:#c1c5cb;">${t('emailAutomatedNote', { name: missionaryName })}</p>
+    `
 
     const ok = await sendEmail({
       to: partner.email,
       toName: partner.name,
-      subject: `Novidades de ${missionary.display_name} pra você orar 🙏`,
-      html: `
-        <p>Olá, ${partner.name}!</p>
-        <p>Obrigado por estar orando por <strong>${missionary.display_name}</strong> — sua parceria faz muita diferença.</p>
-        <p>Desde a última vez, ${missionary.display_name} ${updates.join(' e ')}.</p>
-        <p><a href="${appUrl}/${missionary.username}">Acompanhe os desenvolvimentos de ${missionary.display_name}</a> e continue levantando essa missão em oração.</p>
-        <p>Obrigado pela sua parceria em oração! 🙏</p>
-        <p style="color:#888;font-size:12px;margin-top:24px;">
-          Não quer mais receber esses e-mails? <a href="${unsubscribeUrl}">Cancelar e-mails de atualização</a>.
-        </p>
-      `,
+      subject: t('emailSubject', { partnerName: firstName }),
+      fromName: `${missionaryName} via go→guide`,
+      html: wrapPersonalEmail({ missionaryName, avatarUrl: missionary.avatar_url, bodyHtml, footNoteHtml, locale }),
     })
 
     if (ok) {

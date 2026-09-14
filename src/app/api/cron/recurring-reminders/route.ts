@@ -3,6 +3,9 @@ import { getTranslations } from 'next-intl/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email/brevo'
 import { sendMissionaryNudgeEmail } from '@/lib/email/missionary-nudge-email'
+import { wrapPersonalEmail } from '@/lib/email/personal-email-template'
+import { resolveRecipientLocale } from '@/lib/email/resolve-recipient-locale'
+import { formatCurrency } from '@/lib/utils'
 import type { Locale } from '@/i18n/config'
 
 function addOneMonth(date: string) {
@@ -20,13 +23,10 @@ export async function GET(req: NextRequest) {
   const supabase = await createServiceClient()
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? req.nextUrl.origin
   const today = new Date().toISOString().slice(0, 10)
-  // Lembrete é enviado em PT — não temos como saber o idioma preferido de quem apoia
-  // (não é um usuário com `profiles.locale`, é um parceiro/apoiador externo).
-  const t = await getTranslations({ locale: 'pt', namespace: 'PaymentMethods' })
 
   const { data: due } = await supabase
     .from('recurring_pledges')
-    .select('*, partners(name, email, phone), profiles(user_id, display_name, username, locale), highlights(slug, title, cover_url, current_amount, goal_amount)')
+    .select('*, partners(name, email, phone, user_id, locale), profiles(user_id, display_name, username, locale, avatar_url), highlights(slug, title, cover_url, current_amount, goal_amount)')
     .eq('status', 'active')
     .is('stripe_subscription_id', null)
     .eq('reminder_opt_in', true)
@@ -44,22 +44,36 @@ export async function GET(req: NextRequest) {
     const recipientPhone = partner?.phone ?? rp.reporter_phone
     if (!recipientEmail || !missionaryProfile) continue
 
-    const methodLabel = t(`type_${rp.payment_method}`)
+    // Com conta, `profiles.locale` manda; sem conta, cai pro idioma
+    // capturado no cadastro (migration 103), com PT como último fallback
+    // (mesmo comportamento fixo que já existia antes desta coluna).
+    const locale = await resolveRecipientLocale(supabase, rp.reporter_user_id ?? partner?.user_id, rp.reporter_locale ?? partner?.locale)
+    const t = await getTranslations({ locale, namespace: 'RecurringPledgeReminderEmail' })
+    const tMethods = await getTranslations({ locale, namespace: 'PaymentMethods' })
+    const methodLabel = tMethods(`type_${rp.payment_method}`)
     const unsubscribeUrl = `${appUrl}/api/recurring-pledges/${rp.id}/unsubscribe`
+    const firstName = recipientName.split(' ')[0] || recipientName
+    const missionaryName = missionaryProfile.display_name
+
+    const bodyHtml = `
+      <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">${t('emailGreeting', { firstName, missionaryName })}</p>
+      <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">${t('emailBody', { amount: formatCurrency(rp.amount, rp.currency), method: methodLabel })}
+        ${t('emailLinkPrefix')}<a href="${appUrl}/${missionaryProfile.username}/parceria" style="color:#34390c;">${t('emailLinkLabel')}</a>${t('emailLinkSuffix')}</p>
+      <p style="margin:0;font-size:15px;color:#374151;line-height:1.5;">${t('emailSignOff')}<br>${missionaryName}</p>
+    `
+    const footNoteHtml = `
+      <p style="margin:0 0 8px;font-size:12px;color:#9ca3af;line-height:1.5;">
+        ${t('emailUnsubscribePrefix')}<a href="${unsubscribeUrl}" style="color:#9ca3af;">${t('emailUnsubscribeLinkLabel')}</a>.
+      </p>
+      <p style="margin:0;font-size:11px;color:#c1c5cb;">${t('emailAutomatedNote', { missionaryName })}</p>
+    `
 
     const ok = await sendEmail({
       to: recipientEmail,
       toName: recipientName,
-      subject: `Lembrete: apoio mensal a ${missionaryProfile.display_name}`,
-      html: `
-        <p>Olá, ${recipientName}!</p>
-        <p>Este é um lembrete de que você combinou apoiar <strong>${missionaryProfile.display_name}</strong> mensalmente,
-        no valor de ${rp.amount} ${rp.currency}, via <strong>${methodLabel}</strong>.</p>
-        <p>Acesse <a href="${appUrl}/${missionaryProfile.username}/parceria">a página de parceria</a> para ver os dados de recebimento.</p>
-        <p style="color:#888;font-size:12px;margin-top:24px;">
-          Não quer mais receber este lembrete? <a href="${unsubscribeUrl}">Cancelar lembrete mensal</a>.
-        </p>
-      `,
+      subject: t('emailSubject', { firstName }),
+      fromName: `${missionaryName} via go→guide`,
+      html: wrapPersonalEmail({ missionaryName, avatarUrl: missionaryProfile.avatar_url, bodyHtml, footNoteHtml, locale }),
     })
 
     if (!ok) continue
