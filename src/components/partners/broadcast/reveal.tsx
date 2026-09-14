@@ -19,8 +19,16 @@ interface RevealProps {
 // (atualizacoes/[broadcastId]/page.tsx) continua Server Component; só esta
 // casca vira client, os filhos (server-renderizados) passam por `children`.
 export function Reveal({ children, className, onScroll }: RevealProps) {
+  // `amount: 0` (qualquer pixel visível conta) em vez de `margin: '-40px'`
+  // (bug real: um `margin` negativo encolhe a zona de detecção, então uma
+  // seção que já nasce quase visível — comum em relatórios curtos, sem
+  // timeline/projetos — nunca cruza a zona encolhida e fica presa em
+  // `opacity: 0` pra sempre, com `once: true`, se o visitante tiver tela
+  // alta o bastante pra nunca precisar rolar). Verificado com Playwright:
+  // sem o `margin`, a seção revela já no carregamento quando já está
+  // visível, e ao rolar quando não está.
   return onScroll ? (
-    <motion.div className={className} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-40px' }} transition={{ staggerChildren: 0.08 }}>
+    <motion.div className={className} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0 }} transition={{ staggerChildren: 0.08 }}>
       {children}
     </motion.div>
   ) : (

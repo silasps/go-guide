@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
+import Link from 'next/link'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import { getProfile } from '@/lib/profile/get-profile'
@@ -8,7 +9,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { PartnerUpdateFinancial } from '@/lib/ai/generate-partner-update'
 import { FinancialVisibility, Locale } from '@/types/database'
 import { Reveal, RevealItem } from '@/components/partners/broadcast/reveal'
-import { BroadcastStatTile } from '@/components/partners/broadcast/stat-tile'
+import { BroadcastStatTile, BroadcastTrend } from '@/components/partners/broadcast/stat-tile'
 import { BroadcastCategoryChart, CategoryChartItem } from '@/components/partners/broadcast/category-chart'
 import { BroadcastProjectCard, BroadcastProject } from '@/components/partners/broadcast/project-card'
 import { BroadcastPhotoGallery, PeriodPhoto } from '@/components/partners/broadcast/photo-gallery'
@@ -95,6 +96,19 @@ export default async function AtualizacaoPage({ params }: Props) {
   const canSeeExactFinancial = broadcast.financial_visibility !== 'percent_only' || !!hasFinancialGrant
   const categoryItems = financial ? computeCategoryItems(financial, canSeeExactFinancial, t('otherCategories')) : []
 
+  // Tendência frente ao período anterior do mesmo perfil (migration 103,
+  // get_broadcast_trend) — só a direção, nunca valor/percentual (ver
+  // comentário da function: um percentual já daria pra recalcular o valor
+  // exato do período anterior a partir do atual). `.rpc()` não lança se a
+  // function ainda não existir no banco (broadcasts antigos/ambiente sem a
+  // migration aplicada) — só volta `data: null`, e a página não mostra a
+  // seta, sem quebrar.
+  let trend: BroadcastTrend | null = null
+  if (financial) {
+    const { data: trendData } = await supabase.rpc('get_broadcast_trend', { p_id: broadcastId })
+    trend = (trendData as BroadcastTrend | null) ?? null
+  }
+
   let projects: BroadcastProject[] = []
   if (broadcast.highlight_ids?.length) {
     const { data } = await supabase
@@ -166,22 +180,51 @@ export default async function AtualizacaoPage({ params }: Props) {
   const dateLabel = formatLongDate(broadcast.created_at, locale)
   const accent = profile.accent_color
 
+  // A primeira moeda de arrecadação vira o "momento wrapped" (tile grande,
+  // sozinha, fora da grade de 2 colunas). O resto (outras moedas de
+  // arrecadação, gasto) fica pra baixo — só entra numa grade de 2 colunas
+  // quando são 2 ou mais; com exatamente 1 (o caso mais comum: 1 moeda de
+  // arrecadação + 1 de gasto), o tile sozinho numa `grid-cols-2` ficava
+  // encostado à esquerda com um vão vazio do lado (usuário mandou print
+  // reportando os cards "não alinhados").
+  const incomeEntries = Object.entries(financial?.incomeByCurrency ?? {})
+  const expenseEntries = Object.entries(financial?.expenseByCurrency ?? {})
+  const heroIncome = incomeEntries[0] ?? null
+  const secondaryTiles = [
+    ...incomeEntries.slice(1).map(([currency, value]) => ({ key: `in-${currency}`, currency, value, variant: 'income' as const })),
+    ...expenseEntries.map(([currency, value]) => ({ key: `out-${currency}`, currency, value, variant: 'expense' as const })),
+  ]
+
   return (
     <div className="min-h-screen bg-muted/30 relative overflow-hidden">
       <div className="absolute inset-x-0 top-0 h-72 pointer-events-none overflow-hidden">
-        {profile.cover_url && (
+        {profile.cover_url ? (
           <>
             <Image src={profile.cover_url} alt="" fill className="object-cover" />
             <div className="absolute inset-0 bg-gradient-to-b from-background/10 via-background/70 to-background" />
           </>
+        ) : (
+          // Sem capa, o glow radial sozinho (${accent}22) ficava quase
+          // imperceptível no tema claro (crítica do usuário revendo a
+          // página como visitante: "a parte menos moderna"). Uma faixa de
+          // cor de verdade atrás do cabeçalho dá a mesma sensação de
+          // "banner de perfil" que a foto de capa daria.
+          <div className="absolute inset-x-0 top-0 h-40" style={{ background: `linear-gradient(135deg, ${accent}, ${accent}66)` }} />
         )}
         <div className="absolute inset-0" style={{ background: `radial-gradient(circle at 50% 0%, ${accent}22, transparent 70%)` }} />
       </div>
 
       <div className="relative max-w-lg mx-auto px-4 py-8 space-y-6">
         <Reveal className="space-y-6">
-          <RevealItem className="flex items-center gap-3">
-            <Avatar className="h-11 w-11">
+          <RevealItem className="inline-flex items-center gap-3 bg-background/80 backdrop-blur-sm rounded-2xl px-3 py-2">
+            {/* Chip translúcido em vez de texto solto sobre o gradiente/
+                capa: `text-muted-foreground` é um cinza de baixo contraste
+                pensado pra sentar sobre card claro — direto sobre a faixa
+                de cor (ou uma foto de capa qualquer), a data ficava quase
+                ilegível (usuário mandou print). Um fundo controlado atrás
+                do texto garante contraste sempre, sem precisar adivinhar o
+                quão clara/escura é a `accent_color` de cada missionário. */}
+            <Avatar className="h-11 w-11 ring-4 ring-background shadow-sm">
               <AvatarImage src={profile.avatar_url ?? undefined} alt={profile.display_name} />
               <AvatarFallback>{getInitials(profile.display_name)}</AvatarFallback>
             </Avatar>
@@ -197,13 +240,17 @@ export default async function AtualizacaoPage({ params }: Props) {
           </RevealItem>
 
           {financial && canSeeExactFinancial && (
-            <RevealItem className="grid grid-cols-2 gap-3">
-              {Object.entries(financial.incomeByCurrency).map(([currency, value]) => (
-                <BroadcastStatTile key={`in-${currency}`} value={value} currency={currency} variant="income" />
-              ))}
-              {Object.entries(financial.expenseByCurrency).map(([currency, value]) => (
-                <BroadcastStatTile key={`out-${currency}`} value={value} currency={currency} variant="expense" />
-              ))}
+            <RevealItem className="space-y-3">
+              {heroIncome && (
+                <BroadcastStatTile value={heroIncome[1]} currency={heroIncome[0]} variant="income" size="lg" trend={trend} />
+              )}
+              {secondaryTiles.length > 0 && (
+                <div className={`grid gap-3 ${secondaryTiles.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                  {secondaryTiles.map((tile) => (
+                    <BroadcastStatTile key={tile.key} value={tile.value} currency={tile.currency} variant={tile.variant} />
+                  ))}
+                </div>
+              )}
             </RevealItem>
           )}
 
@@ -249,8 +296,18 @@ export default async function AtualizacaoPage({ params }: Props) {
         )}
 
         <Reveal onScroll>
-          <RevealItem className="text-center text-xs text-muted-foreground pt-4">
-            {t('sentWithLove', { name: profile.display_name })}
+          {/* Antes a página terminava num texto estático, sem próximo
+              passo (crítica do usuário: "beco sem saída") — link real pro
+              perfil, reaproveitando uma rota que já existe. */}
+          <RevealItem className="text-center pt-4 space-y-3">
+            <p className="text-xs text-muted-foreground">{t('sentWithLove', { name: profile.display_name })}</p>
+            <Link
+              href={`/${username}`}
+              className="inline-block text-xs font-semibold text-white px-4 py-2 rounded-lg"
+              style={{ background: accent }}
+            >
+              {t('viewProfileCta', { name: profile.display_name })}
+            </Link>
           </RevealItem>
         </Reveal>
       </div>

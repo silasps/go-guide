@@ -70,13 +70,13 @@ export function BroadcastCategoryChart({ items, currency, heading, footnote }: P
                 type="button"
                 disabled={!canExpand}
                 onClick={() => setExpanded(isOpen ? null : item.name)}
-                className="w-full space-y-1 text-left disabled:cursor-default"
+                className={`w-full space-y-1 text-left -mx-2 px-2 py-1 rounded-lg transition-colors disabled:cursor-default ${canExpand ? 'hover:bg-muted/60 active:bg-muted' : ''}`}
               >
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-medium flex items-center gap-1">
                     {item.name}
                     {canExpand && (
-                      <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                      <ChevronDown className={`h-3 w-3 transition-transform ${isOpen ? 'rotate-180 text-foreground' : 'text-muted-foreground'}`} />
                     )}
                   </span>
                   <span className="text-muted-foreground">

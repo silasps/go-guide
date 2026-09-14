@@ -1407,7 +1407,10 @@
     "progressWithRemaining": "{current} of {goal} ({pct}%) — {remaining} left",
     "progressNoRemaining": "{current} of {goal} ({pct}%)",
     "lightboxPrev": "Previous photo",
-    "lightboxNext": "Next photo"
+    "lightboxNext": "Next photo",
+    "viewProfileCta": "View {name}'s profile",
+    "trendUp": "trending up",
+    "trendDown": "trending down"
   },
   "PartnerUpdateTemplate": {
     "reportHeading": "Accountability report — {period}",

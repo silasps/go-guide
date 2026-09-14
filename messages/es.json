@@ -1407,7 +1407,10 @@
     "progressWithRemaining": "{current} de {goal} ({pct}%) — faltan {remaining}",
     "progressNoRemaining": "{current} de {goal} ({pct}%)",
     "lightboxPrev": "Foto anterior",
-    "lightboxNext": "Foto siguiente"
+    "lightboxNext": "Foto siguiente",
+    "viewProfileCta": "Ver perfil de {name}",
+    "trendUp": "en alza",
+    "trendDown": "en baja"
   },
   "PartnerUpdateTemplate": {
     "reportHeading": "Rendición de cuentas — {period}",
