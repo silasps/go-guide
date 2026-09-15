@@ -18,6 +18,10 @@ interface Props {
   profileId: string
   category?: TransactionCategory
   parentId?: string | null
+  /** Chamado com a linha recém-criada/editada, antes de fechar — usado
+   *  pelo botão "+" do seletor de categoria em `TransactionForm` pra
+   *  selecionar a categoria nova na hora, sem precisar reabrir o select. */
+  onCreated?: (category: TransactionCategory) => void
 }
 
 // Cor decorativa/organizacional (bolinha ao lado do nome na lista, ver
@@ -31,7 +35,7 @@ const COLOR_SWATCHES = [
   '#33ff8c', '#ff3333', '#7d7d7d', '#e83e8c', '#1a9c7d',
 ]
 
-export function CategoryForm({ open, onOpenChange, profileId, category, parentId }: Props) {
+export function CategoryForm({ open, onOpenChange, profileId, category, parentId, onCreated }: Props) {
   const router = useRouter()
   const { isPending: saving, run } = usePendingAction()
   const [name, setName] = useState(category?.name ?? '')
@@ -45,12 +49,13 @@ export function CategoryForm({ open, onOpenChange, profileId, category, parentId
       const supabase = createClient()
       const payload = { name: name.trim(), color }
 
-      const { error } = category
-        ? await supabase.from('transaction_categories').update(payload).eq('id', category.id)
-        : await supabase.from('transaction_categories').insert({ ...payload, profile_id: profileId, parent_id: parentId ?? null })
+      const { data, error } = category
+        ? await supabase.from('transaction_categories').update(payload).eq('id', category.id).select().single()
+        : await supabase.from('transaction_categories').insert({ ...payload, profile_id: profileId, parent_id: parentId ?? null }).select().single()
 
       if (error) { toast.error('Erro ao salvar categoria.'); return }
       toast.success(category ? 'Categoria atualizada.' : 'Categoria criada.')
+      if (data) onCreated?.(data)
       onOpenChange(false)
       router.refresh()
     })
@@ -58,7 +63,12 @@ export function CategoryForm({ open, onOpenChange, profileId, category, parentId
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+      {/* z-[70]: abre por cima de outro Dialog já aberto (ex.: "Novo
+          lançamento") — mesmo padrão de escape hatch de z-index de
+          `DiscardConfirmDialog` (base/overlay ficam no z-50 padrão; sem
+          isso, empilhar dois Dialogs monta os dois no mesmo z-index e a
+          ordem de fato exibida vira um acidente de ordem de montagem). */}
+      <DialogContent className="max-w-sm z-[70]">
         <DialogHeader>
           <DialogTitle>
             {category ? 'Editar categoria' : parentId ? 'Nova subcategoria' : 'Nova categoria'}

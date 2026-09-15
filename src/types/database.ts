@@ -551,6 +551,10 @@ export interface Transaction {
   category_id: string | null
   subcategory_id: string | null
   partner_id: string | null
+  /** Nome digitado à mão, pra quando quem mandou a oferta não é um
+   *  parceiro cadastrado (migration 106) — mutuamente exclusivo com
+   *  `partner_id` na prática, decidido na UI do `TransactionForm`. */
+  manual_partner_name: string | null
   source: TransactionSource
   is_credit_purchase: boolean
   due_date: string | null
