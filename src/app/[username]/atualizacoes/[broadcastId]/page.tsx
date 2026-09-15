@@ -217,14 +217,17 @@ export default async function AtualizacaoPage({ params }: Props) {
 
       <div className="relative max-w-lg mx-auto px-4 py-8 space-y-6">
         <Reveal className="space-y-6">
-          <RevealItem className="inline-flex items-center gap-3 bg-background/80 backdrop-blur-sm rounded-2xl px-3 py-2">
+          <RevealItem className="flex items-center gap-3 bg-background/80 backdrop-blur-sm rounded-2xl px-3 py-2">
             {/* Chip translúcido em vez de texto solto sobre o gradiente/
                 capa: `text-muted-foreground` é um cinza de baixo contraste
                 pensado pra sentar sobre card claro — direto sobre a faixa
                 de cor (ou uma foto de capa qualquer), a data ficava quase
                 ilegível (usuário mandou print). Um fundo controlado atrás
                 do texto garante contraste sempre, sem precisar adivinhar o
-                quão clara/escura é a `accent_color` de cada missionário. */}
+                quão clara/escura é a `accent_color` de cada missionário.
+                `flex` (não `inline-flex`) — largura cheia, alinhada com o
+                fim dos outros cards abaixo, em vez de abraçar só o
+                conteúdo (usuário mandou print notando a desorganização). */}
             <Avatar className="h-11 w-11 ring-4 ring-background shadow-sm">
               <AvatarImage src={profile.avatar_url ?? undefined} alt={profile.display_name} />
               <AvatarFallback>{getInitials(profile.display_name)}</AvatarFallback>
