@@ -17,32 +17,32 @@ interface Props {
 }
 
 // Mesmo espírito quadrado do grid de posts do perfil público
-// (`ProfilePostsGrid`, `aspect-square`), num tamanho um pouco maior (pedido
-// do usuário depois de ver ao vivo) — 104px ainda cabe 3 lado a lado sem
-// cortar/rolar nem no menor celular comum (iPhone SE, ~343px de área útil
-// dentro do card: 3×104 + 2×8 = 328px).
-const THUMB_SIZE = 104
-const GAP = 8
-const MAX_VISIBLE = 3
+// (`ProfilePostsGrid`, `aspect-square`, `sizes="33vw"`) — mas lá o grid é
+// edge-to-edge (`-mx-4`, ocupa a tela inteira), então `vw` faz sentido; aqui
+// a galeria vive dentro de um card com respiro (`max-w-lg`), então usar
+// `vw` faria a miniatura estourar em telas largas (ex.: 30vw numa tela de
+// 1920px = 576px, muito maior que o próprio card de 512px). Em vez disso,
+// usa *container query* (`cqw`, Tailwind v4 nativo, ver `@container` no
+// wrapper abaixo): a miniatura escala com a largura do CARD, não da tela,
+// então cresce em telas grandes sem nunca estourar o card, e encolhe em
+// telas pequenas sem nunca ficar ilegível — `clamp(mín, ideal, máx)` trava
+// as duas pontas. Não trava mais num número fixo de "quantas cabem" — o
+// componente mede de verdade (`canScrollLeft`/`canScrollRight`, mesma
+// técnica de `FinanceSubNav`) se as miniaturas cabem inteiras na largura
+// disponível: cabendo, centraliza sem rolar; não cabendo (poucas fotos
+// grandes numa tela estreita, ou muitas fotos), vira slider com setas.
+const THUMB_SIZE_CLASS = 'w-[clamp(104px,30cqw,170px)] h-[clamp(104px,30cqw,170px)]'
 
-// Galeria "Fotos do período" — puxada automaticamente dos posts que o
-// próprio missionário já publicou (nunca upload manual pra este relatório).
-// Miniaturas pequenas e quadradas, igual ao grid do perfil — nunca uma foto
-// grande de destaque (uma versão anterior fazia isso só com 1 foto, mas o
-// usuário achou melhor manter o mesmo tamanho sempre, centralizado). Até 3
-// fotos cabem centralizadas sem precisar rolar; com mais de 3, vira slider
-// com setas (mesmo padrão de scroll+affordance de `FinanceSubNav`) — a
-// "janela" mostra 3 por vez, as setas andam de 3 em 3.
 export function BroadcastPhotoGallery({ photos, heading }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
-  const hasOverflow = photos.length > MAX_VISIBLE
+  const fitsWithoutScroll = !canScrollLeft && !canScrollRight
 
   useEffect(() => {
     const el = scrollRef.current
-    if (!el || !hasOverflow) return
+    if (!el) return
 
     function updateScrollState() {
       if (!el) return
@@ -58,14 +58,19 @@ export function BroadcastPhotoGallery({ photos, heading }: Props) {
       el.removeEventListener('scroll', updateScrollState)
       observer.disconnect()
     }
-  }, [hasOverflow])
+  }, [photos.length])
 
   function scrollByPage(direction: 1 | -1) {
-    scrollRef.current?.scrollBy({ left: direction * (THUMB_SIZE + GAP) * MAX_VISIBLE, behavior: 'smooth' })
+    const el = scrollRef.current
+    if (!el) return
+    // Anda pela largura de verdade do que está visível (quantas miniaturas
+    // cabem ali), não por um número fixo — se a tela mudar de tamanho, o
+    // "salto" do slider continua fazendo sentido.
+    el.scrollBy({ left: direction * el.clientWidth, behavior: 'smooth' })
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 @container">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">{heading}</p>
 
       <div className="relative">
@@ -82,7 +87,7 @@ export function BroadcastPhotoGallery({ photos, heading }: Props) {
 
         <div
           ref={scrollRef}
-          className={`flex gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-1 ${hasOverflow ? '' : 'justify-center'}`}
+          className={`flex gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-1 ${fitsWithoutScroll ? 'justify-center' : ''}`}
         >
           {photos.map((photo, i) => (
             <motion.button
@@ -90,9 +95,9 @@ export function BroadcastPhotoGallery({ photos, heading }: Props) {
               type="button"
               onClick={() => setLightboxIndex(i)}
               whileTap={{ scale: 0.96 }}
-              className="relative shrink-0 h-[104px] w-[104px] rounded-xl overflow-hidden snap-start"
+              className={`relative shrink-0 rounded-xl overflow-hidden snap-start ${THUMB_SIZE_CLASS}`}
             >
-              <Image src={photo.url} alt={photo.caption ?? ''} fill className="object-cover" sizes="104px" />
+              <Image src={photo.url} alt={photo.caption ?? ''} fill className="object-cover" sizes="170px" />
             </motion.button>
           ))}
         </div>
