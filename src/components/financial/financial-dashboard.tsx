@@ -61,9 +61,16 @@ export function FinancialDashboard({ accounts, transactions, categories, partner
   // Investimento fica fora do "saldo disponível" (pedido do usuário,
   // 2026-09-27 — ver Changelog): é patrimônio de longo prazo, não dinheiro
   // pro dia a dia, então misturar inflaria o Saldo Previsto/gráficos sem
-  // sentido. Continua com sua própria conta/card na tela de Contas.
+  // sentido. Continua com sua própria conta/card na tela de Contas. Cartão
+  // de crédito também fica fora — mesmo critério que `AccountsList` já
+  // aplicava (saldo de cartão é a fatura, não a coluna `balance`); virou
+  // visível na prática assim que uma fatura de verdade foi lançada (a
+  // coluna `balance` deixou de ficar em 0 por acaso), então passou a
+  // inflar o "saldo disponível" aqui — inconsistência que ficou registrada
+  // como decisão deliberada de escopo até então, corrigida agora que
+  // afetou dado real (2026-09-27 — ver Changelog).
   const accountsInCurrency = useMemo(
-    () => activeAccounts.filter((a) => a.currency_code === currency && a.account_type !== 'investment'),
+    () => activeAccounts.filter((a) => a.currency_code === currency && a.account_type !== 'investment' && a.account_type !== 'credit'),
     [activeAccounts, currency]
   )
   const currentBalance = useMemo(() => accountsInCurrency.reduce((s, a) => s + a.balance, 0), [accountsInCurrency])

@@ -51,11 +51,11 @@ export function ReportsAnalytics({ accounts, transactions, categories }: Props) 
 
   const txInCurrency = useMemo(() => transactions.filter((t) => t.currency === currency), [transactions, currency])
 
-  // Investimento fica fora do "saldo disponível" (mesmo critério da Visão
-  // Geral, ver financial-dashboard.tsx) — patrimônio de longo prazo, não
-  // dinheiro do dia a dia.
+  // Investimento e cartão de crédito ficam fora do "saldo disponível"
+  // (mesmo critério da Visão Geral, ver financial-dashboard.tsx) —
+  // patrimônio de longo prazo e fatura não são dinheiro do dia a dia.
   const accountsInCurrency = useMemo(
-    () => accounts.filter((a) => a.currency_code === currency && a.account_type !== 'investment'),
+    () => accounts.filter((a) => a.currency_code === currency && a.account_type !== 'investment' && a.account_type !== 'credit'),
     [accounts, currency]
   )
   const currentBalance = useMemo(() => accountsInCurrency.reduce((s, a) => s + a.balance, 0), [accountsInCurrency])
