@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
-import { cn, formatCurrency } from '@/lib/utils'
+import { cn, formatCurrency, formatDate } from '@/lib/utils'
+import { getCreditCardCycleDates } from '@/lib/financial/credit-card-cycle'
 import { FinancialAccount } from '@/types/database'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -23,7 +24,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-const TYPE_LABEL: Record<string, string> = { checking: 'Conta corrente', savings: 'Poupança', credit: 'Cartão de crédito' }
+const TYPE_LABEL: Record<string, string> = { checking: 'Conta corrente', savings: 'Poupança', credit: 'Cartão de crédito', investment: 'Investimento' }
 
 interface Member { id: string; user_id: string; role: string }
 
@@ -148,13 +149,21 @@ export function AccountCard({ account, profileId, accounts, members, currentBill
                 </div>
               </>
             )}
-            {(account.closing_day || account.due_day) && (
+            {account.closing_day && account.due_day ? (() => {
+              const { nextClosingDate, nextDueDate, bestPurchaseDate } = getCreditCardCycleDates(account.closing_day, account.due_day)
+              return (
+                <div className="space-y-0.5 text-xs text-muted-foreground">
+                  <p>Fecha em {formatDate(nextClosingDate)} · Vence em {formatDate(nextDueDate)}</p>
+                  <p>Melhor dia pra comprar: <span className="font-medium text-foreground">{formatDate(bestPurchaseDate)}</span></p>
+                </div>
+              )
+            })() : (account.closing_day || account.due_day) ? (
               <p className="text-xs text-muted-foreground">
                 {account.closing_day && `Fecha dia ${account.closing_day}`}
                 {account.closing_day && account.due_day && ' · '}
                 {account.due_day && `Vence dia ${account.due_day}`}
               </p>
-            )}
+            ) : null}
           </div>
         ) : (
           <div className="rounded-lg border px-4 py-3">

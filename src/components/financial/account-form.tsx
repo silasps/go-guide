@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
 import { FinancialAccount, AccountType } from '@/types/database'
+import { toMasked, fromMasked } from '@/lib/currency-mask'
+import { getCreditCardCycleDates } from '@/lib/financial/credit-card-cycle'
+import { formatDate } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -30,11 +33,16 @@ export function AccountForm({ open, onOpenChange, profileId, account }: Props) {
   const [accountType, setAccountType] = useState<AccountType>(account?.account_type ?? 'checking')
   const [isShared, setIsShared] = useState(account?.is_shared ?? false)
   const [openingBalance, setOpeningBalance] = useState(account ? '' : '0')
-  const [creditLimit, setCreditLimit] = useState(account?.credit_limit != null ? String(account.credit_limit) : '')
+  const [creditLimit, setCreditLimit] = useState(account?.credit_limit != null ? toMasked(String(Math.round(account.credit_limit * 100)), account.currency_code) : '')
   const [closingDay, setClosingDay] = useState(account?.closing_day != null ? String(account.closing_day) : '')
   const [dueDay, setDueDay] = useState(account?.due_day != null ? String(account.due_day) : '')
   const [cardBrand, setCardBrand] = useState(account?.card_brand ?? '')
   const isCredit = accountType === 'credit'
+  const closingDayNum = parseInt(closingDay, 10)
+  const dueDayNum = parseInt(dueDay, 10)
+  const cycleDates = closingDayNum >= 1 && closingDayNum <= 31 && dueDayNum >= 1 && dueDayNum <= 31
+    ? getCreditCardCycleDates(closingDayNum, dueDayNum)
+    : null
 
   function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -45,7 +53,7 @@ export function AccountForm({ open, onOpenChange, profileId, account }: Props) {
       const { data: { user } } = await supabase.auth.getUser()
 
       const creditFields = isCredit ? {
-        credit_limit: creditLimit ? parseFloat(creditLimit) : null,
+        credit_limit: creditLimit ? parseFloat(fromMasked(creditLimit, currencyCode)) : null,
         closing_day: closingDay ? parseInt(closingDay, 10) : null,
         due_day: dueDay ? parseInt(dueDay, 10) : null,
         card_brand: cardBrand || null,
@@ -110,6 +118,7 @@ export function AccountForm({ open, onOpenChange, profileId, account }: Props) {
               <option value="checking">Conta corrente</option>
               <option value="savings">Poupança</option>
               <option value="credit">Cartão de crédito</option>
+              <option value="investment">Investimento</option>
             </select>
           </div>
           {isCredit && (
@@ -117,7 +126,7 @@ export function AccountForm({ open, onOpenChange, profileId, account }: Props) {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>Limite total</Label>
-                  <Input inputMode="decimal" value={creditLimit} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreditLimit(e.target.value)} placeholder="0" />
+                  <Input inputMode="numeric" value={creditLimit} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreditLimit(toMasked(e.target.value, currencyCode))} placeholder="0,00" />
                 </div>
                 <div className="space-y-2">
                   <Label>Bandeira</Label>
@@ -137,6 +146,16 @@ export function AccountForm({ open, onOpenChange, profileId, account }: Props) {
                   <Input type="number" min={1} max={31} value={dueDay} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDueDay(e.target.value)} placeholder="Ex: 22" />
                 </div>
               </div>
+              {cycleDates && (
+                <div className="space-y-1 rounded-lg bg-muted/50 px-3 py-2.5 text-sm">
+                  <p className="text-muted-foreground">
+                    Próximo fechamento em <span className="font-medium text-foreground">{formatDate(cycleDates.nextClosingDate)}</span>, vencimento em <span className="font-medium text-foreground">{formatDate(cycleDates.nextDueDate)}</span>.
+                  </p>
+                  <p className="text-muted-foreground">
+                    Melhor dia pra comprar: <span className="font-medium text-foreground">{formatDate(cycleDates.bestPurchaseDate)}</span> — maximiza os dias sem juros.
+                  </p>
+                </div>
+              )}
             </div>
           )}
           <label className="flex items-center gap-2 text-sm">

@@ -58,7 +58,14 @@ export function FinancialDashboard({ accounts, transactions, categories, partner
   const txInCurrency = useMemo(() => transactions.filter((t) => t.currency === currency), [transactions, currency])
   const monthlyData = useMemo(() => aggregateMonthly(txInCurrency, monthsRange), [txInCurrency, monthsRange])
 
-  const accountsInCurrency = useMemo(() => activeAccounts.filter((a) => a.currency_code === currency), [activeAccounts, currency])
+  // Investimento fica fora do "saldo disponível" (pedido do usuário,
+  // 2026-09-27 — ver Changelog): é patrimônio de longo prazo, não dinheiro
+  // pro dia a dia, então misturar inflaria o Saldo Previsto/gráficos sem
+  // sentido. Continua com sua própria conta/card na tela de Contas.
+  const accountsInCurrency = useMemo(
+    () => activeAccounts.filter((a) => a.currency_code === currency && a.account_type !== 'investment'),
+    [activeAccounts, currency]
+  )
   const currentBalance = useMemo(() => accountsInCurrency.reduce((s, a) => s + a.balance, 0), [accountsInCurrency])
   // Menor data de início entre as contas somadas em `currentBalance` —
   // meses anteriores a ela não têm saldo real pra mostrar (ver

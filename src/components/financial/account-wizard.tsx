@@ -7,6 +7,7 @@ import { usePendingAction } from '@/hooks/use-pending-action'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import { toMasked, fromMasked, reformatMasked, CURRENCIES } from '@/lib/currency-mask'
 import { AccountType, FinancialAccount } from '@/types/database'
+import { getCreditCardCycleDates } from '@/lib/financial/credit-card-cycle'
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,7 +18,7 @@ import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import {
   ArrowLeft, ArrowRight, Check, Loader2, Landmark, Wallet, PiggyBank, CreditCard,
-  CirclePlus, CircleMinus,
+  CirclePlus, CircleMinus, LineChart,
 } from 'lucide-react'
 
 interface Props {
@@ -36,7 +37,7 @@ function todayISO() {
 
 const TOTAL_STEPS = 6
 const CARD_BRANDS = ['Visa', 'Mastercard', 'Elo', 'American Express', 'Hipercard', 'Outra']
-const TYPE_LABEL: Record<AccountType, string> = { checking: 'Conta corrente', savings: 'Poupança', credit: 'Cartão de crédito' }
+const TYPE_LABEL: Record<AccountType, string> = { checking: 'Conta corrente', savings: 'Poupança', credit: 'Cartão de crédito', investment: 'Investimento' }
 
 function StepHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
@@ -113,9 +114,20 @@ export function AccountWizard({ open, onOpenChange, profileId, onCreated }: Prop
   const isCredit = accountType === 'credit'
   const parsedBalance = parseFloat(fromMasked(openingBalance, currencyCode)) || 0
   const signedBalance = balanceSign === 'negative' ? -parsedBalance : parsedBalance
+  // Preview ao vivo do ciclo do cartão (etapa 4) — traduz os dois números
+  // abstratos (dia de fechamento/vencimento) em datas reais assim que os
+  // dois campos ficam válidos, pra quem está cadastrando já visualizar o
+  // que está configurando em vez de só descobrir depois no card da conta
+  // (pedido do usuário, 2026-09-27 — "o mais claro e fluido possível").
+  const closingDayNum = parseInt(closingDay, 10)
+  const dueDayNum = parseInt(dueDay, 10)
+  const cycleDates = closingDayNum >= 1 && closingDayNum <= 31 && dueDayNum >= 1 && dueDayNum <= 31
+    ? getCreditCardCycleDates(closingDayNum, dueDayNum)
+    : null
 
   function changeCurrency(next: string) {
     setOpeningBalance(reformatMasked(openingBalance, currencyCode, next))
+    setCreditLimit(reformatMasked(creditLimit, currencyCode, next))
     setCurrencyCode(next)
   }
 
@@ -144,7 +156,7 @@ export function AccountWizard({ open, onOpenChange, profileId, onCreated }: Prop
         is_shared: isShared,
         balance: 0,
         created_by_user_id: user!.id,
-        credit_limit: isCredit && creditLimit ? parseFloat(creditLimit) : null,
+        credit_limit: isCredit && creditLimit ? parseFloat(fromMasked(creditLimit, currencyCode)) : null,
         closing_day: isCredit && closingDay ? parseInt(closingDay, 10) : null,
         due_day: isCredit && dueDay ? parseInt(dueDay, 10) : null,
         card_brand: isCredit ? (cardBrand || null) : null,
@@ -273,13 +285,14 @@ export function AccountWizard({ open, onOpenChange, profileId, onCreated }: Prop
                 <ChoiceCard selected={accountType === 'checking'} onClick={() => setAccountType('checking')} icon={<Landmark className="h-5 w-5" />} iconClassName="bg-primary/10 text-primary" title="Conta corrente" subtitle="Conta do dia a dia, débito ou dinheiro." />
                 <ChoiceCard selected={accountType === 'savings'} onClick={() => setAccountType('savings')} icon={<PiggyBank className="h-5 w-5" />} iconClassName="bg-primary/10 text-primary" title="Poupança" subtitle="Reserva ou investimento simples." />
                 <ChoiceCard selected={accountType === 'credit'} onClick={() => setAccountType('credit')} icon={<CreditCard className="h-5 w-5" />} iconClassName="bg-primary/10 text-primary" title="Cartão de crédito" subtitle="Fatura, limite e datas de fechamento/vencimento." />
+                <ChoiceCard selected={accountType === 'investment'} onClick={() => setAccountType('investment')} icon={<LineChart className="h-5 w-5" />} iconClassName="bg-primary/10 text-primary" title="Investimento" subtitle="Reserva de longo prazo — fica fora do saldo disponível do dia a dia." />
               </div>
               {isCredit && (
                 <div className="space-y-3 rounded-lg border p-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <Label>Limite total</Label>
-                      <Input inputMode="decimal" value={creditLimit} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreditLimit(e.target.value)} placeholder="0" />
+                      <Input inputMode="numeric" value={creditLimit} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreditLimit(toMasked(e.target.value, currencyCode))} placeholder="0,00" />
                     </div>
                     <div className="space-y-2">
                       <Label>Bandeira</Label>
@@ -299,6 +312,16 @@ export function AccountWizard({ open, onOpenChange, profileId, onCreated }: Prop
                       <Input type="number" min={1} max={31} value={dueDay} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDueDay(e.target.value)} placeholder="Ex: 22" />
                     </div>
                   </div>
+                  {cycleDates && (
+                    <div className="space-y-1 rounded-lg bg-muted/50 px-3 py-2.5 text-sm">
+                      <p className="text-muted-foreground">
+                        Próximo fechamento em <span className="font-medium text-foreground">{formatDate(cycleDates.nextClosingDate)}</span>, vencimento em <span className="font-medium text-foreground">{formatDate(cycleDates.nextDueDate)}</span>.
+                      </p>
+                      <p className="text-muted-foreground">
+                        Melhor dia pra comprar: <span className="font-medium text-foreground">{formatDate(cycleDates.bestPurchaseDate)}</span> — maximiza os dias sem juros.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </>
@@ -342,8 +365,9 @@ export function AccountWizard({ open, onOpenChange, profileId, onCreated }: Prop
                   <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Moeda</dt><dd>{currencyCode}</dd></div>
                   {isCredit && (
                     <>
-                      <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Limite</dt><dd>{creditLimit ? formatCurrency(parseFloat(creditLimit), currencyCode) : '-'}</dd></div>
+                      <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Limite</dt><dd>{creditLimit ? formatCurrency(parseFloat(fromMasked(creditLimit, currencyCode)), currencyCode) : '-'}</dd></div>
                       <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Bandeira</dt><dd>{cardBrand || '-'}</dd></div>
+                      <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Próximo vencimento</dt><dd>{cycleDates ? formatDate(cycleDates.nextDueDate) : '-'}</dd></div>
                     </>
                   )}
                   <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Compartilhada</dt><dd>{isShared ? 'Sim' : 'Não'}</dd></div>

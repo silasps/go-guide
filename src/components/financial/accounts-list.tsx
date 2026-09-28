@@ -30,13 +30,22 @@ export function AccountsList({ profileId, accounts, members, currentBills }: Pro
   const [tab, setTab] = useState<Tab>('active')
   const [creating, setCreating] = useState(false)
   const filtered = accounts.filter((a) => (tab === 'active' ? !a.archived : a.archived))
-  // Só soma contas não-crédito — saldo de cartão é a fatura (calculada por
-  // transações não pagas), não a coluna `balance`, misturar os dois daria
-  // um "saldo total" sem sentido. Agrupado por moeda: somar BRL com USD
-  // direto no número daria um total sem sentido também, então cada moeda
-  // que aparecer ganha sua própria linha.
-  const nonCredit = filtered.filter((a) => a.account_type !== 'credit')
+  // Só soma contas de caixa (não-crédito, não-investimento) no "Saldo
+  // total" — saldo de cartão é a fatura (calculada por transações não
+  // pagas), não a coluna `balance`; investimento é patrimônio de longo
+  // prazo, misturar qualquer um dos dois com o dinheiro do dia a dia daria
+  // um "saldo disponível" sem sentido (pedido do usuário, 2026-09-27 — ver
+  // Changelog). Investimento ganha sua própria soma, mostrada ao lado.
+  // Agrupado por moeda: somar BRL com USD direto no número daria um total
+  // sem sentido também, então cada moeda que aparecer ganha sua própria
+  // linha.
+  const nonCredit = filtered.filter((a) => a.account_type !== 'credit' && a.account_type !== 'investment')
   const totalsByCurrency = nonCredit.reduce<Record<string, number>>((totals, a) => {
+    totals[a.currency_code] = (totals[a.currency_code] ?? 0) + a.balance
+    return totals
+  }, {})
+  const investments = filtered.filter((a) => a.account_type === 'investment')
+  const investmentTotalsByCurrency = investments.reduce<Record<string, number>>((totals, a) => {
     totals[a.currency_code] = (totals[a.currency_code] ?? 0) + a.balance
     return totals
   }, {})
@@ -74,6 +83,20 @@ export function AccountsList({ profileId, accounts, members, currentBills }: Pro
             </div>
             <div className="shrink-0 space-y-0.5 text-right">
               {Object.entries(totalsByCurrency).map(([currency, total]) => (
+                <p key={currency} className="truncate text-sm font-semibold text-foreground">{formatCurrency(total, currency)}</p>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {investments.length > 0 && (
+          <div className="hidden min-w-56 items-center gap-3 rounded-lg border bg-card px-3 py-2 shadow-sm md:flex">
+            <div className="min-w-0 flex-1 space-y-0.5">
+              <h3 className="text-xs font-medium leading-none text-muted-foreground">Investimentos</h3>
+              <p className="truncate text-xs leading-none text-muted-foreground">{investments.length} conta{investments.length === 1 ? '' : 's'} · fora do saldo total</p>
+            </div>
+            <div className="shrink-0 space-y-0.5 text-right">
+              {Object.entries(investmentTotalsByCurrency).map(([currency, total]) => (
                 <p key={currency} className="truncate text-sm font-semibold text-foreground">{formatCurrency(total, currency)}</p>
               ))}
             </div>
