@@ -65,9 +65,10 @@ export function ReportsAnalytics({ accounts, transactions, categories }: Props) 
       : null,
     [accountsInCurrency, txInCurrency]
   )
+  const cashAccountIds = useMemo(() => new Set(accountsInCurrency.map((a) => a.id)), [accountsInCurrency])
   const timelinePoints = useMemo(
-    () => buildFinancialTimeline(txInCurrency, currentBalance, 6, 6, accountsStartDate),
-    [txInCurrency, currentBalance, accountsStartDate]
+    () => buildFinancialTimeline(txInCurrency, currentBalance, 6, 6, accountsStartDate, cashAccountIds),
+    [txInCurrency, currentBalance, accountsStartDate, cashAccountIds]
   )
   const selectedPoint = timelinePoints.find((p) => p.month === selectedMonth) ?? timelinePoints[6]
   const selectedMonthLabel = selectedPoint?.monthLabel ?? selectedMonth

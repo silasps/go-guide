@@ -83,9 +83,16 @@ export function FinancialDashboard({ accounts, transactions, categories, partner
       : null,
     [accountsInCurrency, txInCurrency]
   )
+  // Escopa a reconstrução de saldo pago às mesmas contas de `currentBalance`
+  // — sem isso, uma transação paga de cartão/investimento (fora de
+  // `currentBalance`) seria contada como se afetasse o caixa (ver
+  // comentário em `buildFinancialTimeline`). Pendente de qualquer conta
+  // continua entrando no Saldo Previsto, inclusive parcela futura de
+  // cartão — é assim que ela aparece caindo em mês futuro.
+  const cashAccountIds = useMemo(() => new Set(accountsInCurrency.map((a) => a.id)), [accountsInCurrency])
   const timelinePoints = useMemo(
-    () => buildFinancialTimeline(txInCurrency, currentBalance, 6, 6, accountsStartDate),
-    [txInCurrency, currentBalance, accountsStartDate]
+    () => buildFinancialTimeline(txInCurrency, currentBalance, 6, 6, accountsStartDate, cashAccountIds),
+    [txInCurrency, currentBalance, accountsStartDate, cashAccountIds]
   )
   const selectedPoint = timelinePoints.find((p) => p.month === selectedMonth) ?? timelinePoints[6]
 

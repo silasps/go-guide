@@ -82,18 +82,31 @@ export function buildFinancialTimeline(
   currentBalance: number,
   monthsBack: number,
   monthsForward: number,
-  accountsStartDate: Date | null = null
+  accountsStartDate: Date | null = null,
+  // IDs das contas somadas em `currentBalance` (ver `financial-dashboard.tsx`
+  // — hoje exclui `credit`/`investment`). Sem isso, uma transação paga numa
+  // conta de cartão/investimento (que nunca entrou em `currentBalance`)
+  // seria "desfeita" por `paidNetWithinWindow` como se tivesse entrado,
+  // inflando o saldo reconstruído — bug real encontrado 2026-09-27 assim
+  // que uma fatura de cartão de verdade foi lançada com `is_paid=true`.
+  // `null` (default) trata toda transação como "de conta de caixa", pra não
+  // quebrar quem já chamava sem esse argumento. Pendente (`is_paid=false`)
+  // continua contando de QUALQUER conta, inclusive cartão — é assim que uma
+  // parcela futura de cartão aparece no Saldo Previsto (pedido do usuário:
+  // "uma parcela 2/5 ainda vai cair em alguns meses pra frente").
+  cashAccountIds: Set<string> | null = null
 ): TimelinePoint[] {
   const now = new Date()
   const currentYear = now.getFullYear()
   const windowStart = new Date(now.getFullYear(), now.getMonth() - monthsBack, 1)
   const windowEndExclusive = new Date(now.getFullYear(), now.getMonth() + monthsForward + 1, 1)
   const accountsStartMonth = accountsStartDate ? new Date(accountsStartDate.getFullYear(), accountsStartDate.getMonth(), 1) : null
+  const isCashAccount = (t: Transaction) => !cashAccountIds || cashAccountIds.has(t.account_id)
 
   let paidNetWithinWindow = 0
   for (const t of transactions) {
     if (t.type !== 'income' && t.type !== 'expense') continue
-    if (!t.is_paid) continue
+    if (!t.is_paid || !isCashAccount(t)) continue
     const d = new Date(`${t.date}T00:00:00`)
     if (d < windowStart || d >= windowEndExclusive) continue
     paidNetWithinWindow += t.type === 'income' ? t.amount : -t.amount
@@ -105,15 +118,22 @@ export function buildFinancialTimeline(
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
     const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 
+    // `incomeReceived`/`expensePaid` (exibidos em "Receitas"/"Despesas" e
+    // somados em `income`/`expense`/`netCashFlow`) contam de QUALQUER conta
+    // — uma compra paga no cartão é gasto de verdade pro mês, mesmo sem
+    // ainda ter saído do caixa. Só a reconstrução de saldo (abaixo,
+    // `cashIncomeReceived`/`cashExpensePaid`) precisa se restringir às
+    // contas de caixa, pra ficar simétrica com `currentBalance`.
     let incomeReceived = 0, incomePending = 0, expensePaid = 0, expenseUnpaid = 0, fixedIncome = 0, fixedExpense = 0
+    let cashIncomeReceived = 0, cashExpensePaid = 0
     for (const t of transactions) {
       if (t.type !== 'income' && t.type !== 'expense') continue
       if (t.date.slice(0, 7) !== month) continue
       if (t.type === 'income') {
-        if (t.is_paid) incomeReceived += t.amount; else incomePending += t.amount
+        if (t.is_paid) { incomeReceived += t.amount; if (isCashAccount(t)) cashIncomeReceived += t.amount } else { incomePending += t.amount }
         if (t.source === 'recurring') fixedIncome += t.amount
       } else {
-        if (t.is_paid) expensePaid += t.amount; else expenseUnpaid += t.amount
+        if (t.is_paid) { expensePaid += t.amount; if (isCashAccount(t)) cashExpensePaid += t.amount } else { expenseUnpaid += t.amount }
         if (t.source === 'recurring') fixedExpense += t.amount
       }
     }
@@ -121,7 +141,7 @@ export function buildFinancialTimeline(
     const income = incomeReceived + incomePending
     const expense = expensePaid + expenseUnpaid
     const saldoAnteriorRunning = running
-    const saldoDisponivelRunning = saldoAnteriorRunning + incomeReceived - expensePaid
+    const saldoDisponivelRunning = saldoAnteriorRunning + cashIncomeReceived - cashExpensePaid
     const saldoPrevistoRunning = saldoDisponivelRunning + incomePending - expenseUnpaid
     running = saldoDisponivelRunning
 
