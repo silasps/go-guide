@@ -10,8 +10,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { CategoryForm } from './category-form'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Plus } from 'lucide-react'
 
 interface HighlightOption { id: string; title: string; budgetCategories: { id: string; label: string }[] }
 
@@ -63,6 +64,12 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
   const [accountId, setAccountId] = useState(transaction?.account_id ?? accounts[0]?.id ?? '')
   const [categoryId, setCategoryId] = useState(transaction?.category_id ?? '')
   const [partnerId, setPartnerId] = useState(transaction?.partner_id ?? '')
+  // Pra quando quem mandou a oferta não é (e talvez nunca vá ser) um
+  // parceiro cadastrado — só um nome solto, pra lembrete futuro de quem
+  // foi. Mutuamente exclusivo com `partnerId` na prática (ver onChange dos
+  // dois campos abaixo e o payload em `handleSave`), mesma filosofia de
+  // `pledges.reporter_name` (texto livre, sem exigir cadastro formal).
+  const [manualPartnerName, setManualPartnerName] = useState(transaction?.manual_partner_name ?? '')
   const [highlightId, setHighlightId] = useState(transaction?.highlight_id ?? defaultHighlightId ?? '')
   const [budgetCategoryId, setBudgetCategoryId] = useState(transaction?.budget_category_id ?? '')
   const [date, setDate] = useState(transaction?.date ?? new Date().toISOString().slice(0, 10))
@@ -74,10 +81,15 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
   // `categoryId` livremente conforme a descrição muda.
   const [categoryTouched, setCategoryTouched] = useState(Boolean(transaction))
   const [categoryAutoFilled, setCategoryAutoFilled] = useState(false)
+  const [creatingCategory, setCreatingCategory] = useState(false)
 
   const topCategories = useMemo(() => categories.filter(c => !c.parent_id), [categories])
   const selectedHighlight = highlights.find(h => h.id === highlightId)
   const selectedAccount = accounts.find(a => a.id === accountId)
+  // Mesmo profile_id que já vai no payload do lançamento (linha abaixo,
+  // `account.profile_id`) — evita ter que enfiar `profileId` como prop
+  // nova em `NewTransactionButton`/`LancamentosPage` só pra isso.
+  const profileId = selectedAccount?.profile_id
   const isCreditAccount = selectedAccount?.account_type === 'credit'
   const [faturaDate, setFaturaDate] = useState(transaction?.fatura_date ?? defaultFaturaDate(date, selectedAccount?.closing_day ?? null))
 
@@ -125,6 +137,9 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
         description: description.trim(),
         category_id: categoryId || null,
         partner_id: partnerId || null,
+        // Reforça a exclusão mútua no próprio payload (defesa a mais além
+        // do onChange dos dois campos) — nunca manda os dois preenchidos.
+        manual_partner_name: partnerId ? null : (manualPartnerName.trim() || null),
         highlight_id: highlightId || null,
         budget_category_id: highlightId ? (budgetCategoryId || null) : null,
         date,
@@ -145,9 +160,15 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger}
-      <DialogContent className="max-w-sm">
+      {/* sm:max-w-md (em vez do max-w-sm de qualquer outro modal financeiro)
+          — só no desktop/tablet; no celular continua igual (max-w-sm já
+          cobre a tela toda ali). O botão "+" ao lado do seletor de
+          Categoria (abaixo) apertou o espaço que sobrava pro texto de
+          cada opção, cortando "Sem categoria" — usuário mandou print. */}
+      <DialogContent className="max-w-sm sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{transaction ? 'Editar lançamento' : 'Novo lançamento'}</DialogTitle>
         </DialogHeader>
@@ -190,14 +211,25 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Categoria</Label>
-              <select
-                value={categoryId}
-                onChange={(e) => { setCategoryId(e.target.value); setCategoryTouched(true); setCategoryAutoFilled(false) }}
-                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
-              >
-                <option value="">Sem categoria</option>
-                {topCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              <div className="flex gap-1.5">
+                <select
+                  value={categoryId}
+                  onChange={(e) => { setCategoryId(e.target.value); setCategoryTouched(true); setCategoryAutoFilled(false) }}
+                  className="h-8 min-w-0 flex-1 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
+                >
+                  <option value="">Sem categoria</option>
+                  {topCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setCreatingCategory(true)}
+                  aria-label="Nova categoria"
+                  title="Nova categoria"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
               {categoryAutoFilled && <p className="text-xs text-muted-foreground">Sugerido automaticamente — clique pra trocar.</p>}
             </div>
             <div className="space-y-2">
@@ -222,15 +254,30 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
             </div>
           )}
 
-          {partners.length > 0 && (
-            <div className="space-y-2">
-              <Label>Parceiro (opcional)</Label>
-              <select value={partnerId} onChange={(e) => setPartnerId(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
+          <div className="space-y-2">
+            <Label>Parceiro (opcional)</Label>
+            {partners.length > 0 && (
+              <select
+                value={partnerId}
+                onChange={(e) => { setPartnerId(e.target.value); if (e.target.value) setManualPartnerName('') }}
+                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
+              >
                 <option value="">Nenhum</option>
                 {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
-            </div>
-          )}
+            )}
+            {/* Quem mandou a oferta pode não estar cadastrado como
+                parceiro (e não precisar estar, só pra um lançamento
+                avulso) — nome solto aqui, só pra lembrete futuro de quem
+                foi. Escolher um parceiro acima limpa esse campo, e
+                vice-versa (mutuamente exclusivo, ver payload). */}
+            <Input
+              value={manualPartnerName}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setManualPartnerName(e.target.value); if (e.target.value) setPartnerId('') }}
+              placeholder={partners.length > 0 ? 'Ou digite um nome (se não for cadastrado)' : 'Nome de quem mandou (opcional)'}
+              className="h-8"
+            />
+          </div>
 
           {highlights.length > 0 && (
             <div className="space-y-2">
@@ -262,5 +309,19 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
         </form>
       </DialogContent>
     </Dialog>
+
+    {/* Modal aninhado — mesmo padrão de `DiscardConfirmDialog` (Dialog
+        irmão, não dentro do DialogContent de cima, com z-[70] pra ficar
+        por cima do modal de lançamento que continua aberto atrás). A
+        categoria recém-criada já entra selecionada no `<select>` acima. */}
+    {profileId && (
+      <CategoryForm
+        open={creatingCategory}
+        onOpenChange={setCreatingCategory}
+        profileId={profileId}
+        onCreated={(cat) => { setCategoryId(cat.id); setCategoryTouched(true); setCategoryAutoFilled(false) }}
+      />
+    )}
+    </>
   )
 }

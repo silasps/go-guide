@@ -89,7 +89,7 @@ export function TransactionTable({ transactions, accounts, categories = [], part
               <p className="text-xs text-muted-foreground truncate">
                 {formatDate(t.date)}
                 {t.category?.name && ` · ${t.category.name}`}
-                {t.partner?.name && ` · ${t.partner.name}`}
+                {(t.partner?.name ?? t.manual_partner_name) && ` · ${t.partner?.name ?? t.manual_partner_name}`}
                 {t.source === 'opening_balance' && ' · Saldo inicial'}
                 {t.source === 'balance_adjustment' && ' · Ajuste de saldo'}
                 {!t.is_paid && <span className="text-amber-600"> · {t.type === 'income' ? 'A receber' : 'Não pago'}</span>}
