@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from 'framer-motion'
 import { formatCurrency } from '@/lib/utils'
 import { CategorySlice } from '@/lib/financial/dashboard-aggregation'
 import { Table2, BarChart3, PieChart } from 'lucide-react'
@@ -21,6 +21,7 @@ interface Props {
 // uma identidade real (dataviz skill).
 const CATEGORY_COLOR_VARS = ['var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)', 'var(--chart-7)', 'var(--chart-8)']
 const OTHER_COLOR_VAR = 'var(--muted-foreground)'
+const EASE_OUT = [0.22, 1, 0.36, 1] as const
 
 // Composição de gastos por categoria — part-to-whole, barra horizontal por
 // padrão (dataviz skill desaconselha pizza pra esse job, principalmente com
@@ -31,6 +32,7 @@ export function CategoryBarChart({ data, currency, monthLabel, emptyLabel }: Pro
   const router = useRouter()
   const [showTable, setShowTable] = useState(false)
   const [showPie, setShowPie] = useState(false)
+  const reduceMotion = useReducedMotion()
 
   if (data.length === 0) {
     const label = emptyLabel ? emptyLabel(monthLabel.toLowerCase()) : `Nenhuma despesa categorizada em ${monthLabel.toLowerCase()}.`
@@ -51,6 +53,7 @@ export function CategoryBarChart({ data, currency, monthLabel, emptyLabel }: Pro
 
   const colorOf = (c: CategorySlice, i: number) => c.id === '__other__' ? OTHER_COLOR_VAR : CATEGORY_COLOR_VARS[i % CATEGORY_COLOR_VARS.length]
   const total = data.reduce((sum, c) => sum + c.amount, 0)
+  const view = showTable ? 'table' : showPie ? 'pie' : 'bars'
 
   return (
     <div className="space-y-2">
@@ -67,86 +70,123 @@ export function CategoryBarChart({ data, currency, monthLabel, emptyLabel }: Pro
         </button>
       </div>
 
-      {showTable ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="text-left text-muted-foreground border-b">
-                <th className="py-1.5 pr-3 font-medium">Categoria</th>
-                <th className="py-1.5 pr-3 font-medium">Valor</th>
-                <th className="py-1.5 font-medium">%</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((c) => (
-                <tr key={c.id} className="border-b border-border/50 last:border-0">
-                  <td className="py-1.5 pr-3">{c.name}</td>
-                  <td className="py-1.5 pr-3">{formatCurrency(c.amount, currency)}</td>
-                  <td className="py-1.5">{c.pct.toFixed(0)}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : showPie ? (
-        <div className="flex flex-col sm:flex-row items-center gap-5">
-          <DonutChart
-            size={160}
-            centerLabel={formatCurrency(total, currency)}
-            ariaLabel={`Total: ${formatCurrency(total, currency)}`}
-            slices={data.map((c, i) => ({ id: c.id, label: c.name, value: c.amount, pct: c.pct, color: colorOf(c, i) }))}
-          />
-          <ul className="w-full min-w-0 flex-1 space-y-1.5">
-            {data.map((c, i) => {
-              const clickable = c.id !== '__other__'
-              return (
-                <li key={c.id}>
+      {/* Troca de visualização com fade curto; `initial={false}` evita
+          animar a primeira montagem (as barras já têm entrada própria). */}
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={view}
+          initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+        >
+          {view === 'table' ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-muted-foreground border-b">
+                    <th className="py-1.5 pr-3 font-medium">Categoria</th>
+                    <th className="py-1.5 pr-3 font-medium">Valor</th>
+                    <th className="py-1.5 font-medium">%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.map((c) => (
+                    <tr key={c.id} className="border-b border-border/50 last:border-0">
+                      <td className="py-1.5 pr-3">{c.name}</td>
+                      <td className="py-1.5 pr-3">{formatCurrency(c.amount, currency)}</td>
+                      <td className="py-1.5">{c.pct.toFixed(0)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : view === 'pie' ? (
+            <div className="flex flex-col sm:flex-row items-center gap-5">
+              <DonutChart
+                animated
+                size={160}
+                centerLabel={<CountUp value={total} format={(v) => formatCurrency(v, currency)} />}
+                ariaLabel={`Total: ${formatCurrency(total, currency)}`}
+                slices={data.map((c, i) => ({ id: c.id, label: c.name, value: c.amount, pct: c.pct, color: colorOf(c, i) }))}
+              />
+              <ul className="w-full min-w-0 flex-1 space-y-1.5">
+                {data.map((c, i) => {
+                  const clickable = c.id !== '__other__'
+                  return (
+                    <motion.li
+                      key={c.id}
+                      initial={reduceMotion ? false : { opacity: 0, x: 12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.4, delay: 0.25 + i * 0.06, ease: EASE_OUT }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => goToCategory(c.id)}
+                        disabled={!clickable}
+                        className="w-full flex items-center gap-2 text-xs text-left group disabled:cursor-default"
+                      >
+                        <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: colorOf(c, i) }} />
+                        <span className={`truncate ${clickable ? 'group-hover:underline' : ''}`}>{c.name}</span>
+                        <span className="text-muted-foreground shrink-0 ml-auto">{formatCurrency(c.amount, currency)} · {c.pct.toFixed(0)}%</span>
+                      </button>
+                    </motion.li>
+                  )
+                })}
+              </ul>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {data.map((c, i) => {
+                const color = colorOf(c, i)
+                const clickable = c.id !== '__other__'
+                return (
                   <button
+                    key={c.id}
                     type="button"
                     onClick={() => goToCategory(c.id)}
                     disabled={!clickable}
-                    className="w-full flex items-center gap-2 text-xs text-left group disabled:cursor-default"
+                    className="w-full text-left group disabled:cursor-default"
                   >
-                    <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: colorOf(c, i) }} />
-                    <span className={`truncate ${clickable ? 'group-hover:underline' : ''}`}>{c.name}</span>
-                    <span className="text-muted-foreground shrink-0 ml-auto">{formatCurrency(c.amount, currency)} · {c.pct.toFixed(0)}%</span>
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className={clickable ? 'group-hover:underline' : ''}>{c.name}</span>
+                      <span className="text-muted-foreground shrink-0 ml-2">{formatCurrency(c.amount, currency)} · {c.pct.toFixed(0)}%</span>
+                    </div>
+                    <div className="h-3 rounded-full bg-muted overflow-hidden">
+                      <motion.div
+                        className="h-full rounded-full"
+                        style={{ backgroundColor: color }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${c.pct}%` }}
+                        transition={{ duration: 0.6, delay: i * 0.05, ease: 'easeOut' }}
+                      />
+                    </div>
                   </button>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-      ) : (
-        <div className="space-y-2.5">
-          {data.map((c, i) => {
-            const color = colorOf(c, i)
-            const clickable = c.id !== '__other__'
-            return (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => goToCategory(c.id)}
-                disabled={!clickable}
-                className="w-full text-left group disabled:cursor-default"
-              >
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className={clickable ? 'group-hover:underline' : ''}>{c.name}</span>
-                  <span className="text-muted-foreground shrink-0 ml-2">{formatCurrency(c.amount, currency)} · {c.pct.toFixed(0)}%</span>
-                </div>
-                <div className="h-3 rounded-full bg-muted overflow-hidden">
-                  <motion.div
-                    className="h-full rounded-full"
-                    style={{ backgroundColor: color }}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${c.pct}%` }}
-                    transition={{ duration: 0.6, delay: i * 0.05, ease: 'easeOut' }}
-                  />
-                </div>
-              </button>
-            )
-          })}
-        </div>
-      )}
+                )
+              })}
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
     </div>
   )
+}
+
+// Total no centro da pizza conta de 0 até o valor junto com a varredura
+// do anel.
+function CountUp({ value, format }: { value: number; format: (v: number) => string }) {
+  const reduceMotion = useReducedMotion()
+  const motionValue = useMotionValue(reduceMotion ? value : 0)
+  const text = useTransform(motionValue, format)
+
+  useEffect(() => {
+    if (reduceMotion) {
+      motionValue.set(value)
+      return
+    }
+    const controls = animate(motionValue, value, { duration: 1.1, delay: 0.1, ease: EASE_OUT })
+    return () => controls.stop()
+  }, [value, reduceMotion, motionValue])
+
+  return <motion.span>{text}</motion.span>
 }
