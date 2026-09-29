@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import { buildWhatsAppLink } from '@/lib/whatsapp'
 import { Pledge, FinancialAccount } from '@/types/database'
 import Link from 'next/link'
@@ -23,9 +23,13 @@ interface Props {
   accounts: FinancialAccount[]
   profileId: string
   budgetCategories: { id: string; label: string }[]
+  /** Veio de um link direto (e-mail "Nova oferta"/sino) apontando pra esta
+   *  oferta específica — ganha destaque visual e é o alvo do scroll em
+   *  `ReconciliationTabs`. */
+  highlighted?: boolean
 }
 
-export function PledgeReviewCard({ pledge, accounts, profileId, budgetCategories }: Props) {
+export function PledgeReviewCard({ pledge, accounts, profileId, budgetCategories, highlighted }: Props) {
   const router = useRouter()
   const [amount, setAmount] = useState(String(pledge.reported_amount))
   // Só contas na mesma moeda da oferta aparecem no seletor — evita depositar
@@ -137,7 +141,13 @@ export function PledgeReviewCard({ pledge, accounts, profileId, budgetCategories
   }
 
   return (
-    <div className="rounded-xl border bg-card p-4 space-y-3">
+    <div
+      id={`pledge-${pledge.id}`}
+      className={cn(
+        'rounded-xl border bg-card p-4 space-y-3 scroll-mt-20',
+        highlighted && 'ring-2 ring-primary border-primary'
+      )}
+    >
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="font-medium text-sm">{pledge.reporter_name || ANONYMOUS_LABEL}</p>

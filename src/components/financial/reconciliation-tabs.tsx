@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { Pledge, FinancialAccount } from '@/types/database'
 import { PledgeReviewCard } from './pledge-review-card'
@@ -27,7 +28,27 @@ const TABS: { value: Tab; label: string; icon: typeof Inbox }[] = [
 // (Ativas/Arquivadas, ver 7.29) — aqui pra dar lugar à janela de reanálise
 // de oferta recusada (ver pledge-windows.ts e 7.32).
 export function ReconciliationTabs({ pendingPledges, recentRejectedPledges, archivedPledges, accounts, profileId, budgetCategoriesByHighlight }: Props) {
-  const [tab, setTab] = useState<Tab>('queue')
+  // `?pledge=<id>` (e-mail "Nova oferta"/sino de notificação, ver
+  // notification-emails/route.ts e notifications-bell.tsx) — antes caía na
+  // Visão Geral genérica, sem apontar pra oferta nenhuma; usuário reportou
+  // "eu queria que abrisse direto nesse lançamento pra eu poder analisar".
+  // Já que não existe modal por oferta (cada uma já é um card com os
+  // botões Confirmar/Rejeitar sempre visíveis), "abrir direto" aqui é
+  // pousar na aba certa e rolar/destacar o card, em vez de abrir algo novo.
+  const searchParams = useSearchParams()
+  const highlightId = searchParams.get('pledge')
+  const isArchivedTarget = useMemo(
+    () => !!highlightId && archivedPledges.some((p) => p.id === highlightId) && !pendingPledges.some((p) => p.id === highlightId) && !recentRejectedPledges.some((p) => p.id === highlightId),
+    [highlightId, archivedPledges, pendingPledges, recentRejectedPledges]
+  )
+  const [tab, setTab] = useState<Tab>(isArchivedTarget ? 'archived' : 'queue')
+
+  useEffect(() => {
+    if (!highlightId) return
+    const el = document.getElementById(`pledge-${highlightId}`)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [highlightId, tab])
 
   function renderCard(p: PledgeWithHighlight) {
     return (
@@ -37,6 +58,7 @@ export function ReconciliationTabs({ pendingPledges, recentRejectedPledges, arch
         accounts={accounts}
         profileId={profileId}
         budgetCategories={p.highlight_id ? (budgetCategoriesByHighlight[p.highlight_id] ?? []) : []}
+        highlighted={p.id === highlightId}
       />
     )
   }

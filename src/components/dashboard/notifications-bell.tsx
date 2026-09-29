@@ -106,7 +106,11 @@ function hrefForGroup(g: AreaGroup): string {
     && typeof g.latestPayload.username === 'string' && typeof g.latestPayload.slug === 'string') {
     return `/${g.latestPayload.username}/projetos/${g.latestPayload.slug}`
   }
-  if (g.latestType === 'new_pledge') return '/dashboard/financeiro/conciliacao'
+  if (g.latestType === 'new_pledge') {
+    return typeof g.latestPayload.pledge_id === 'string'
+      ? `/dashboard/financeiro/conciliacao?pledge=${g.latestPayload.pledge_id}`
+      : '/dashboard/financeiro/conciliacao'
+  }
   if (g.latestType === 'pledge_confirmed' || g.latestType === 'pledge_rejected') return '/dashboard/financeiro-parceiro'
   if (g.latestType === 'scheduled_pledge_reminder' && typeof g.latestPayload.username === 'string') {
     const { username, choice, scheduled_pledge_id, highlight_id, amount, currency } = g.latestPayload

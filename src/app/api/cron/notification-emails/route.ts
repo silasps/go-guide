@@ -268,7 +268,7 @@ async function buildEmailContent(supabase: ServiceClient, n: NotificationRow, ap
           accent,
           title: t('emailTitle'),
           bodyHtml: `<p style="margin:0;">${t('emailBody', { reporter: reporterName, amount: formatCurrency(pledge.reported_amount, pledge.currency) })}</p>`,
-          cta: { url: `${appUrl}/dashboard/financeiro`, label: t('emailCta') },
+          cta: { url: `${appUrl}/dashboard/financeiro/conciliacao?pledge=${pledgeId}`, label: t('emailCta') },
         }),
       }
     }
