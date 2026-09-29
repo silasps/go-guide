@@ -12,6 +12,7 @@ interface Props {
   slices: Slice[]
   centerLabel: string
   size?: number
+  ariaLabel?: string
 }
 
 const STROKE = 14
@@ -22,7 +23,7 @@ const STROKE = 14
 // `CategoryBarChart`, que é comparação e usa barra). Poucos segmentos
 // (metas ativas normalmente são poucas), cor categórica já validada
 // (chart-3..8), legenda sempre ao lado (ver GoalsList) — nunca só a cor.
-export function DonutChart({ slices, centerLabel, size = 128 }: Props) {
+export function DonutChart({ slices, centerLabel, size = 128, ariaLabel }: Props) {
   const r = (size - STROKE) / 2
   const circumference = 2 * Math.PI * r
 
@@ -33,7 +34,7 @@ export function DonutChart({ slices, centerLabel, size = 128 }: Props) {
 
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`Total guardado: ${centerLabel}`}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={ariaLabel ?? `Total guardado: ${centerLabel}`}>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--muted)" strokeWidth={STROKE} />
         <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
           {positioned.map((s) => {

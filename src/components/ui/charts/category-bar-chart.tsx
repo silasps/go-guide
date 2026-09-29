@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { formatCurrency } from '@/lib/utils'
 import { CategorySlice } from '@/lib/financial/dashboard-aggregation'
-import { Table2, BarChart3 } from 'lucide-react'
+import { Table2, BarChart3, PieChart } from 'lucide-react'
+import { DonutChart } from './donut-chart'
 
 interface Props {
   data: CategorySlice[]
@@ -21,13 +22,15 @@ interface Props {
 const CATEGORY_COLOR_VARS = ['var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)', 'var(--chart-7)', 'var(--chart-8)']
 const OTHER_COLOR_VAR = 'var(--muted-foreground)'
 
-// Composição de gastos por categoria — part-to-whole, barra horizontal
-// (dataviz skill desaconselha pizza pra esse job, principalmente com nomes
-// longos). Cada barra já É o alvo de clique/hover (não crosshair — regra
-// da skill pra bar/cell): navega pro lançamento filtrado por categoria.
+// Composição de gastos por categoria — part-to-whole, barra horizontal por
+// padrão (dataviz skill desaconselha pizza pra esse job, principalmente com
+// nomes longos). A pizza fica como alternativa opcional a pedido do
+// usuário, sempre com legenda ao lado (nunca só a cor). Cada barra/item da
+// legenda é o alvo de clique: navega pro lançamento filtrado por categoria.
 export function CategoryBarChart({ data, currency, monthLabel, emptyLabel }: Props) {
   const router = useRouter()
   const [showTable, setShowTable] = useState(false)
+  const [showPie, setShowPie] = useState(false)
 
   if (data.length === 0) {
     const label = emptyLabel ? emptyLabel(monthLabel.toLowerCase()) : `Nenhuma despesa categorizada em ${monthLabel.toLowerCase()}.`
@@ -40,13 +43,24 @@ export function CategoryBarChart({ data, currency, monthLabel, emptyLabel }: Pro
   }
 
   function goToCategory(id: string) {
-    if (id === '__other__' || id === '__uncategorized__') return
-    router.push(`/dashboard/financeiro/lancamentos?category=${id}`)
+    if (id === '__other__') return
+    // "Sem categoria" usa o filtro `category=none` de Lançamentos.
+    const category = id === '__uncategorized__' ? 'none' : id
+    router.push(`/dashboard/financeiro/lancamentos?category=${category}`)
   }
+
+  const colorOf = (c: CategorySlice, i: number) => c.id === '__other__' ? OTHER_COLOR_VAR : CATEGORY_COLOR_VARS[i % CATEGORY_COLOR_VARS.length]
+  const total = data.reduce((sum, c) => sum + c.amount, 0)
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-end gap-3">
+        {!showTable && (
+          <button type="button" onClick={() => setShowPie((v) => !v)} className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+            {showPie ? <BarChart3 className="h-3.5 w-3.5" /> : <PieChart className="h-3.5 w-3.5" />}
+            {showPie ? 'Ver em barras' : 'Ver em pizza'}
+          </button>
+        )}
         <button type="button" onClick={() => setShowTable((v) => !v)} className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
           {showTable ? <BarChart3 className="h-3.5 w-3.5" /> : <Table2 className="h-3.5 w-3.5" />}
           {showTable ? 'Ver gráfico' : 'Ver como tabela'}
@@ -74,11 +88,39 @@ export function CategoryBarChart({ data, currency, monthLabel, emptyLabel }: Pro
             </tbody>
           </table>
         </div>
+      ) : showPie ? (
+        <div className="flex flex-col sm:flex-row items-center gap-5">
+          <DonutChart
+            size={160}
+            centerLabel={formatCurrency(total, currency)}
+            ariaLabel={`Total: ${formatCurrency(total, currency)}`}
+            slices={data.map((c, i) => ({ id: c.id, label: c.name, value: c.amount, pct: c.pct, color: colorOf(c, i) }))}
+          />
+          <ul className="w-full min-w-0 flex-1 space-y-1.5">
+            {data.map((c, i) => {
+              const clickable = c.id !== '__other__'
+              return (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    onClick={() => goToCategory(c.id)}
+                    disabled={!clickable}
+                    className="w-full flex items-center gap-2 text-xs text-left group disabled:cursor-default"
+                  >
+                    <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: colorOf(c, i) }} />
+                    <span className={`truncate ${clickable ? 'group-hover:underline' : ''}`}>{c.name}</span>
+                    <span className="text-muted-foreground shrink-0 ml-auto">{formatCurrency(c.amount, currency)} · {c.pct.toFixed(0)}%</span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
       ) : (
         <div className="space-y-2.5">
           {data.map((c, i) => {
-            const color = c.id === '__other__' ? OTHER_COLOR_VAR : CATEGORY_COLOR_VARS[i % CATEGORY_COLOR_VARS.length]
-            const clickable = c.id !== '__other__' && c.id !== '__uncategorized__'
+            const color = colorOf(c, i)
+            const clickable = c.id !== '__other__'
             return (
               <button
                 key={c.id}
