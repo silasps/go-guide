@@ -34,6 +34,7 @@ export function TransactionFilters({ accounts, categories }: Props) {
         className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
       >
         <option value="">Todas as categorias</option>
+        <option value="none">Sem categoria</option>
         {categories.filter(c => !c.parent_id).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
       </select>
     </div>

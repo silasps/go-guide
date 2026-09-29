@@ -45,7 +45,9 @@ export default async function LancamentosPage({ searchParams }: Props) {
     .limit(200)
 
   if (account) query = query.eq('account_id', account)
-  if (category) query = query.eq('category_id', category)
+  // 'none' = lançamentos sem categoria, pra facilitar categorizar em lote.
+  if (category === 'none') query = query.is('category_id', null)
+  else if (category) query = query.eq('category_id', category)
 
   const { data: transactions } = await query
 
