@@ -1,11 +1,12 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Search, Loader2, Sparkles, TriangleAlert, BookOpen, ArrowDownWideNarrow, ArrowUpNarrowWide } from 'lucide-react'
+import { Search, Loader2, Sparkles, TriangleAlert, BookOpen, ArrowDownWideNarrow, ArrowUpNarrowWide, Eye, EyeOff } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { TransactionTable } from './transaction-table'
 import { useTransactionSearch } from '@/hooks/use-transaction-search'
 import { sortTransactionsByDate } from '@/lib/financial/sort-by-date'
+import { cn } from '@/lib/utils'
 import { FinancialAccount, TransactionCategory, TransactionWithCategory, Partner } from '@/types/database'
 
 interface Props {
@@ -27,7 +28,14 @@ export function TransactionSearchPanel({ transactions, accounts, categories, par
   // painel da Visão Geral — ver `sortTransactionsByDate`); toggle deixa
   // inverter num clique.
   const [sortAsc, setSortAsc] = useState(false)
-  const sorted = useMemo(() => sortTransactionsByDate(transactions, sortAsc), [transactions, sortAsc])
+  // Escondido por padrão — mesmo motivo do painel da Visão Geral: pendente
+  // (`is_paid=false`) ordenado só pela data furava a fila pra cima de tudo.
+  const [showPending, setShowPending] = useState(false)
+  const scoped = useMemo(
+    () => (showPending ? transactions : transactions.filter((t) => t.is_paid)),
+    [transactions, showPending]
+  )
+  const sorted = useMemo(() => sortTransactionsByDate(scoped, sortAsc), [scoped, sortAsc])
   const { filtered, expanding, aiAssisted, expansionFailed, localAssisted, expansionEmpty, expansionTerms } = useTransactionSearch(sorted, search)
   const trimmed = search.trim()
 
@@ -52,6 +60,18 @@ export function TransactionSearchPanel({ transactions, accounts, categories, par
         >
           {sortAsc ? <ArrowUpNarrowWide className="h-3.5 w-3.5" /> : <ArrowDownWideNarrow className="h-3.5 w-3.5" />}
           Data
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowPending((v) => !v)}
+          title={showPending ? 'Ocultar previstos (ainda não pagos/recebidos)' : 'Mostrar previstos (ainda não pagos/recebidos)'}
+          className={cn(
+            'flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs transition-colors',
+            showPending ? 'border-primary bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          {showPending ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+          Previstos
         </button>
       </div>
 

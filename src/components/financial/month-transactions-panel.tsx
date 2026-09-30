@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import { useTransactionSearch } from '@/hooks/use-transaction-search'
 import { sortTransactionsByDate } from '@/lib/financial/sort-by-date'
 import { FinancialAccount, TransactionCategory, TransactionWithCategory, Partner } from '@/types/database'
-import { Search, Loader2, Sparkles, TriangleAlert, BookOpen, TrendingUp, TrendingDown, ArrowDownWideNarrow, ArrowUpNarrowWide } from 'lucide-react'
+import { Search, Loader2, Sparkles, TriangleAlert, BookOpen, TrendingUp, TrendingDown, ArrowDownWideNarrow, ArrowUpNarrowWide, Eye, EyeOff } from 'lucide-react'
 
 interface Props {
   transactions: TransactionWithCategory[] // janela ampla, todos os meses/tipos
@@ -48,6 +48,12 @@ export function MonthTransactionsPanel({ transactions, month, monthLabel, accoun
   // não tem `order()`, então vinha em ordem de inserção, parecendo
   // crescente). `sortAsc` deixa a pessoa inverter num clique.
   const [sortAsc, setSortAsc] = useState(false)
+  // Escondido por padrão — pendente/previsto (`is_paid=false`) ordenado só
+  // pela data furava a fila pra cima de tudo (uma parcela daqui a 2 meses
+  // aparecia antes da compra de ontem, só porque a data é "maior"). Usuário
+  // preferiu um toggle a separar em seções: lista nasce só com o que já
+  // aconteceu, e quem quiser ver o previsto liga de volta.
+  const [showPending, setShowPending] = useState(false)
   // `accounts` (completo) segue pra `TransactionTable` — precisa achar a
   // conta de lançamentos antigos mesmo já arquivada (ver 7.29). O atalho de
   // novo lançamento abaixo só oferece conta ativa.
@@ -57,10 +63,11 @@ export function MonthTransactionsPanel({ transactions, month, monthLabel, accoun
     const scoped = transactions.filter((t) => {
       if (t.date.slice(0, 7) !== month) return false
       if (tab !== 'all' && t.type !== tab) return false
+      if (!showPending && !t.is_paid) return false
       return true
     })
     return sortTransactionsByDate(scoped, sortAsc)
-  }, [transactions, month, tab, sortAsc])
+  }, [transactions, month, tab, sortAsc, showPending])
 
   const { filtered, expanding, aiAssisted, expansionFailed, localAssisted, expansionEmpty, expansionTerms } = useTransactionSearch(monthAndTabFiltered, search)
   const trimmedSearch = search.trim()
@@ -91,6 +98,19 @@ export function MonthTransactionsPanel({ transactions, month, monthLabel, accoun
         >
           {sortAsc ? <ArrowUpNarrowWide className="h-3.5 w-3.5" /> : <ArrowDownWideNarrow className="h-3.5 w-3.5" />}
           Data
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowPending((v) => !v)}
+          title={showPending ? 'Ocultar previstos (ainda não pagos/recebidos)' : 'Mostrar previstos (ainda não pagos/recebidos)'}
+          className={cn(
+            'flex h-7 items-center gap-1.5 rounded-lg border px-2 text-xs transition-colors',
+            showPending ? 'border-primary bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          {showPending ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+          Previstos
         </button>
 
         <div className="flex items-center gap-1.5 ml-auto">
