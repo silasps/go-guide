@@ -32,7 +32,8 @@ export default async function FinanceiroPage() {
     supabase.from('transactions')
       .select('*, category:transaction_categories!transactions_category_id_fkey(*), partner:partners(name)')
       .eq('profile_id', profile!.id)
-      .gte('date', windowStart.toISOString().slice(0, 10)),
+      .gte('date', windowStart.toISOString().slice(0, 10))
+      .order('date', { ascending: false }),
     supabase.from('transaction_categories').select('*').eq('profile_id', profile!.id),
     supabase.from('partners').select('*').eq('profile_id', profile!.id).order('name'),
     supabase.from('highlights').select('id, title').eq('profile_id', profile!.id).order('title'),

@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { TransactionTable } from './transaction-table'
 import { TransactionForm } from './transaction-form'
 import { Input } from '@/components/ui/input'
@@ -8,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useTransactionSearch } from '@/hooks/use-transaction-search'
 import { FinancialAccount, TransactionCategory, TransactionWithCategory, Partner } from '@/types/database'
-import { Search, Loader2, Sparkles, TriangleAlert, BookOpen, TrendingUp, TrendingDown } from 'lucide-react'
+import { Search, Loader2, Sparkles, TriangleAlert, BookOpen, TrendingUp, TrendingDown, ArrowDownWideNarrow, ArrowUpNarrowWide } from 'lucide-react'
 
 interface Props {
   transactions: TransactionWithCategory[] // janela ampla, todos os meses/tipos
@@ -26,6 +27,12 @@ const TABS = [
   { value: 'expense', label: 'Despesas' },
 ] as const
 
+// Só uma amostra aqui — a lista inteira do mês inline na Visão Geral ocupa
+// espaço demais na tela (pedido do usuário: "acho desnecessário, ocupa
+// muito espaço"). Quem quiser ver tudo clica em "Ver todos" e vai pra
+// `/dashboard/financeiro/lancamentos`, que já pagina/filtra de verdade.
+const PREVIEW_LIMIT = 10
+
 // Lançamentos do mês selecionado direto na Visão Geral (ver 7.20/7.22) —
 // mesma `TransactionTable` de `/dashboard/financeiro/lancamentos` (edita,
 // exclui, marca como pago), só escopada ao mês do `MonthNavigator` em vez
@@ -35,21 +42,36 @@ export function MonthTransactionsPanel({ transactions, month, monthLabel, accoun
   const [tab, setTab] = useState<(typeof TABS)[number]['value']>('all')
   const [search, setSearch] = useState('')
   const [quickAddType, setQuickAddType] = useState<'income' | 'expense' | null>(null)
+  // Mais recente primeiro por padrão — como qualquer extrato de banco
+  // (pedido do usuário: a query de `transactions` que alimenta este painel
+  // não tem `order()`, então vinha em ordem de inserção, parecendo
+  // crescente). `sortAsc` deixa a pessoa inverter num clique.
+  const [sortAsc, setSortAsc] = useState(false)
   // `accounts` (completo) segue pra `TransactionTable` — precisa achar a
   // conta de lançamentos antigos mesmo já arquivada (ver 7.29). O atalho de
   // novo lançamento abaixo só oferece conta ativa.
   const activeAccounts = useMemo(() => accounts.filter((a) => !a.archived), [accounts])
 
   const monthAndTabFiltered = useMemo(() => {
-    return transactions.filter((t) => {
-      if (t.date.slice(0, 7) !== month) return false
-      if (tab !== 'all' && t.type !== tab) return false
-      return true
-    })
-  }, [transactions, month, tab])
+    return transactions
+      .filter((t) => {
+        if (t.date.slice(0, 7) !== month) return false
+        if (tab !== 'all' && t.type !== tab) return false
+        return true
+      })
+      .sort((a, b) => {
+        // Data primeiro; `created_at` desempata dois lançamentos do mesmo
+        // dia pela ordem real de criação, não pela ordem que vieram do banco.
+        const byDate = a.date.localeCompare(b.date)
+        const cmp = byDate !== 0 ? byDate : a.created_at.localeCompare(b.created_at)
+        return sortAsc ? cmp : -cmp
+      })
+  }, [transactions, month, tab, sortAsc])
 
   const { filtered, expanding, aiAssisted, expansionFailed, localAssisted, expansionEmpty, expansionTerms } = useTransactionSearch(monthAndTabFiltered, search)
   const trimmedSearch = search.trim()
+  const visible = filtered.slice(0, PREVIEW_LIMIT)
+  const hasMore = filtered.length > PREVIEW_LIMIT
 
   return (
     <div className="space-y-3">
@@ -66,6 +88,16 @@ export function MonthTransactionsPanel({ transactions, month, monthLabel, accoun
             </button>
           ))}
         </div>
+
+        <button
+          type="button"
+          onClick={() => setSortAsc((v) => !v)}
+          title={sortAsc ? 'Mais antigas primeiro — clique pra inverter' : 'Mais recentes primeiro — clique pra inverter'}
+          className="flex h-7 items-center gap-1.5 rounded-lg border px-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {sortAsc ? <ArrowUpNarrowWide className="h-3.5 w-3.5" /> : <ArrowDownWideNarrow className="h-3.5 w-3.5" />}
+          Data
+        </button>
 
         <div className="flex items-center gap-1.5 ml-auto">
           <Button type="button" size="sm" className="h-7 gap-1.5 bg-success text-success-foreground hover:bg-success/90" disabled={activeAccounts.length === 0} onClick={() => setQuickAddType('income')}>
@@ -106,7 +138,7 @@ export function MonthTransactionsPanel({ transactions, month, monthLabel, accoun
       )}
 
       <TransactionTable
-        transactions={filtered}
+        transactions={visible}
         accounts={accounts}
         categories={categories}
         partners={partners}
@@ -115,7 +147,16 @@ export function MonthTransactionsPanel({ transactions, month, monthLabel, accoun
         emptyHint={trimmedSearch ? `Não encontramos nada pra "${trimmedSearch}".` : `Não há transações para exibir em ${monthLabel.toLowerCase()}.`}
       />
 
-      {filtered.length > 0 && <p className="text-xs text-muted-foreground text-right">Total: {filtered.length}</p>}
+      {filtered.length > 0 && (
+        <div className="flex items-center justify-end gap-3 text-xs text-muted-foreground">
+          <span>{hasMore ? `Mostrando ${visible.length} de ${filtered.length}` : `Total: ${filtered.length}`}</span>
+          {hasMore && (
+            <Link href="/dashboard/financeiro/lancamentos" className="font-medium text-primary hover:underline">
+              Ver todos
+            </Link>
+          )}
+        </div>
+      )}
 
       {quickAddType && (
         <TransactionForm

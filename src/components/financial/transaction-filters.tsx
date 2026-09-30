@@ -1,7 +1,9 @@
 'use client'
 
+import { useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { FinancialAccount, TransactionCategory } from '@/types/database'
+import { Loader2 } from 'lucide-react'
 
 interface Props {
   accounts: FinancialAccount[]
@@ -11,15 +13,25 @@ interface Props {
 export function TransactionFilters({ accounts, categories }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  // `router.push` some sozinho de volta assim que agenda a navegação — não
+  // espera o novo RSC chegar, então `await` nele não serviria de indicador.
+  // `useTransition` é o jeito certo: `isPending` continua `true` até o
+  // conteúdo novo (filtrado no servidor) realmente terminar de chegar,
+  // cobrindo exatamente o intervalo que o usuário reportou "sem nenhuma
+  // pista de que o filtro está rodando" entre o dropdown fechar e a lista
+  // atualizar.
+  const [isPending, startTransition] = useTransition()
 
   function update(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString())
     if (value) params.set(key, value); else params.delete(key)
-    router.push(`/dashboard/financeiro/lancamentos?${params.toString()}`)
+    startTransition(() => {
+      router.push(`/dashboard/financeiro/lancamentos?${params.toString()}`)
+    })
   }
 
   return (
-    <div className="flex gap-2 flex-wrap">
+    <div className="flex items-center gap-2 flex-wrap">
       <select
         defaultValue={searchParams.get('account') ?? ''}
         onChange={(e) => update('account', e.target.value)}
@@ -37,6 +49,7 @@ export function TransactionFilters({ accounts, categories }: Props) {
         <option value="none">Sem categoria</option>
         {categories.filter(c => !c.parent_id).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
       </select>
+      {isPending && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-label="Filtrando..." />}
     </div>
   )
 }
