@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useTransactionSearch } from '@/hooks/use-transaction-search'
+import { sortTransactionsByDate } from '@/lib/financial/sort-by-date'
 import { FinancialAccount, TransactionCategory, TransactionWithCategory, Partner } from '@/types/database'
 import { Search, Loader2, Sparkles, TriangleAlert, BookOpen, TrendingUp, TrendingDown, ArrowDownWideNarrow, ArrowUpNarrowWide } from 'lucide-react'
 
@@ -53,19 +54,12 @@ export function MonthTransactionsPanel({ transactions, month, monthLabel, accoun
   const activeAccounts = useMemo(() => accounts.filter((a) => !a.archived), [accounts])
 
   const monthAndTabFiltered = useMemo(() => {
-    return transactions
-      .filter((t) => {
-        if (t.date.slice(0, 7) !== month) return false
-        if (tab !== 'all' && t.type !== tab) return false
-        return true
-      })
-      .sort((a, b) => {
-        // Data primeiro; `created_at` desempata dois lançamentos do mesmo
-        // dia pela ordem real de criação, não pela ordem que vieram do banco.
-        const byDate = a.date.localeCompare(b.date)
-        const cmp = byDate !== 0 ? byDate : a.created_at.localeCompare(b.created_at)
-        return sortAsc ? cmp : -cmp
-      })
+    const scoped = transactions.filter((t) => {
+      if (t.date.slice(0, 7) !== month) return false
+      if (tab !== 'all' && t.type !== tab) return false
+      return true
+    })
+    return sortTransactionsByDate(scoped, sortAsc)
   }, [transactions, month, tab, sortAsc])
 
   const { filtered, expanding, aiAssisted, expansionFailed, localAssisted, expansionEmpty, expansionTerms } = useTransactionSearch(monthAndTabFiltered, search)

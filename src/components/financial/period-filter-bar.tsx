@@ -1,7 +1,8 @@
 'use client'
 
+import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ArrowRight, Calendar, Eye, EyeOff, RefreshCcw } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Calendar, Eye, EyeOff, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { TimelinePoint } from '@/lib/financial/timeline'
@@ -35,6 +36,13 @@ function monthDateRangeLabel(month: string) {
 export function PeriodFilterBar({ points, selectedMonth, onSelectMonth, currentMonth, monthLabel, hideValues, onToggleHideValues }: Props) {
   const router = useRouter()
   const selectedIndex = points.findIndex((p) => p.month === selectedMonth)
+  // `router.refresh()` some sozinho de volta assim que agenda a atualização
+  // — sem `useTransition`, o botão "parece não fazer nada" (queixa real do
+  // usuário) mesmo já reexecutando a busca no servidor por baixo dos panos.
+  // `isRefreshing` gira o ícone (sentido horário, `RefreshCw` — mesma ideia
+  // do GranaZen que o usuário citou) só enquanto o refresh de fato estiver
+  // em andamento, não uma animação decorativa solta.
+  const [isRefreshing, startRefresh] = useTransition()
 
   function shift(delta: number) {
     const next = points[selectedIndex + delta]
@@ -72,8 +80,8 @@ export function PeriodFilterBar({ points, selectedMonth, onSelectMonth, currentM
         <Button type="button" variant="outline" size="icon-sm" title={hideValues ? 'Mostrar valores' : 'Ocultar valores'} onClick={onToggleHideValues}>
           {hideValues ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </Button>
-        <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => router.refresh()}>
-          <RefreshCcw className="h-3.5 w-3.5" /> Atualizar
+        <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={isRefreshing} onClick={() => startRefresh(() => router.refresh())}>
+          <RefreshCw className={cn('h-3.5 w-3.5', isRefreshing && 'animate-spin')} /> Atualizar
         </Button>
       </div>
     </div>
