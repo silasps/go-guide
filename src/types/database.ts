@@ -569,6 +569,10 @@ export interface Transaction {
   transfer_group_id: string | null
   transfer_direction: 'out' | 'in' | null
   transfer_account_id: string | null
+  /** Comprovante opcional do lançamento (migration 108) — mesmo padrão de
+   *  `Pledge.proof_url`: URL pública no bucket `media`, sempre `.webp`
+   *  (comprimida no cliente antes do upload, ver `compressImage`). */
+  proof_url: string | null
   created_at: string
 }
 

@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
 import { suggestCategoryId } from '@/lib/financial/suggest-category'
+import { compressImage } from '@/lib/media/compress'
 import { FinancialAccount, TransactionCategory, TransactionType, Partner, Transaction } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,7 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { CategoryForm } from './category-form'
 import { toast } from 'sonner'
-import { Loader2, Plus } from 'lucide-react'
+import { Loader2, Plus, Upload } from 'lucide-react'
 
 interface HighlightOption { id: string; title: string; budgetCategories: { id: string; label: string }[] }
 
@@ -82,6 +84,14 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
   const [categoryTouched, setCategoryTouched] = useState(Boolean(transaction))
   const [categoryAutoFilled, setCategoryAutoFilled] = useState(false)
   const [creatingCategory, setCreatingCategory] = useState(false)
+  // Comprovante opcional (pedido do usuário) — mesmo padrão de `PledgeForm`:
+  // comprime pro formato mais simples (WebP) já no `<input>`, antes de
+  // qualquer upload, e só sobe pro bucket `media` no submit. Editar um
+  // lançamento que já tem comprovante mostra a prévia dele; `proofRemoved`
+  // existe só pra permitir tirar sem escolher outro arquivo no lugar.
+  const [proofFile, setProofFile] = useState<File | null>(null)
+  const [proofPreview, setProofPreview] = useState(transaction?.proof_url ?? '')
+  const [proofRemoved, setProofRemoved] = useState(false)
 
   const topCategories = useMemo(() => categories.filter(c => !c.parent_id), [categories])
   const selectedHighlight = highlights.find(h => h.id === highlightId)
@@ -116,6 +126,21 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
     return () => clearTimeout(timer)
   }, [description, categoryTouched, transactions, topCategories])
 
+  async function handleProofSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const compressed = await compressImage(file)
+    setProofFile(compressed)
+    setProofPreview(URL.createObjectURL(compressed))
+    setProofRemoved(false)
+  }
+
+  function handleProofRemove() {
+    setProofFile(null)
+    setProofPreview('')
+    setProofRemoved(true)
+  }
+
   function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const parsedAmount = parseFloat(fromMasked(amount))
@@ -127,6 +152,14 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
     run(true, async () => {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
+
+      let proof_url: string | null = proofRemoved ? null : (transaction?.proof_url ?? null)
+      if (proofFile && user) {
+        const path = `${user.id}/transactions/${crypto.randomUUID()}.webp`
+        const { error: uploadError } = await supabase.storage.from('media').upload(path, proofFile)
+        if (!uploadError) proof_url = supabase.storage.from('media').getPublicUrl(path).data.publicUrl
+        else toast.error('Erro ao enviar comprovante — lançamento será salvo sem ele.')
+      }
 
       const payload = {
         account_id: accountId,
@@ -146,6 +179,7 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
         is_credit_purchase: isCreditAccount,
         fatura_date: isCreditAccount ? faturaDate : null,
         is_paid: type === 'transfer' ? true : isPaid,
+        proof_url,
       }
 
       const { error } = transaction
@@ -253,6 +287,30 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
               </select>
             </div>
           )}
+
+          <div className="space-y-2">
+            <Label>Comprovante (opcional)</Label>
+            {proofPreview ? (
+              <div className="relative h-24 w-full">
+                <Image src={proofPreview} alt="Comprovante" fill className="object-cover rounded-lg" />
+                <div className="absolute bottom-2 right-2 flex gap-1.5">
+                  <label className="cursor-pointer">
+                    <div className="bg-black/60 text-white text-xs px-2 py-1 rounded-lg hover:bg-black/80 transition-colors">Trocar</div>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleProofSelect} />
+                  </label>
+                  <button type="button" onClick={handleProofRemove} className="bg-black/60 text-white text-xs px-2 py-1 rounded-lg hover:bg-black/80 transition-colors">
+                    Remover
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center gap-1.5 h-16 rounded-lg border border-dashed cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
+                <Upload className="h-4 w-4" />
+                <span className="text-xs">Anexar comprovante</span>
+                <input type="file" accept="image/*" className="hidden" onChange={handleProofSelect} />
+              </label>
+            )}
+          </div>
 
           <div className="space-y-2">
             <Label>Parceiro (opcional)</Label>
