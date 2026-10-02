@@ -23,15 +23,15 @@ const CATEGORY_COLOR_VARS = ['var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)
 const OTHER_COLOR_VAR = 'var(--muted-foreground)'
 const EASE_OUT = [0.22, 1, 0.36, 1] as const
 
-// Composição de gastos por categoria — part-to-whole, barra horizontal por
-// padrão (dataviz skill desaconselha pizza pra esse job, principalmente com
-// nomes longos). A pizza fica como alternativa opcional a pedido do
-// usuário, sempre com legenda ao lado (nunca só a cor). Cada barra/item da
-// legenda é o alvo de clique: navega pro lançamento filtrado por categoria.
+// Composição de gastos por categoria — part-to-whole. Pizza por padrão (a
+// pedido do usuário, mesmo a dataviz skill preferindo barra pra esse job),
+// sempre com legenda ao lado (nunca só a cor); barras e tabela ficam como
+// alternativas. Cada barra/item da legenda é o alvo de clique: navega pro
+// lançamento filtrado por categoria.
 export function CategoryBarChart({ data, currency, monthLabel, emptyLabel }: Props) {
   const router = useRouter()
   const [showTable, setShowTable] = useState(false)
-  const [showPie, setShowPie] = useState(false)
+  const [showPie, setShowPie] = useState(true)
   const reduceMotion = useReducedMotion()
 
   if (data.length === 0) {
@@ -70,9 +70,9 @@ export function CategoryBarChart({ data, currency, monthLabel, emptyLabel }: Pro
         </button>
       </div>
 
-      {/* Troca de visualização com fade curto; `initial={false}` evita
-          animar a primeira montagem (as barras já têm entrada própria). */}
-      <AnimatePresence mode="wait" initial={false}>
+      {/* Troca de visualização com fade curto. Sem `initial={false}` aqui:
+          ele bloquearia também a entrada da pizza/barras na primeira carga. */}
+      <AnimatePresence mode="wait">
         <motion.div
           key={view}
           initial={reduceMotion ? false : { opacity: 0, y: 6 }}
