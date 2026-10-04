@@ -32,12 +32,17 @@ export function formatLongDate(date: string | Date, locale: Locale) {
   return new Intl.DateTimeFormat(INTL_LOCALE[locale], { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(date))
 }
 
+// Data pura ("2026-09-05", coluna `date`) é lida como meia-noite UTC pelo
+// `new Date()` — em fuso negativo (Brasil) isso mostra o dia anterior.
+// Forçar meia-noite local evita o deslocamento; timestamps completos seguem
+// como antes.
 export function formatDate(date: string | Date) {
+  const value = typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) ? `${date}T00:00:00` : date
   return new Intl.DateTimeFormat('pt-BR', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
-  }).format(new Date(date))
+  }).format(new Date(value))
 }
 
 export function formatRelativeTime(date: string | Date) {

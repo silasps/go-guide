@@ -7,14 +7,17 @@ import { createClient } from '@/lib/supabase/client'
 import { usePendingAction } from '@/hooks/use-pending-action'
 import { suggestCategoryId } from '@/lib/financial/suggest-category'
 import { compressImage } from '@/lib/media/compress'
+import { cn, formatCurrency } from '@/lib/utils'
 import { FinancialAccount, TransactionCategory, TransactionType, Partner, Transaction } from '@/types/database'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Switch } from '@/components/ui/switch'
 import { CategoryForm } from './category-form'
 import { toast } from 'sonner'
-import { Loader2, Plus, Upload } from 'lucide-react'
+import {
+  ArrowDownLeft, ArrowUpRight, ArrowLeftRight, X, Copy, Trash2, Loader2, Plus, Upload,
+  Landmark, Tag, CalendarDays, CreditCard, CircleCheck, UserRound, Target, Paperclip,
+} from 'lucide-react'
 
 interface HighlightOption { id: string; title: string; budgetCategories: { id: string; label: string }[] }
 
@@ -40,6 +43,48 @@ interface Props {
   transactions?: HistoryTransaction[]
 }
 
+interface FormValues {
+  type: TransactionType
+  amount: string
+  description: string
+  accountId: string
+  categoryId: string
+  partnerId: string
+  manualPartnerName: string
+  highlightId: string
+  budgetCategoryId: string
+  date: string
+  isPaid: boolean
+  faturaDate: string
+  proofUrl: string
+}
+
+// Sessão = um "ciclo" do formulário aberto. `key` remonta o corpo (campos
+// limpos) sem fechar o painel — usado pelo "Salvar e novo". `carry` é o
+// que sobrevive pro próximo lançamento; `forceCreate` transforma uma
+// edição em cópia (botão Duplicar).
+interface Session {
+  key: number
+  carry: Partial<FormValues> | null
+  forceCreate: boolean
+}
+const INITIAL_SESSION: Session = { key: 0, carry: null, forceCreate: false }
+
+const TYPE_OPTIONS: { value: TransactionType; label: string; icon: typeof ArrowDownLeft; activeText: string }[] = [
+  { value: 'income', label: 'Receita', icon: ArrowDownLeft, activeText: 'text-emerald-700' },
+  { value: 'expense', label: 'Despesa', icon: ArrowUpRight, activeText: 'text-red-600' },
+  { value: 'transfer', label: 'Transf.', icon: ArrowLeftRight, activeText: 'text-sky-700' },
+]
+const TYPE_LABEL: Record<TransactionType, string> = { income: 'Receita', expense: 'Despesa', transfer: 'Transferência' }
+
+// Cor do lançamento inteiro segue o tipo: vermelho pra despesa, verde pra
+// receita (pedido do usuário). Transferência fica neutra/azul.
+const ACCENT: Record<TransactionType, { text: string; button: string }> = {
+  income: { text: 'text-emerald-700', button: 'bg-success text-success-foreground hover:bg-success/90' },
+  expense: { text: 'text-red-600', button: 'bg-destructive text-white hover:bg-destructive/90' },
+  transfer: { text: 'text-sky-700', button: 'bg-primary text-primary-foreground hover:bg-primary/90' },
+}
+
 function toMasked(raw: string) {
   const digits = raw.replace(/\D/g, '')
   if (!digits) return ''
@@ -47,6 +92,13 @@ function toMasked(raw: string) {
 }
 function fromMasked(masked: string) {
   return masked.replace(/\./g, '').replace(',', '.')
+}
+
+// Data de hoje no fuso local — `toISOString()` (UTC) mostra o dia seguinte
+// depois das 21h em Brasília.
+function todayLocal() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 // Compra até o dia de fechamento entra na fatura do mês corrente; depois disso, na do mês seguinte.
@@ -57,51 +109,123 @@ function defaultFaturaDate(purchaseDate: string, closingDay: number | null) {
   return `${fd.getFullYear()}-${String(fd.getMonth() + 1).padStart(2, '0')}-01`
 }
 
+function valuesFromTransaction(t: Transaction): FormValues {
+  return {
+    type: t.type,
+    amount: toMasked(String(Math.round(t.amount * 100))),
+    description: t.description ?? '',
+    accountId: t.account_id,
+    categoryId: t.category_id ?? '',
+    partnerId: t.partner_id ?? '',
+    manualPartnerName: t.manual_partner_name ?? '',
+    highlightId: t.highlight_id ?? '',
+    budgetCategoryId: t.budget_category_id ?? '',
+    date: t.date,
+    isPaid: t.is_paid,
+    faturaDate: t.fatura_date ?? '',
+    proofUrl: t.proof_url ?? '',
+  }
+}
+
+function blankValues(type: TransactionType, accountId: string, highlightId: string): FormValues {
+  return {
+    type,
+    amount: '',
+    description: '',
+    accountId,
+    categoryId: '',
+    partnerId: '',
+    manualPartnerName: '',
+    highlightId,
+    budgetCategoryId: '',
+    date: todayLocal(),
+    isPaid: true,
+    faturaDate: '',
+    proofUrl: '',
+  }
+}
+
 export function TransactionForm({ open, onOpenChange, transaction, accounts, categories = [], partners = [], highlights = [], defaultHighlightId, defaultType, trigger, transactions = [] }: Props) {
+  const [session, setSession] = useState<Session>(INITIAL_SESSION)
+
+  // Fechar o painel zera a sessão — a próxima abertura começa do zero.
+  function handleOpenChange(next: boolean) {
+    if (!next) setSession(INITIAL_SESSION)
+    onOpenChange(next)
+  }
+
+  const editing = !session.forceCreate && Boolean(transaction)
+  const blank = blankValues(defaultType ?? 'expense', accounts[0]?.id ?? '', defaultHighlightId ?? '')
+  const initial: FormValues = session.carry
+    ? { ...blank, ...session.carry }
+    : transaction
+      ? valuesFromTransaction(transaction)
+      : blank
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      {trigger}
+      <DialogContent
+        showCloseButton={false}
+        className={cn(
+          // Celular: folha que sobe de baixo, ocupando quase a tela toda.
+          'fixed inset-x-0 bottom-0 top-auto left-0 h-[92dvh] max-h-[92dvh] w-full max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-t-3xl rounded-b-none bg-background p-0 ring-0 flex flex-col',
+          // Desktop: painel centralizado e largo, com duas colunas no corpo.
+          'sm:inset-auto sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:h-auto sm:max-h-[88dvh] sm:w-[min(64rem,calc(100%-3rem))] sm:max-w-none sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl'
+        )}
+      >
+        <TransactionFormBody
+          key={session.key}
+          initial={initial}
+          editing={editing}
+          transaction={transaction}
+          accounts={accounts}
+          categories={categories}
+          partners={partners}
+          highlights={highlights}
+          transactions={transactions}
+          onClose={() => handleOpenChange(false)}
+          onAnother={(carry) => setSession((s) => ({ key: s.key + 1, carry, forceCreate: false }))}
+          onDuplicate={() => setSession((s) => ({ key: s.key + 1, carry: null, forceCreate: true }))}
+        />
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+interface BodyProps {
+  initial: FormValues
+  editing: boolean
+  transaction?: Transaction
+  accounts: FinancialAccount[]
+  categories: TransactionCategory[]
+  partners: Partner[]
+  highlights: HighlightOption[]
+  transactions: HistoryTransaction[]
+  onClose: () => void
+  onAnother: (carry: Partial<FormValues>) => void
+  onDuplicate: () => void
+}
+
+function TransactionFormBody({ initial, editing, transaction, accounts, categories, partners, highlights, transactions, onClose, onAnother, onDuplicate }: BodyProps) {
   const router = useRouter()
-  const { isPending: saving, run } = usePendingAction()
-  const [type, setType] = useState<TransactionType>(transaction?.type ?? defaultType ?? 'income')
-  const [amount, setAmount] = useState(transaction ? toMasked(String(Math.round(transaction.amount * 100))) : '')
-  const [description, setDescription] = useState(transaction?.description ?? '')
-  const [accountId, setAccountId] = useState(transaction?.account_id ?? accounts[0]?.id ?? '')
-  const [categoryId, setCategoryId] = useState(transaction?.category_id ?? '')
-  const [partnerId, setPartnerId] = useState(transaction?.partner_id ?? '')
-  // Pra quando quem mandou a oferta não é (e talvez nunca vá ser) um
-  // parceiro cadastrado — só um nome solto, pra lembrete futuro de quem
-  // foi. Mutuamente exclusivo com `partnerId` na prática (ver onChange dos
-  // dois campos abaixo e o payload em `handleSave`), mesma filosofia de
-  // `pledges.reporter_name` (texto livre, sem exigir cadastro formal).
-  const [manualPartnerName, setManualPartnerName] = useState(transaction?.manual_partner_name ?? '')
-  const [highlightId, setHighlightId] = useState(transaction?.highlight_id ?? defaultHighlightId ?? '')
-  const [budgetCategoryId, setBudgetCategoryId] = useState(transaction?.budget_category_id ?? '')
-  const [date, setDate] = useState(transaction?.date ?? new Date().toISOString().slice(0, 10))
-  const [isPaid, setIsPaid] = useState(transaction ? transaction.is_paid : date <= new Date().toISOString().slice(0, 10))
-  // `categoryTouched` começa `true` numa edição — nunca sobrescreve a
-  // categoria que a pessoa já tinha escolhido antes. Numa criação nova,
-  // fica `false` até o próprio usuário mexer no seletor; até lá, a
-  // sugestão automática (efeito abaixo) pode seguir atualizando
-  // `categoryId` livremente conforme a descrição muda.
-  const [categoryTouched, setCategoryTouched] = useState(Boolean(transaction))
+  const { pendingValue, run } = usePendingAction<'close' | 'another' | 'delete'>()
+  const [v, setV] = useState<FormValues>(initial)
+  const set = <K extends keyof FormValues>(key: K, value: FormValues[K]) => setV((prev) => ({ ...prev, [key]: value }))
+
+  const [proofFile, setProofFile] = useState<File | null>(null)
+  const [proofPreview, setProofPreview] = useState(initial.proofUrl)
+  const [categoryTouched, setCategoryTouched] = useState(editing || Boolean(initial.categoryId))
   const [categoryAutoFilled, setCategoryAutoFilled] = useState(false)
   const [creatingCategory, setCreatingCategory] = useState(false)
-  // Comprovante opcional (pedido do usuário) — mesmo padrão de `PledgeForm`:
-  // comprime pro formato mais simples (WebP) já no `<input>`, antes de
-  // qualquer upload, e só sobe pro bucket `media` no submit. Editar um
-  // lançamento que já tem comprovante mostra a prévia dele; `proofRemoved`
-  // existe só pra permitir tirar sem escolher outro arquivo no lugar.
-  const [proofFile, setProofFile] = useState<File | null>(null)
-  const [proofPreview, setProofPreview] = useState(transaction?.proof_url ?? '')
-  const [proofRemoved, setProofRemoved] = useState(false)
 
-  const topCategories = useMemo(() => categories.filter(c => !c.parent_id), [categories])
-  const selectedHighlight = highlights.find(h => h.id === highlightId)
-  const selectedAccount = accounts.find(a => a.id === accountId)
-  // Mesmo profile_id que já vai no payload do lançamento (linha abaixo,
-  // `account.profile_id`) — evita ter que enfiar `profileId` como prop
-  // nova em `NewTransactionButton`/`LancamentosPage` só pra isso.
+  const topCategories = useMemo(() => categories.filter((c) => !c.parent_id), [categories])
+  const selectedHighlight = highlights.find((h) => h.id === v.highlightId)
+  const selectedAccount = accounts.find((a) => a.id === v.accountId)
   const profileId = selectedAccount?.profile_id
   const isCreditAccount = selectedAccount?.account_type === 'credit'
-  const [faturaDate, setFaturaDate] = useState(transaction?.fatura_date ?? defaultFaturaDate(date, selectedAccount?.closing_day ?? null))
+  const accent = ACCENT[v.type]
+  const currencyLabel = !selectedAccount || selectedAccount.currency_code === 'BRL' ? 'R$' : selectedAccount.currency_code
 
   const faturaOptions = Array.from({ length: 6 }, (_, i) => {
     const base = new Date(); base.setDate(1); base.setMonth(base.getMonth() + i - 1)
@@ -110,21 +234,27 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
     return { value, label: label.charAt(0).toUpperCase() + label.slice(1) }
   })
 
-  // Sugestão automática de categoria a partir da descrição (pedido do
-  // usuário) — histórico do próprio usuário primeiro (mais confiável),
-  // dicionário de sinônimos como reforço (ver `suggestCategoryId`). Só
-  // roda em lançamento novo, e só enquanto o usuário não mexer no
-  // seletor de categoria com a própria mão — a sugestão nunca é
-  // obrigatória, é só um palpite que a pessoa pode trocar clicando.
+  // Sugestão automática de categoria a partir da descrição — histórico do
+  // próprio usuário primeiro, dicionário de sinônimos como reforço. Só roda
+  // enquanto a pessoa não mexer no seletor de categoria com a própria mão.
   useEffect(() => {
     if (categoryTouched) return
     const timer = setTimeout(() => {
-      const suggested = suggestCategoryId(description, transactions, topCategories)
-      setCategoryId(suggested ?? '')
+      const suggested = suggestCategoryId(v.description, transactions, topCategories)
+      set('categoryId', suggested ?? '')
       setCategoryAutoFilled(Boolean(suggested))
     }, 300)
     return () => clearTimeout(timer)
-  }, [description, categoryTouched, transactions, topCategories])
+  }, [v.description, categoryTouched, transactions, topCategories])
+
+  function changeAccount(accountId: string) {
+    const acc = accounts.find((a) => a.id === accountId)
+    setV((prev) => ({ ...prev, accountId, faturaDate: defaultFaturaDate(prev.date, acc?.closing_day ?? null) }))
+  }
+
+  function changeDate(date: string) {
+    setV((prev) => ({ ...prev, date, faturaDate: defaultFaturaDate(date, selectedAccount?.closing_day ?? null) }))
+  }
 
   async function handleProofSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -132,28 +262,26 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
     const compressed = await compressImage(file)
     setProofFile(compressed)
     setProofPreview(URL.createObjectURL(compressed))
-    setProofRemoved(false)
   }
 
   function handleProofRemove() {
     setProofFile(null)
     setProofPreview('')
-    setProofRemoved(true)
+    set('proofUrl', '')
   }
 
-  function handleSave(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const parsedAmount = parseFloat(fromMasked(amount))
+  function submit(kind: 'close' | 'another') {
+    const parsedAmount = parseFloat(fromMasked(v.amount))
     if (!parsedAmount || parsedAmount <= 0) { toast.error('Informe um valor válido.'); return }
-    if (!description.trim()) { toast.error('Descrição obrigatória.'); return }
-    const account = accounts.find(a => a.id === accountId)
+    if (!v.description.trim()) { toast.error('Descrição obrigatória.'); return }
+    const account = accounts.find((a) => a.id === v.accountId)
     if (!account) { toast.error('Selecione uma conta.'); return }
 
-    run(true, async () => {
+    run(kind, async () => {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
 
-      let proof_url: string | null = proofRemoved ? null : (transaction?.proof_url ?? null)
+      let proof_url: string | null = v.proofUrl || null
       if (proofFile && user) {
         const path = `${user.id}/transactions/${crypto.randomUUID()}.webp`
         const { error: uploadError } = await supabase.storage.from('media').upload(path, proofFile)
@@ -162,224 +290,358 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
       }
 
       const payload = {
-        account_id: accountId,
+        account_id: v.accountId,
         profile_id: account.profile_id,
-        type,
+        type: v.type,
         amount: parsedAmount,
         currency: account.currency_code,
-        description: description.trim(),
-        category_id: categoryId || null,
-        partner_id: partnerId || null,
-        // Reforça a exclusão mútua no próprio payload (defesa a mais além
-        // do onChange dos dois campos) — nunca manda os dois preenchidos.
-        manual_partner_name: partnerId ? null : (manualPartnerName.trim() || null),
-        highlight_id: highlightId || null,
-        budget_category_id: highlightId ? (budgetCategoryId || null) : null,
-        date,
-        is_credit_purchase: isCreditAccount,
-        fatura_date: isCreditAccount ? faturaDate : null,
-        is_paid: type === 'transfer' ? true : isPaid,
+        description: v.description.trim(),
+        category_id: v.categoryId || null,
+        partner_id: v.partnerId || null,
+        // Reforça a exclusão mútua no próprio payload — nunca manda os dois preenchidos.
+        manual_partner_name: v.partnerId ? null : (v.manualPartnerName.trim() || null),
+        highlight_id: v.highlightId || null,
+        budget_category_id: v.highlightId ? (v.budgetCategoryId || null) : null,
+        date: v.date,
+        is_credit_purchase: account.account_type === 'credit',
+        fatura_date: account.account_type === 'credit' ? (v.faturaDate || defaultFaturaDate(v.date, account.closing_day ?? null)) : null,
+        is_paid: v.type === 'transfer' ? true : v.isPaid,
         proof_url,
       }
 
-      const { error } = transaction
+      const { error } = editing && transaction
         ? await supabase.from('transactions').update(payload).eq('id', transaction.id)
         : await supabase.from('transactions').insert({ ...payload, created_by_user_id: user!.id })
 
       if (error) { toast.error('Erro ao salvar lançamento.'); return }
-      toast.success(transaction ? 'Lançamento atualizado.' : 'Lançamento criado.')
-      onOpenChange(false)
+      toast.success(editing ? 'Lançamento atualizado.' : 'Lançamento criado.')
       router.refresh()
+      if (kind === 'another') onAnother({ type: v.type, accountId: v.accountId, date: v.date })
+      else onClose()
+    })
+  }
+
+  function handleDelete() {
+    if (!transaction) return
+    if (!confirm('Excluir este lançamento? O saldo da conta será ajustado.')) return
+    run('delete', async () => {
+      const supabase = createClient()
+      const { error } = await supabase.from('transactions').delete().eq('id', transaction.id)
+      if (error) { toast.error('Erro ao excluir lançamento.'); return }
+      toast.success('Lançamento excluído.')
+      router.refresh()
+      onClose()
     })
   }
 
   return (
     <>
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      {trigger}
-      {/* sm:max-w-md (em vez do max-w-sm de qualquer outro modal financeiro)
-          — só no desktop/tablet; no celular continua igual (max-w-sm já
-          cobre a tela toda ali). O botão "+" ao lado do seletor de
-          Categoria (abaixo) apertou o espaço que sobrava pro texto de
-          cada opção, cortando "Sem categoria" — usuário mandou print. */}
-      <DialogContent className="max-w-sm sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{transaction ? 'Editar lançamento' : 'Novo lançamento'}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSave} className="space-y-4">
-          <div className="grid grid-cols-3 gap-2">
-            {([
-              { value: 'income', label: '💰 Entrada' },
-              { value: 'expense', label: '💸 Saída' },
-              { value: 'transfer', label: '🔁 Transf.' },
-            ] as const).map(({ value, label }) => (
+      {/* Cabeçalho fixo — título, tipo colorido e seletor Receita/Despesa/Transf. */}
+      <header className="shrink-0 border-b bg-background px-4 pb-4 pt-3 sm:px-6 sm:pt-5">
+        <div className="mx-auto flex max-w-none items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <X className="size-4" />
+          </button>
+          <div className="min-w-0 flex-1 text-center sm:text-left">
+            <DialogTitle className="text-base font-semibold sm:text-lg">
+              {editing ? 'Editar lançamento' : 'Novo lançamento'}
+            </DialogTitle>
+            <p className={cn('mt-0.5 text-[11px] font-semibold uppercase tracking-wider', accent.text)}>
+              ● {editing ? `${TYPE_LABEL[v.type]} registrada` : `Nova ${TYPE_LABEL[v.type].toLowerCase()}`}
+            </p>
+          </div>
+          {editing ? (
+            <button
+              type="button"
+              onClick={onDuplicate}
+              className="flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <Copy className="size-4" /> Duplicar
+            </button>
+          ) : (
+            <span className="size-9 shrink-0" aria-hidden />
+          )}
+        </div>
+
+        <div role="radiogroup" aria-label="Tipo de lançamento" className="mx-auto mt-4 grid max-w-md grid-cols-3 gap-1 rounded-xl bg-muted/60 p-1">
+          {TYPE_OPTIONS.map((opt) => {
+            const selected = v.type === opt.value
+            const Icon = opt.icon
+            return (
               <button
-                key={value}
+                key={opt.value}
                 type="button"
-                onClick={() => setType(value)}
-                className={`py-2 px-2 rounded-lg border text-xs transition-colors ${type === value ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border text-muted-foreground hover:border-foreground'}`}
+                role="radio"
+                aria-checked={selected}
+                onClick={() => set('type', opt.value)}
+                className={cn(
+                  'flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium transition-colors',
+                  selected ? cn('bg-background shadow-sm', opt.activeText) : 'text-muted-foreground hover:text-foreground'
+                )}
               >
-                {label}
+                <Icon className="size-3.5" /> {opt.label}
               </button>
-            ))}
-          </div>
+            )
+          })}
+        </div>
+      </header>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Conta</Label>
-              <select value={accountId} onChange={(e) => { setAccountId(e.target.value); const acc = accounts.find(a => a.id === e.target.value); setFaturaDate(defaultFaturaDate(date, acc?.closing_day ?? null)) }} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
-                {accounts.map(a => <option key={a.id} value={a.id}>{a.name} ({a.currency_code})</option>)}
-              </select>
+      {/* Corpo rolável. Celular: uma coluna. Desktop: duas colunas — valor e
+          contexto à esquerda, detalhes à direita (o card de detalhes ocupa as
+          duas linhas da grade). */}
+      <form
+        id="transaction-form"
+        onSubmit={(e) => { e.preventDefault(); submit('close') }}
+        className="min-h-0 flex-1 overflow-y-auto bg-muted/30"
+      >
+        <div className="space-y-4 p-4 sm:grid sm:grid-cols-2 sm:items-start sm:gap-5 sm:space-y-0 sm:p-6">
+          {/* Valor e descrição */}
+          <section className="rounded-2xl border bg-card p-5 sm:p-6">
+            <p className="text-xs text-muted-foreground">Valor do lançamento</p>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="text-xl font-medium text-muted-foreground">{currencyLabel}</span>
+              <input
+                inputMode="numeric"
+                value={v.amount}
+                onChange={(e) => set('amount', toMasked(e.target.value))}
+                placeholder="0,00"
+                required
+                className={cn('min-w-0 flex-1 bg-transparent text-4xl font-semibold outline-none placeholder:text-muted-foreground/40 sm:text-5xl', accent.text)}
+              />
             </div>
-            <div className="space-y-2">
-              <Label>Valor</Label>
-              <Input inputMode="numeric" value={amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(toMasked(e.target.value))} placeholder="0,00" required />
+            <div className="mt-5 border-t pt-4">
+              <label className="text-xs text-muted-foreground" htmlFor="tx-description">Descrição</label>
+              <input
+                id="tx-description"
+                value={v.description}
+                onChange={(e) => set('description', e.target.value)}
+                placeholder="Ex: Oferta recebida, supermercado..."
+                required
+                className="mt-1 w-full bg-transparent text-base font-medium outline-none placeholder:text-muted-foreground/50"
+              />
             </div>
-          </div>
+          </section>
 
-          <div className="space-y-2">
-            <Label>Descrição *</Label>
-            <Input value={description} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDescription(e.target.value)} placeholder="Ex: Oferta recebida" required />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Categoria</Label>
-              <div className="flex gap-1.5">
+          {/* Detalhes — ocupa as duas linhas no desktop */}
+          <section className="sm:row-span-2">
+            <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Detalhes</h3>
+            <div className="divide-y rounded-2xl border bg-card">
+              <Row icon={Landmark} label="Conta">
                 <select
-                  value={categoryId}
-                  onChange={(e) => { setCategoryId(e.target.value); setCategoryTouched(true); setCategoryAutoFilled(false) }}
-                  className="h-8 min-w-0 flex-1 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
+                  value={v.accountId}
+                  onChange={(e) => changeAccount(e.target.value)}
+                  className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
                 >
-                  <option value="">Sem categoria</option>
-                  {topCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.currency_code})</option>)}
                 </select>
-                <button
-                  type="button"
-                  onClick={() => setCreatingCategory(true)}
-                  aria-label="Nova categoria"
-                  title="Nova categoria"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-              {categoryAutoFilled && <p className="text-xs text-muted-foreground">Sugerido automaticamente — clique pra trocar.</p>}
-            </div>
-            <div className="space-y-2">
-              <Label>Data</Label>
-              <Input type="date" value={date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setDate(e.target.value); setFaturaDate(defaultFaturaDate(e.target.value, selectedAccount?.closing_day ?? null)) }} />
-            </div>
-          </div>
+                {selectedAccount && (
+                  <p className="text-xs text-muted-foreground">Saldo {formatCurrency(selectedAccount.balance, selectedAccount.currency_code)}</p>
+                )}
+              </Row>
 
-          {type !== 'transfer' && (
-            <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
-              <input type="checkbox" checked={isPaid} onChange={(e) => setIsPaid(e.target.checked)} className="h-4 w-4 rounded border-input" />
-              {type === 'income' ? 'Já recebi esse valor' : 'Já paguei essa despesa'}
-            </label>
-          )}
-
-          {isCreditAccount && (
-            <div className="space-y-2">
-              <Label>Fatura</Label>
-              <select value={faturaDate} onChange={(e) => setFaturaDate(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
-                {faturaOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <Label>Comprovante (opcional)</Label>
-            {proofPreview ? (
-              <div className="relative h-24 w-full">
-                <Image src={proofPreview} alt="Comprovante" fill className="object-cover rounded-lg" />
-                <div className="absolute bottom-2 right-2 flex gap-1.5">
-                  <label className="cursor-pointer">
-                    <div className="bg-black/60 text-white text-xs px-2 py-1 rounded-lg hover:bg-black/80 transition-colors">Trocar</div>
-                    <input type="file" accept="image/*" className="hidden" onChange={handleProofSelect} />
-                  </label>
-                  <button type="button" onClick={handleProofRemove} className="bg-black/60 text-white text-xs px-2 py-1 rounded-lg hover:bg-black/80 transition-colors">
-                    Remover
+              <Row icon={Tag} label="Categoria">
+                <div className="flex gap-1.5">
+                  <select
+                    value={v.categoryId}
+                    onChange={(e) => { set('categoryId', e.target.value); setCategoryTouched(true); setCategoryAutoFilled(false) }}
+                    className="h-9 min-w-0 flex-1 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
+                  >
+                    <option value="">Sem categoria</option>
+                    {topCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setCreatingCategory(true)}
+                    aria-label="Nova categoria"
+                    title="Nova categoria"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <Plus className="size-4" />
                   </button>
                 </div>
-              </div>
-            ) : (
-              <label className="flex flex-col items-center justify-center gap-1.5 h-16 rounded-lg border border-dashed cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
-                <Upload className="h-4 w-4" />
-                <span className="text-xs">Anexar comprovante</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleProofSelect} />
-              </label>
-            )}
-          </div>
+                {categoryAutoFilled && <p className="text-xs text-muted-foreground">Sugerido automaticamente — clique pra trocar.</p>}
+              </Row>
 
-          <div className="space-y-2">
-            <Label>Parceiro (opcional)</Label>
-            {partners.length > 0 && (
-              <select
-                value={partnerId}
-                onChange={(e) => { setPartnerId(e.target.value); if (e.target.value) setManualPartnerName('') }}
-                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
-              >
-                <option value="">Nenhum</option>
-                {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            )}
-            {/* Quem mandou a oferta pode não estar cadastrado como
-                parceiro (e não precisar estar, só pra um lançamento
-                avulso) — nome solto aqui, só pra lembrete futuro de quem
-                foi. Escolher um parceiro acima limpa esse campo, e
-                vice-versa (mutuamente exclusivo, ver payload). */}
-            <Input
-              value={manualPartnerName}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setManualPartnerName(e.target.value); if (e.target.value) setPartnerId('') }}
-              placeholder={partners.length > 0 ? 'Ou digite um nome (se não for cadastrado)' : 'Nome de quem mandou (opcional)'}
-              className="h-8"
-            />
-          </div>
+              <Row icon={CalendarDays} label="Data">
+                <input
+                  type="date"
+                  value={v.date}
+                  onChange={(e) => changeDate(e.target.value)}
+                  className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
+                />
+              </Row>
 
-          {highlights.length > 0 && (
-            <div className="space-y-2">
-              <Label>Projeto (opcional)</Label>
-              <select value={highlightId} onChange={(e) => { setHighlightId(e.target.value); setBudgetCategoryId('') }} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
-                <option value="">Nenhum</option>
-                {highlights.map(h => <option key={h.id} value={h.id}>{h.title}</option>)}
-              </select>
+              {isCreditAccount && (
+                <Row icon={CreditCard} label="Fatura">
+                  <select
+                    value={v.faturaDate || defaultFaturaDate(v.date, selectedAccount?.closing_day ?? null)}
+                    onChange={(e) => set('faturaDate', e.target.value)}
+                    className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
+                  >
+                    {faturaOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </Row>
+              )}
+
+              {v.type !== 'transfer' && (
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                    <CircleCheck className="size-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{v.type === 'income' ? 'Já recebi esse valor' : 'Já paguei essa despesa'}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {v.isPaid
+                        ? (v.type === 'income' ? 'Somado imediatamente ao saldo da conta' : 'Deduzido imediatamente do saldo da conta')
+                        : 'Fica como previsto até você confirmar'}
+                    </p>
+                  </div>
+                  <Switch checked={v.isPaid} onCheckedChange={(checked: boolean) => set('isPaid', checked)} />
+                </div>
+              )}
             </div>
-          )}
+          </section>
 
-          {selectedHighlight && selectedHighlight.budgetCategories.length > 0 && (
-            <div className="space-y-2">
-              <Label>Categoria do orçamento (opcional)</Label>
-              <select value={budgetCategoryId} onChange={(e) => setBudgetCategoryId(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
-                <option value="">Projeto geral</option>
-                {selectedHighlight.budgetCategories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-              </select>
+          {/* Contexto e organização */}
+          <section>
+            <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Contexto & organização</h3>
+            <div className="divide-y rounded-2xl border bg-card">
+              <Row icon={UserRound} label="Parceiro (opcional)">
+                {partners.length > 0 && (
+                  <select
+                    value={v.partnerId}
+                    onChange={(e) => setV((prev) => ({ ...prev, partnerId: e.target.value, manualPartnerName: e.target.value ? '' : prev.manualPartnerName }))}
+                    className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
+                  >
+                    <option value="">Nenhum</option>
+                    {partners.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                )}
+                <input
+                  value={v.manualPartnerName}
+                  onChange={(e) => setV((prev) => ({ ...prev, manualPartnerName: e.target.value, partnerId: e.target.value ? '' : prev.partnerId }))}
+                  placeholder={partners.length > 0 ? 'Ou digite um nome (se não for cadastrado)' : 'Nome de quem mandou (opcional)'}
+                  className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
+                />
+              </Row>
+
+              {highlights.length > 0 && (
+                <Row icon={Target} label="Projeto (opcional)">
+                  <select
+                    value={v.highlightId}
+                    onChange={(e) => setV((prev) => ({ ...prev, highlightId: e.target.value, budgetCategoryId: '' }))}
+                    className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
+                  >
+                    <option value="">Nenhum</option>
+                    {highlights.map((h) => <option key={h.id} value={h.id}>{h.title}</option>)}
+                  </select>
+                  {selectedHighlight && selectedHighlight.budgetCategories.length > 0 && (
+                    <select
+                      value={v.budgetCategoryId}
+                      onChange={(e) => set('budgetCategoryId', e.target.value)}
+                      className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring"
+                    >
+                      <option value="">Projeto geral</option>
+                      {selectedHighlight.budgetCategories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+                    </select>
+                  )}
+                </Row>
+              )}
+
+              <Row icon={Paperclip} label="Comprovante (opcional)">
+                {proofPreview ? (
+                  <div className="flex items-center gap-3">
+                    <div className="relative size-16 shrink-0 overflow-hidden rounded-lg border">
+                      <Image src={proofPreview} alt="Comprovante" fill sizes="64px" className="object-cover" unoptimized={proofPreview.startsWith('blob:')} />
+                    </div>
+                    <div className="flex flex-col items-start gap-1">
+                      <label className="cursor-pointer text-sm font-medium text-primary hover:underline">
+                        Trocar
+                        <input type="file" accept="image/*" className="hidden" onChange={handleProofSelect} />
+                      </label>
+                      <button type="button" onClick={handleProofRemove} className="text-sm text-muted-foreground hover:text-destructive">
+                        Remover
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed text-sm text-muted-foreground transition-colors hover:border-foreground hover:text-foreground">
+                    <Upload className="size-4" /> Anexar comprovante
+                    <input type="file" accept="image/*" className="hidden" onChange={handleProofSelect} />
+                  </label>
+                )}
+              </Row>
             </div>
-          )}
+          </section>
+        </div>
+      </form>
 
-          <div className="flex gap-2 pt-1">
-            <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" className="flex-1" disabled={saving}>
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {transaction ? 'Salvar' : 'Lançar'}
+      {/* Rodapé fixo — ações sempre à mão, sem precisar rolar até o fim. */}
+      <footer className="shrink-0 border-t bg-background px-4 pb-[calc(env(safe-area-inset-bottom)+16px)] pt-3 sm:px-6 sm:pb-5">
+        <div className="flex gap-2 sm:justify-end">
+          {editing && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={Boolean(pendingValue)}
+              aria-label="Excluir lançamento"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
+            >
+              {pendingValue === 'delete' ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+            </button>
+          )}
+          {!editing && (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-12 flex-1 rounded-xl sm:flex-none sm:px-6"
+              disabled={Boolean(pendingValue)}
+              onClick={() => submit('another')}
+            >
+              {pendingValue === 'another' && <Loader2 className="size-4 animate-spin" />}
+              Salvar e lançar outro
             </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+          )}
+          <Button
+            type="submit"
+            form="transaction-form"
+            className={cn('h-12 flex-[1.4] rounded-xl sm:flex-none sm:min-w-44 sm:px-8', accent.button)}
+            disabled={Boolean(pendingValue)}
+          >
+            {pendingValue === 'close' && <Loader2 className="size-4 animate-spin" />}
+            {editing ? 'Salvar alterações' : 'Lançar'}
+          </Button>
+        </div>
+      </footer>
 
-    {/* Modal aninhado — mesmo padrão de `DiscardConfirmDialog` (Dialog
-        irmão, não dentro do DialogContent de cima, com z-[70] pra ficar
-        por cima do modal de lançamento que continua aberto atrás). A
-        categoria recém-criada já entra selecionada no `<select>` acima. */}
-    {profileId && (
-      <CategoryForm
-        open={creatingCategory}
-        onOpenChange={setCreatingCategory}
-        profileId={profileId}
-        onCreated={(cat) => { setCategoryId(cat.id); setCategoryTouched(true); setCategoryAutoFilled(false) }}
-      />
-    )}
+      {/* Modal aninhado — mesmo padrão de antes: categoria recém-criada já entra selecionada. */}
+      {profileId && (
+        <CategoryForm
+          open={creatingCategory}
+          onOpenChange={setCreatingCategory}
+          profileId={profileId}
+          onCreated={(cat) => { set('categoryId', cat.id); setCategoryTouched(true); setCategoryAutoFilled(false) }}
+        />
+      )}
     </>
+  )
+}
+
+function Row({ icon: Icon, label, children }: { icon: typeof Plus; label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3 px-4 py-3">
+      <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <Icon className="size-4" />
+      </span>
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        {children}
+      </div>
+    </div>
   )
 }
