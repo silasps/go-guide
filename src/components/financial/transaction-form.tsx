@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
@@ -147,6 +147,7 @@ function blankValues(type: TransactionType, accountId: string, highlightId: stri
 
 export function TransactionForm({ open, onOpenChange, transaction, accounts, categories = [], partners = [], highlights = [], defaultHighlightId, defaultType, trigger, transactions = [] }: Props) {
   const [session, setSession] = useState<Session>(INITIAL_SESSION)
+  const amountRef = useRef<HTMLInputElement>(null)
 
   // Fechar o painel zera a sessão — a próxima abertura começa do zero.
   function handleOpenChange(next: boolean) {
@@ -167,6 +168,8 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
       {trigger}
       <DialogContent
         showCloseButton={false}
+        // Lançamento novo abre com o cursor já no valor (edição mantém o foco padrão).
+        initialFocus={editing ? undefined : amountRef}
         className={cn(
           // Celular: folha que sobe de baixo, ocupando quase a tela toda.
           'fixed inset-x-0 bottom-0 top-auto left-0 h-[92dvh] max-h-[92dvh] w-full max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-t-3xl rounded-b-none bg-background p-0 ring-0 flex flex-col',
@@ -176,6 +179,7 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
       >
         <TransactionFormBody
           key={session.key}
+          amountRef={amountRef}
           initial={initial}
           editing={editing}
           transaction={transaction}
@@ -194,6 +198,7 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
 }
 
 interface BodyProps {
+  amountRef: React.RefObject<HTMLInputElement | null>
   initial: FormValues
   editing: boolean
   transaction?: Transaction
@@ -207,7 +212,7 @@ interface BodyProps {
   onDuplicate: () => void
 }
 
-function TransactionFormBody({ initial, editing, transaction, accounts, categories, partners, highlights, transactions, onClose, onAnother, onDuplicate }: BodyProps) {
+function TransactionFormBody({ amountRef, initial, editing, transaction, accounts, categories, partners, highlights, transactions, onClose, onAnother, onDuplicate }: BodyProps) {
   const router = useRouter()
   const { pendingValue, run } = usePendingAction<'close' | 'another' | 'delete'>()
   const [v, setV] = useState<FormValues>(initial)
@@ -406,6 +411,7 @@ function TransactionFormBody({ initial, editing, transaction, accounts, categori
             <div className="mt-1 flex items-baseline gap-2">
               <span className="text-xl font-medium text-muted-foreground">{currencyLabel}</span>
               <input
+                ref={amountRef}
                 inputMode="numeric"
                 value={v.amount}
                 onChange={(e) => set('amount', toMasked(e.target.value))}
