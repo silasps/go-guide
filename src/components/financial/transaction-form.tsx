@@ -412,6 +412,7 @@ function TransactionFormBody({ amountRef, initial, editing, transaction, account
               <span className="text-xl font-medium text-muted-foreground">{currencyLabel}</span>
               <input
                 ref={amountRef}
+                data-keep-font
                 inputMode="numeric"
                 value={v.amount}
                 onChange={(e) => set('amount', toMasked(e.target.value))}

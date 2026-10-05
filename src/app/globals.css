@@ -195,12 +195,13 @@
 
 /* iOS Safari dá zoom automático em campos com fonte menor que 16px. Em
    celular, força 16px em todo input/select/textarea de formulário — inclusive
-   os escritos à mão com `text-sm`. Fora de qualquer @layer de propósito:
+   os escritos à mão com `text-sm`. Campos com `data-keep-font` (ex.: o valor
+   grande do lançamento) ficam de fora. Fora de qualquer @layer de propósito:
    camadas sem layer vencem as utilidades do Tailwind, senão `text-sm` ganharia. */
 @media (max-width: 767px) {
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]):not([type="color"]),
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]):not([type="color"]):not([data-keep-font]),
   select,
-  textarea {
+  textarea:not([data-keep-font]) {
     font-size: 16px;
   }
 }
