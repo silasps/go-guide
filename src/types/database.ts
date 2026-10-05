@@ -494,6 +494,8 @@ export interface FinancialAccount {
   card_brand: string | null
   archived: boolean
   is_open_finance: boolean
+  /** Conta corrente que paga a fatura deste cartão (migration 109, ver 7.47). */
+  paid_from_account_id: string | null
   created_at: string
   updated_at: string
 }
@@ -573,6 +575,9 @@ export interface Transaction {
    *  `Pledge.proof_url`: URL pública no bucket `media`, sempre `.webp`
    *  (comprimida no cliente antes do upload, ver `compressImage`). */
   proof_url: string | null
+  /** Pagamento de fatura (migration 109, ver 7.47): cartão e 'YYYY-MM-01' da fatura paga. Só preenchido na perna da conta corrente. */
+  card_invoice_account_id: string | null
+  card_invoice_fatura_date: string | null
   created_at: string
 }
 

@@ -5,6 +5,7 @@ import { cn, formatCurrency } from '@/lib/utils'
 import { FinancialAccount } from '@/types/database'
 import { AccountCard } from './account-card'
 import { AccountWizard } from './account-wizard'
+import type { PendingInvoicePayment } from '@/lib/financial/card-invoices-sync'
 import { Button } from '@/components/ui/button'
 import { Landmark, Archive, Wallet, Plus } from 'lucide-react'
 
@@ -15,6 +16,7 @@ interface Props {
   accounts: FinancialAccount[]
   members: Member[]
   currentBills: Record<string, number>
+  pendingPayments: Record<string, PendingInvoicePayment[]>
 }
 
 type Tab = 'active' | 'archived'
@@ -26,7 +28,7 @@ const TABS: { value: Tab; label: string; icon: typeof Landmark }[] = [
 
 // Abas Ativas/Arquivadas (estilo GranaZen, ver 7.29) — `financial_accounts.archived`
 // já existia no schema desde sempre, sem nenhuma UI até aqui.
-export function AccountsList({ profileId, accounts, members, currentBills }: Props) {
+export function AccountsList({ profileId, accounts, members, currentBills, pendingPayments }: Props) {
   const [tab, setTab] = useState<Tab>('active')
   const [creating, setCreating] = useState(false)
   const filtered = accounts.filter((a) => (tab === 'active' ? !a.archived : a.archived))
@@ -124,7 +126,7 @@ export function AccountsList({ profileId, accounts, members, currentBills }: Pro
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((a) => (
-            <AccountCard key={a.id} account={a} profileId={profileId} accounts={accounts} members={members.filter((m) => m.account_id === a.id)} currentBill={currentBills[a.id] ?? 0} />
+            <AccountCard key={a.id} account={a} profileId={profileId} accounts={accounts} members={members.filter((m) => m.account_id === a.id)} currentBill={currentBills[a.id] ?? 0} pendingPayments={pendingPayments[a.id] ?? []} />
           ))}
         </div>
       )}

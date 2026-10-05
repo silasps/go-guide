@@ -23,9 +23,10 @@ interface Props {
   onOpenChange: (open: boolean) => void
   profileId: string
   account?: FinancialAccount
+  accounts?: FinancialAccount[]
 }
 
-export function AccountForm({ open, onOpenChange, profileId, account }: Props) {
+export function AccountForm({ open, onOpenChange, profileId, account, accounts = [] }: Props) {
   const router = useRouter()
   const { isPending: saving, run } = usePendingAction()
   const [name, setName] = useState(account?.name ?? '')
@@ -37,6 +38,7 @@ export function AccountForm({ open, onOpenChange, profileId, account }: Props) {
   const [closingDay, setClosingDay] = useState(account?.closing_day != null ? String(account.closing_day) : '')
   const [dueDay, setDueDay] = useState(account?.due_day != null ? String(account.due_day) : '')
   const [cardBrand, setCardBrand] = useState(account?.card_brand ?? '')
+  const [paidFromId, setPaidFromId] = useState(account?.paid_from_account_id ?? '')
   const isCredit = accountType === 'credit'
   const closingDayNum = parseInt(closingDay, 10)
   const dueDayNum = parseInt(dueDay, 10)
@@ -57,7 +59,8 @@ export function AccountForm({ open, onOpenChange, profileId, account }: Props) {
         closing_day: closingDay ? parseInt(closingDay, 10) : null,
         due_day: dueDay ? parseInt(dueDay, 10) : null,
         card_brand: cardBrand || null,
-      } : { credit_limit: null, closing_day: null, due_day: null, card_brand: null }
+        paid_from_account_id: paidFromId || null,
+      } : { credit_limit: null, closing_day: null, due_day: null, card_brand: null, paid_from_account_id: null }
 
       if (account) {
         const { error } = await supabase.from('financial_accounts').update({
@@ -156,6 +159,15 @@ export function AccountForm({ open, onOpenChange, profileId, account }: Props) {
                   </p>
                 </div>
               )}
+            </div>
+          )}
+          {isCredit && (
+            <div className="space-y-2">
+              <Label>Pagar fatura com</Label>
+              <select value={paidFromId} onChange={(e) => setPaidFromId(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring">
+                <option value="">Escolher depois (primeira conta corrente)</option>
+                {accounts.filter((a) => a.account_type === 'checking' && !a.archived && a.currency_code === currencyCode).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
             </div>
           )}
           <label className="flex items-center gap-2 text-sm">

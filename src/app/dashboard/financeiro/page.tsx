@@ -8,6 +8,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Plus } from 'lucide-react'
 import { resolveBudgetCategoryLabel } from '@/lib/highlights/budget-category-labels'
+import { syncCardInvoices } from '@/lib/financial/card-invoices-sync'
 
 export default async function FinanceiroPage() {
   const supabase = await createClient()
@@ -23,6 +24,9 @@ export default async function FinanceiroPage() {
   // join de categoria/parceiro (2026-09-02, ver 7.20) — o painel de
   // Lançamentos da Visão Geral usa a mesma `TransactionTable` de
   // `/lancamentos`, que espera essas relações já embutidas.
+  const { data: { user } } = await supabase.auth.getUser()
+  await syncCardInvoices(supabase, profile!.id, user!.id)
+
   const windowStart = new Date()
   windowStart.setDate(1)
   windowStart.setMonth(windowStart.getMonth() - 12)

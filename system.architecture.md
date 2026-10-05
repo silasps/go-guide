@@ -1785,8 +1785,29 @@ Pedidos do usuário sobre o modal "Novo lançamento": sair do `Dialog` centraliz
 - Resposta à pergunta sobre cabeçalho/rodapé fixos: faz sentido em formulário longo no celular — o cabeçalho mantém o tipo visível e a saída sempre à mão, e o rodapé deixa a ação principal ao alcance do polegar sem precisar rolar até o fim. É o mesmo padrão já usado no checkout de doação (3-quater, seção 7.3).
 - `tsc`/`eslint` limpos. Não verificado num browser real (mesma limitação de sempre).
 
+### 7.47 Pagamento de fatura de cartão: transferência agendada na conta corrente, confirmada com um clique (migration `109_card_invoice_payments.sql`, 2026-10-04)
+
+Problema reportado pelo usuário: o saldo da conta corrente (R$ 5.008,80) ficou R$ 949,63 acima do saldo real. A diferença era a fatura do Santander, debitada em 01/10 (R$ 619,64) e nunca lançada na corrente, mais R$ 329,99 sem explicação nos lançamentos. Além disso, as parcelas futuras precisavam ser apagadas à mão todo mês.
+
+**Estudo de como o mercado trata isso** (padrão de apps de banco e de finanças): compras no cartão ficam só na conta do cartão, na data da compra, sem mexer no caixa. A fatura vira uma **transferência** da conta corrente para o cartão, no vencimento, com o valor da fatura. O app **agenda o pagamento sozinho** (valor e vencimento) como previsto, e a pessoa só **confirma** quando o banco debitar. Parcela futura pertence às faturas seguintes e é confirmada quando a fatura real chega, sem duplicar.
+
+**Modelo implementado**:
+- Compra no cartão: despesa na conta do cartão, `fatura_date` = mês em que a fatura fecha (mesma regra de antes). Não mexe em conta corrente.
+- Pagamento de fatura: transferência em duas pernas ligadas por `transfer_group_id` — saída na corrente (`paid_from_account_id` do cartão, ou a primeira corrente da mesma moeda) e entrada no cartão, zerando a dívida. A perna de saída guarda `card_invoice_account_id`/`card_invoice_fatura_date`; índice único impede dois pagamentos da mesma fatura.
+- Vencimento: `dueDateFor()` — se o dia de vencimento é maior que o de fechamento, vence no mesmo mês; senão, no mês seguinte.
+- Sincronização (`syncCardInvoices`, roda ao abrir Financeiro e Contas, idempotente): cria o pagamento previsto de cada fatura em aberto, corrige o valor enquanto não foi confirmado (ex.: compra nova entra na fatura), e apaga o previsto se a fatura ficou sem nada em aberto. Pagamento já confirmado não muda.
+- Confirmação ("Confirmar pagamento" no cartão, na tela de Contas): marca as duas pernas como pagas e fecha as compras daquela fatura (`fatura_paid=true`, inclusive parcelas que ainda estavam previstas).
+- Parcela prevista confirmada por compra real: ao lançar uma compra no cartão com mesmo valor e fatura de uma previsão ainda não paga, e descrição de mesmo início (ignorando o "(parcela x/y)"), o app confirma a previsão em vez de duplicar.
+- **Saldo previsto** (`buildFinancialTimeline`): só o caixa. Compra pendente no cartão não entra (entraria duas vezes, junto com o pagamento agendado). Transferências entram pela direção no caixa, mas não contam como receita nem despesa nas métricas (pagamento de fatura não duplica o gasto — o gasto é a compra).
+- "Fatura atual" da tela de Contas soma só despesas em aberto. Antes somava também a perna de entrada do pagamento, o que contaria a dívida de novo depois de paga.
+
+**Limitações conhecidas**: se uma compra retroativa cair numa fatura que já foi paga, ela não gera novo pagamento (o índice mantém um por fatura) — ajustar manualmente. A sincronização roda ao abrir as telas, não por cron, então o pagamento de uma fatura vencida só aparece quando a pessoa abre o app.
+
+**Verificação**: núcleo puro (`card-invoices.ts`) e linha do tempo testados no Node com 19 casos (vencimento, idempotência, pagamento confirmado, previsto, transferência no caixa). `tsc`/`eslint` limpos. Não verificado num browser real. **Migration 109 precisa ser aplicada antes do deploy** — o código consulta as colunas novas.
+
 ---
 
+- **2026-10-04** — Pagamento de fatura de cartão passou a ser transferência agendada na conta corrente, confirmada com um clique, em vez de ficar só na conta do cartão: o saldo da corrente ficava acima do real porque o débito da fatura nunca era lançado. Estudo do modelo e implementação na seção 7.47 (migration `109_card_invoice_payments.sql`). Também: "Fatura atual" passou a contar só despesa, e o saldo previsto deixou de somar compra pendente do cartão.
 - **2026-10-04** — Comprovante do lançamento pode ser ampliado (toque na miniatura) e baixado (botão no visualizador). Novo `ProofViewer` (`src/components/financial/proof-viewer.tsx`): modal com a imagem em tamanho maior e botão "Baixar comprovante". O download é feito por blob (fetch → URL local → link com `download`), porque o link do bucket é de outra origem e o atributo `download` seria ignorado; se o fetch falhar, a imagem abre numa aba nova. Arquivo baixado: `comprovante-{data}.webp`.
 - **2026-10-04** — Zoom automático do iOS Safari removido dos formulários no celular: o navegador amplia qualquer campo com fonte menor que 16px, e os selects/inputs escritos à mão (como os do formulário de lançamento) usavam `text-sm`. Regra global em `src/app/globals.css` (abaixo de 768px, fora de `@layer` pra vencer as utilidades do Tailwind) força 16px em input, select e textarea de formulário; checkbox, radio, range, file e hidden ficam de fora. Os componentes `Input`/`Textarea` do design system já tinham 16px no celular e não mudam. Exceção: campos com o atributo `data-keep-font` (hoje só o valor grande do formulário de lançamento, `text-4xl`) ficam de fora da regra e mantêm o tamanho.
 - **2026-10-04** — Lançamento novo abre com o cursor já no campo Valor (via `initialFocus` do Base UI, ver seção 7.46).

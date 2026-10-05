@@ -1,4 +1,4 @@
-import { Transaction } from '@/types/database'
+import type { Transaction } from '@/types/database'
 
 export interface TimelinePoint {
   month: string // 'YYYY-MM'
@@ -103,13 +103,22 @@ export function buildFinancialTimeline(
   const accountsStartMonth = accountsStartDate ? new Date(accountsStartDate.getFullYear(), accountsStartDate.getMonth(), 1) : null
   const isCashAccount = (t: Transaction) => !cashAccountIds || cashAccountIds.has(t.account_id)
 
+  // Efeito no caixa de uma transação paga: receita soma, despesa subtrai, e
+  // uma perna de transferência vale pela direção (entrada soma, saída tira).
+  // Pagamento de fatura de cartão (saída da corrente + entrada no cartão)
+  // pesa só na corrente, porque o cartão não é conta de caixa.
+  const cashEffect = (t: Transaction) => {
+    if (t.type === 'transfer') return t.transfer_direction === 'in' ? t.amount : -t.amount
+    return t.type === 'income' ? t.amount : -t.amount
+  }
+
   let paidNetWithinWindow = 0
   for (const t of transactions) {
-    if (t.type !== 'income' && t.type !== 'expense') continue
+    if (t.type !== 'income' && t.type !== 'expense' && t.type !== 'transfer') continue
     if (!t.is_paid || !isCashAccount(t)) continue
     const d = new Date(`${t.date}T00:00:00`)
     if (d < windowStart || d >= windowEndExclusive) continue
-    paidNetWithinWindow += t.type === 'income' ? t.amount : -t.amount
+    paidNetWithinWindow += cashEffect(t)
   }
   let running = currentBalance - paidNetWithinWindow
 
@@ -118,23 +127,39 @@ export function buildFinancialTimeline(
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
     const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 
-    // `incomeReceived`/`expensePaid` (exibidos em "Receitas"/"Despesas" e
-    // somados em `income`/`expense`/`netCashFlow`) contam de QUALQUER conta
-    // — uma compra paga no cartão é gasto de verdade pro mês, mesmo sem
-    // ainda ter saído do caixa. Só a reconstrução de saldo (abaixo,
-    // `cashIncomeReceived`/`cashExpensePaid`) precisa se restringir às
-    // contas de caixa, pra ficar simétrica com `currentBalance`.
+    // Receitas/despesas (exibidas nas métricas "Receitas"/"Despesas") contam de
+    // qualquer conta: compra no cartão é gasto do mês. Transferências não são
+    // receita nem despesa — só movem dinheiro entre contas, e entram só no
+    // caixa (`cash*`). Saldo previsto usa só o caixa: uma compra pendente no
+    // cartão vira saída quando a fatura for paga, pelo pagamento agendado na
+    // conta corrente — contar as duas duplicaria a despesa.
     let incomeReceived = 0, incomePending = 0, expensePaid = 0, expenseUnpaid = 0, fixedIncome = 0, fixedExpense = 0
-    let cashIncomeReceived = 0, cashExpensePaid = 0
+    let cashIncomeReceived = 0, cashExpensePaid = 0, cashIncomePending = 0, cashExpenseUnpaid = 0
     for (const t of transactions) {
-      if (t.type !== 'income' && t.type !== 'expense') continue
       if (t.date.slice(0, 7) !== month) continue
+      if (t.type === 'transfer') {
+        if (!isCashAccount(t)) continue
+        const isIn = t.transfer_direction === 'in'
+        if (t.is_paid) { if (isIn) cashIncomeReceived += t.amount; else cashExpensePaid += t.amount }
+        else if (isIn) cashIncomePending += t.amount
+        else cashExpenseUnpaid += t.amount
+        continue
+      }
+      if (t.type !== 'income' && t.type !== 'expense') continue
       if (t.type === 'income') {
-        if (t.is_paid) { incomeReceived += t.amount; if (isCashAccount(t)) cashIncomeReceived += t.amount } else { incomePending += t.amount }
+        if (t.is_paid) incomeReceived += t.amount; else incomePending += t.amount
         if (t.source === 'recurring') fixedIncome += t.amount
       } else {
-        if (t.is_paid) { expensePaid += t.amount; if (isCashAccount(t)) cashExpensePaid += t.amount } else { expenseUnpaid += t.amount }
+        if (t.is_paid) expensePaid += t.amount; else expenseUnpaid += t.amount
         if (t.source === 'recurring') fixedExpense += t.amount
+      }
+      if (!isCashAccount(t)) continue
+      if (t.type === 'income') {
+        if (t.is_paid) cashIncomeReceived += t.amount; else cashIncomePending += t.amount
+      } else if (t.is_paid) {
+        cashExpensePaid += t.amount
+      } else {
+        cashExpenseUnpaid += t.amount
       }
     }
 
@@ -142,7 +167,7 @@ export function buildFinancialTimeline(
     const expense = expensePaid + expenseUnpaid
     const saldoAnteriorRunning = running
     const saldoDisponivelRunning = saldoAnteriorRunning + cashIncomeReceived - cashExpensePaid
-    const saldoPrevistoRunning = saldoDisponivelRunning + incomePending - expenseUnpaid
+    const saldoPrevistoRunning = saldoDisponivelRunning + cashIncomePending - cashExpenseUnpaid
     running = saldoDisponivelRunning
 
     // Mês inteiro anterior ao surgimento da(s) conta(s) no sistema: não há

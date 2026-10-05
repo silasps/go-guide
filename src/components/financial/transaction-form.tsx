@@ -110,6 +110,31 @@ function defaultFaturaDate(purchaseDate: string, closingDay: number | null) {
   return `${fd.getFullYear()}-${String(fd.getMonth() + 1).padStart(2, '0')}-01`
 }
 
+// Acha uma linha prevista do cartão com o mesmo valor e fatura, e descrição
+// que começa igual (ignorando o "(parcela x/y ...)" que o app põe nas
+// previsões de parcela). Só considera linha ainda não paga.
+async function findPrevistoCardMatch(
+  supabase: ReturnType<typeof createClient>,
+  accountId: string,
+  faturaDate: string | null,
+  amount: number,
+  description: string,
+): Promise<{ id: string } | null> {
+  if (!faturaDate) return null
+  const { data } = await supabase
+    .from('transactions')
+    .select('id, description')
+    .eq('account_id', accountId)
+    .eq('type', 'expense')
+    .eq('is_paid', false)
+    .eq('fatura_date', faturaDate)
+    .eq('amount', amount)
+  const key = description.trim().split(' (')[0].toLowerCase().slice(0, 12)
+  if (!key) return null
+  const match = (data ?? []).find((row) => row.description.toLowerCase().includes(key))
+  return match ? { id: match.id } : null
+}
+
 function valuesFromTransaction(t: Transaction): FormValues {
   return {
     type: t.type,
@@ -316,12 +341,28 @@ function TransactionFormBody({ amountRef, initial, editing, transaction, account
         proof_url,
       }
 
-      const { error } = editing && transaction
-        ? await supabase.from('transactions').update(payload).eq('id', transaction.id)
-        : await supabase.from('transactions').insert({ ...payload, created_by_user_id: user!.id })
+      // Compra nova no cartão que já estava prevista (ex.: parcela 8/12 que
+      // o próprio app gerou antes): confirma a previsão em vez de duplicar.
+      let confirmedPrevisto = false
+      let error: { message: string } | null = null
+      if (editing && transaction) {
+        ;({ error } = await supabase.from('transactions').update(payload).eq('id', transaction.id))
+      } else {
+        const previsto = account.account_type === 'credit'
+          ? await findPrevistoCardMatch(supabase, payload.account_id, payload.fatura_date, parsedAmount, payload.description)
+          : null
+        if (previsto) {
+          ;({ error } = await supabase.from('transactions').update({ ...payload, is_paid: true }).eq('id', previsto.id))
+          confirmedPrevisto = !error
+        } else {
+          ;({ error } = await supabase.from('transactions').insert({ ...payload, created_by_user_id: user!.id }))
+        }
+      }
 
       if (error) { toast.error('Erro ao salvar lançamento.'); return }
-      toast.success(editing ? 'Lançamento atualizado.' : 'Lançamento criado.')
+      toast.success(
+        editing ? 'Lançamento atualizado.' : confirmedPrevisto ? 'Parcela prevista confirmada.' : 'Lançamento criado.'
+      )
       router.refresh()
       if (kind === 'another') onAnother({ type: v.type, accountId: v.accountId, date: v.date })
       else onClose()

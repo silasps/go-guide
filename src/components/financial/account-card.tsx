@@ -8,8 +8,10 @@ import { usePendingAction } from '@/hooks/use-pending-action'
 import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import { getCreditCardCycleDates } from '@/lib/financial/credit-card-cycle'
 import { FinancialAccount } from '@/types/database'
+import { confirmInvoicePayment, type PendingInvoicePayment } from '@/lib/financial/card-invoices-sync'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { DiscardConfirmDialog } from '@/components/shared/discard-confirm-dialog'
 import { AccountForm } from './account-form'
@@ -34,6 +36,7 @@ interface Props {
   accounts: FinancialAccount[]
   members: Member[]
   currentBill?: number
+  pendingPayments?: PendingInvoicePayment[]
 }
 
 interface Action {
@@ -52,9 +55,10 @@ const ACTION_BUTTON_CLASS = 'flex h-[52px] w-full flex-col items-center justify-
 // "..." (mobile), arquivar com confirmação. Sem "Conta padrão" (é sobre
 // lançar transação via WhatsApp; este app não tem bot — mesma decisão já
 // registrada em `account-wizard.tsx`).
-export function AccountCard({ account, profileId, accounts, members, currentBill = 0 }: Props) {
+export function AccountCard({ account, profileId, accounts, members, currentBill = 0, pendingPayments = [] }: Props) {
   const router = useRouter()
   const { isPending: archiving, run } = usePendingAction()
+  const { pendingValue: payingId, run: runPayment } = usePendingAction<string>()
   const isCredit = account.account_type === 'credit'
   const bill = Math.max(0, currentBill)
   const available = account.credit_limit != null ? account.credit_limit - bill : null
@@ -179,6 +183,37 @@ export function AccountCard({ account, profileId, accounts, members, currentBill
           </div>
         )}
 
+        {isCredit && pendingPayments.length > 0 && (
+          <div className="space-y-2 rounded-lg border bg-muted/30 px-4 py-3">
+            <p className="text-xs font-semibold text-muted-foreground">Pagamento da fatura</p>
+            {pendingPayments.map((p) => {
+              const payingFrom = accounts.find((a) => a.id === p.account_id)?.name ?? 'conta corrente'
+              return (
+                <div key={p.id} className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="text-sm font-semibold">{formatCurrency(p.amount, account.currency_code)}</p>
+                    <p className="text-xs text-muted-foreground">Vence {formatDate(p.date)} · debita de {payingFrom}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="shrink-0"
+                    disabled={payingId === p.id}
+                    onClick={() => runPayment(p.id, async () => {
+                      const err = await confirmInvoicePayment(createClient(), p)
+                      if (err) { toast.error('Erro ao confirmar pagamento.'); return }
+                      toast.success('Pagamento confirmado.')
+                      router.refresh()
+                    })}
+                  >
+                    {payingId === p.id && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                    Confirmar pagamento
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
         <Link
           href={`/dashboard/financeiro/lancamentos?account=${account.id}`}
           className="flex h-10 w-full items-center justify-center gap-2 rounded-full border border-input bg-muted/40 px-4 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted md:hidden"
@@ -203,7 +238,7 @@ export function AccountCard({ account, profileId, accounts, members, currentBill
         </div>
       </CardContent>
 
-      {editing && <AccountForm open onOpenChange={setEditing} profileId={profileId} account={account} />}
+      {editing && <AccountForm open onOpenChange={setEditing} profileId={profileId} account={account} accounts={accounts} />}
       {managingMembers && <ManageMembersDialog open onOpenChange={setManagingMembers} accountId={account.id} members={members} />}
       {adjustingBalance && <BalanceAdjustmentDialog open onOpenChange={setAdjustingBalance} account={account} />}
       {transferring && <TransferDialog open onOpenChange={setTransferring} sourceAccount={account} accounts={accounts} />}
