@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
 import { CategoryForm } from './category-form'
+import { ProofViewer } from './proof-viewer'
 import { toast } from 'sonner'
 import {
   ArrowDownLeft, ArrowUpRight, ArrowLeftRight, X, Copy, Trash2, Loader2, Plus, Upload,
@@ -223,6 +224,7 @@ function TransactionFormBody({ amountRef, initial, editing, transaction, account
   const [categoryTouched, setCategoryTouched] = useState(editing || Boolean(initial.categoryId))
   const [categoryAutoFilled, setCategoryAutoFilled] = useState(false)
   const [creatingCategory, setCreatingCategory] = useState(false)
+  const [viewingProof, setViewingProof] = useState(false)
 
   const topCategories = useMemo(() => categories.filter((c) => !c.parent_id), [categories])
   const selectedHighlight = highlights.find((h) => h.id === v.highlightId)
@@ -563,9 +565,14 @@ function TransactionFormBody({ amountRef, initial, editing, transaction, account
               <Row icon={Paperclip} label="Comprovante (opcional)">
                 {proofPreview ? (
                   <div className="flex items-center gap-3">
-                    <div className="relative size-16 shrink-0 overflow-hidden rounded-lg border">
-                      <Image src={proofPreview} alt="Comprovante" fill sizes="64px" className="object-cover" unoptimized={proofPreview.startsWith('blob:')} />
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setViewingProof(true)}
+                      aria-label="Ver comprovante ampliado"
+                      className="relative size-16 shrink-0 overflow-hidden rounded-lg border transition-opacity hover:opacity-80"
+                    >
+                      <Image src={proofPreview} alt="" fill sizes="64px" className="object-cover" unoptimized={proofPreview.startsWith('blob:')} />
+                    </button>
                     <div className="flex flex-col items-start gap-1">
                       <label className="cursor-pointer text-sm font-medium text-primary hover:underline">
                         Trocar
@@ -625,6 +632,15 @@ function TransactionFormBody({ amountRef, initial, editing, transaction, account
           </Button>
         </div>
       </footer>
+
+      {proofPreview && (
+        <ProofViewer
+          src={proofPreview}
+          open={viewingProof}
+          onOpenChange={setViewingProof}
+          fileName={`comprovante-${v.date || 'lancamento'}.webp`}
+        />
+      )}
 
       {/* Modal aninhado — mesmo padrão de antes: categoria recém-criada já entra selecionada. */}
       {profileId && (
